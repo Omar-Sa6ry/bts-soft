@@ -1,9 +1,10 @@
 {
   "name": "@bts-soft/mail-queue",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Send Mails in queue to increase performance",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "license": "MIT",
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
@@ -20,8 +21,7 @@
     "@types/nodemailer": "^7.0.2"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Omar Sabry",
   "packageManager": "pnpm@10.18.1",
   "dependencies": {
     "@nestjs/bullmq": "^11.0.3"
