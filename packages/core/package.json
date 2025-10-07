@@ -1,10 +1,10 @@
 {
   "name": "@bts-soft/core",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
-    "@bts-soft/mail-queue": "^1.0.0"
+    "@bts-soft/mail-queue": "^1.0.3"
   },
   "peerDependencies": {
     "@nestjs/common": "^10.0.0",

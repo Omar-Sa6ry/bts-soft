@@ -1,3 +1,4 @@
+
 ## @bts-soft/core | The BTS Software Core Toolkit
 
 The **`@bts-soft/core`** package serves as the unified entry point for all high-quality, pre-configured modules developed by BTS Software.
@@ -70,7 +71,7 @@ TypeScript
 ```
 // my.service.ts
 import { Injectable } from '@nestjs/common';
-import { SendEmailService } from '@bts-soft/core'; // ⬅️ Imported from @bts-soft/core
+import { SendEmailService } from '@bts-soft/core'; // Imported from @bts-soft/core
 
 @Injectable()
 export class MyService {
@@ -89,3 +90,27 @@ export class MyService {
 }
 ```
 
+
+  
+
+## Contact
+
+  
+
+**Author:** Omar Sabry  
+
+**Email:** omar.sabry.dev@gmail.com  
+
+**LinkedIn:** [(1) Omar Sabry | LinkedIn](https://www.linkedin.com/in/omarsa6ry/)
+
+Portfolio: https://omarsabry.netlify.app/
+
+  
+
+  
+
+## Repository
+
+  
+
+**GitHub:** [bts-soft/packages/core at main · Omar-Sa6ry/bts-soft](https://github.com/Omar-Sa6ry/bts-soft/tree/main/packages/core)
