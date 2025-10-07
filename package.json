@@ -1,0 +1,20 @@
+{
+  "name": "bts-soft",
+  "version": "1.0.0",
+  "private": true, 
+  "description": "BTS Software Monorepo for NestJS Toolkit",
+  "main": "index.js",
+  "scripts": {
+    "build:all": "pnpm -r build", 
+    "start": "pnpm build:all"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.18.1"
+}
+

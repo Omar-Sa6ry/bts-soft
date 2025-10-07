@@ -1,0 +1,28 @@
+# Dependencies
+/node_modules
+/packages/**/node_modules
+
+# Build output
+/dist
+/packages/**/dist
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# pnpm
+pnpm-lock.yaml
+
+# Environment Variables
+.env
+.env.local
+.env.*
+
+# OS Files and IDE
+.DS_Store
+Thumbs.db
+.vscode/
+
+# NestJS/TypeScript temporary files
+*.tsbuildinfo
