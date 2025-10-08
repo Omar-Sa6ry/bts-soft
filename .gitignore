@@ -26,3 +26,5 @@ Thumbs.db
 
 # NestJS/TypeScript temporary files
 *.tsbuildinfo
+
+desktop.ini

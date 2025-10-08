@@ -1,0 +1,33 @@
+{
+  "name": "@bts-soft/validation",
+  "version": "1.0.0",
+  "description": "A robust toolkit of flexible NestJS decorators for DTO validation, transformation, and security checks, compatible with both REST and GraphQL APIs.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "keywords": [
+    "nestjs",
+    "validation",
+    "decorator",
+    "graphql",
+    "rest",
+    "class-validator",
+    "bts-soft"
+  ],
+  "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0", 
+    "@nestjs/core": "^11.0.0", 
+    "@nestjs/graphql": "^13.0.0" 
+
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,4 +1,5 @@
-// packages/nestjs-core/src/index.ts
-
-// Mail Queue Module)
+// Mail Queue Module
 export * from '@bts-soft/mail-queue';
+
+// Validation Decorators
+export * from '@bts-soft/validation';
