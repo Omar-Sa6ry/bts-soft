@@ -49,3 +49,19 @@ Visit each module’s documentation for details and advanced usage examples:
     
 - [Config Documentation]([@bts-soft/config - npm](https://www.npmjs.com/package/@bts-soft/config))
     
+
+## Contact
+
+
+**Author:** Omar Sabry  
+
+**Email:** [omar.sabry.dev@gmail.com](mailto:omar.sabry.dev@gmail.com)  
+
+**LinkedIn:** [Omar Sabry | LinkedIn](https://www.linkedin.com/in/omarsa6ry/)
+
+Portfolio: [Portfolio](https://omarsabry.netlify.app/)
+
+## Repository
+
+
+**GitHub:** [GitHub Repo](https://github.com/Omar-Sa6ry/bts-soft/tree/main/packages/core)

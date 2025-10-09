@@ -1,5 +1,3 @@
-// packages/mail-queue/src/index.ts
-
 // Module: The main component to be imported into the application's AppModule
 export * from './email.module';
 

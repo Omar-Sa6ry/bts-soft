@@ -1,13 +1,13 @@
 {
   "name": "@bts-soft/core",
-  "version": "1.2.5",
+  "version": "1.2.7",
   "author": "Omar Sabry",
   "description": "All bts-soft packages",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
   "dependencies": {
-    "@bts-soft/mail-queue": "^1.0.5",
+    "@bts-soft/mail-queue": "^1.1.5",
     "@bts-soft/upload": "^1.1.1",
     "@bts-soft/validation":"^1.0.0"
   },
