@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/core",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "author": "Omar Sabry",
   "description": "All bts-soft packages",
   "main": "dist/index.js",
@@ -8,7 +8,7 @@
   "license": "MIT",
   "dependencies": {
     "@bts-soft/mail-queue": "^1.1.5",
-    "@bts-soft/upload": "^1.1.1",
+    "@bts-soft/upload": "^1.1.2",
     "@bts-soft/validation":"^1.0.0"
   },
   "peerDependencies": {
