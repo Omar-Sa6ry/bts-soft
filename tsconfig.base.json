@@ -9,7 +9,6 @@
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,
@@ -17,6 +16,12 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "paths": {}
+    "baseUrl": ".",
+    "paths": {
+      "@bts-soft/mail-queue": ["packages/mail-queue/src/index.ts"],
+      "@bts-soft/upload": ["packages/upload/src/index.ts"],
+      "@bts-soft/cache": ["packages/cache/src/index.ts"],
+      "@bts-soft/validation": ["packages/validation/src/index.ts"]
+    }
   }
 }

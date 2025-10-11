@@ -89,9 +89,6 @@ export * from "./upload/observer/upload.observer";
 /*          CORE MODULES           */
 /* ============================== */
 
-// REST Controller for handling upload-related endpoints
-export * from "./upload/rest.controller";
-
 // Upload Module — the main NestJS module wrapper for this feature
 export * from "./upload/upload.module";
 

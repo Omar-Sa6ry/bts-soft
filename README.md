@@ -20,7 +20,7 @@ Installing `@bts-soft/core` automatically gives you access to all the following 
 | **Email Queue** | [`@bts-soft/mail-queue`](https://www.npmjs.com/package/@bts-soft/mail-queue) | Asynchronous email sending using **BullMQ** and **Nodemailer**. |
 | **Validation** | [`@bts-soft/validation`](https://www.npmjs.com/package/@bts-soft/validation) | Reusable input validation decorators supporting **REST** and **GraphQL**. |
 | **Upload** | [`@bts-soft/upload`](https://www.npmjs.com/package/@bts-soft/upload) | Simplified file uploads for **GraphQL** and **REST** endpoints. |
-| **Config** | [`@bts-soft/config`](https://www.npmjs.com/package/@bts-soft/config) | Centralized configuration and environment variable management. |
+| **cache** | [`@bts-soft/cache`](https://www.npmjs.com/package/@bts-soft/cache) | redis module for caching |
 
 ---
 
