@@ -1,0 +1,49 @@
+{
+  "name": "@bts-soft/common",
+  "version": "1.0.0",
+  "description": "Shared NestJS utilities (modules, guards, interceptors, decorators, DTOs, and entities) for all @bts-soft packages.",
+  "author": "BTS Soft <support@bts-soft.dev>",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "nestjs",
+    "graphql",
+    "common",
+    "decorators",
+    "guards",
+    "interceptors",
+    "dto",
+    "entities",
+    "shared",
+    "typescript"
+  ],
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/graphql": "^13.0.0",
+    "@nestjs/throttler": "^6.0.0",
+    "graphql": "^16.0.0",
+    "nestjs-i18n": "^10.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "typeorm": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/source-map-support": "^0.5.10",
+    "rimraf": "^6.0.0",
+    "typescript": "^5.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

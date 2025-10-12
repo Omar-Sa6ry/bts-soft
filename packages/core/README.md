@@ -19,7 +19,7 @@ It bundles and re-exports all common utilities and modules used across different
 - [@bts-soft/validation]([@bts-soft/validation - npm](https://www.npmjs.com/package/@bts-soft/validation)) — Input validation utilities & decorators  
 - [@bts-soft/upload]([@bts-soft/upload - npm](https://www.npmjs.com/package/@bts-soft/upload)) — File upload middleware (GraphQL & REST)  
 - [@bts-soft/mail-queue]([@bts-soft/mail-queue - npm](https://www.npmjs.com/package/@bts-soft/mail-queue)) — Email queue handling with BullMQ  
-- [@bts-soft/config]([@bts-soft/mail-queue - npm](https://www.npmjs.com/package/@bts-soft/config)) — Environment & configuration management  
+- [@bts-soft/cache]([@bts-soft/mail-queue - npm](https://www.npmjs.com/package/@bts-soft/cache)) — cache module with redis
 
 ---
 
@@ -47,7 +47,7 @@ Visit each module’s documentation for details and advanced usage examples:
     
 - [Mail Queue Documentation]([@bts-soft/mail-queue - npm](https://www.npmjs.com/package/@bts-soft/mail-queue))
     
-- [Config Documentation]([@bts-soft/config - npm](https://www.npmjs.com/package/@bts-soft/config))
+- [cache Documentation]([@bts-soft/cache - npm](https://www.npmjs.com/package/@bts-soft/cache))
     
 
 ## Contact
