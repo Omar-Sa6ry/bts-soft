@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/core",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "author": "Omar Sabry",
   "description": "All bts-soft packages",
   "main": "dist/index.js",
@@ -13,7 +13,7 @@
     "@bts-soft/cache": "^1.0.1",
     "@bts-soft/mail-queue": "^1.1.5",
     "@bts-soft/upload": "^1.1.5",
-    "@bts-soft/common":"1.1.4",
+    "@bts-soft/common":"1.1.6",
     "@bts-soft/validation": "^1.0.1"
   },
   "peerDependencies": {

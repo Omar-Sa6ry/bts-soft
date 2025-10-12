@@ -1,40 +1,92 @@
-import { ArgumentsHost, Catch, HttpException } from '@nestjs/common';
-import { GqlExceptionFilter } from '@nestjs/graphql';
-import { GraphQLError } from 'graphql';
+import { ApolloDriver } from '@nestjs/apollo';
+import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
+import { GraphQLModule } from '@nestjs/graphql';
+import { join } from 'path';
+import { HttpExceptionFilter } from './errorHandling.filter';
+// import depthLimit from 'graphql-depth-limit';
+// import {
+//   createComplexityRule as queryComplexity,
+//   fieldExtensionsEstimator,
+//   simpleEstimator,
+// } from 'graphql-query-complexity';
 
 /**
- * Global exception filter to handle and format all errors thrown in GraphQL resolvers.
+ * GraphQL configuration module.
  * 
- * This filter ensures that any exception (HTTP or otherwise) is converted into a
- * structured GraphQL error response that matches the application's error format.
+ * This module sets up the NestJS GraphQL environment, defines schema generation,
+ * enables subscriptions, adds security features, and integrates a global exception filter.
  */
-@Catch()
-export class HttpExceptionFilter implements GqlExceptionFilter {
-  /**
-   * Catches any exception thrown in a GraphQL resolver or middleware.
-   * 
-   * @param exception - The exception thrown during request execution.
-   * @param host - Provides access to the context of the current request (REST or GraphQL).
-   * @returns A formatted GraphQL error with a consistent structure.
-   */
-  catch(exception: any, host: ArgumentsHost) {
-    // Log the raw exception for debugging or server logs
-    console.log(exception);
+@Module({
+  imports: [
+    GraphQLModule.forRoot({
+      driver: ApolloDriver, // Use Apollo Server as the GraphQL driver
 
-    // Return a formatted GraphQL error that hides sensitive internal details
-    return new GraphQLError(exception.message, {
-      extensions: {
-        ...exception.extensions, // Preserve any existing GraphQL error extensions
-        success: false, // Indicate that the operation failed
-        statusCode: exception.extensions?.statusCode || 500, // Default to 500 if not provided
-        timeStamp: new Date().toISOString().split('T')[0], // Add date for easier tracking
-        code: exception.extensions?.code || 'INTERNAL_SERVER_ERROR', // Default error code
-        // Remove fields that are not necessary or may expose sensitive data
-        stacktrace: undefined,
-        error: undefined,
-        locations: undefined,
-        path: undefined,
+      // Auto-generate GraphQL schema file in the src/ directory
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+
+      // Pass HTTP request and language headers into the GraphQL context
+      context: ({ req }) => ({
+        request: req,
+        language: req.headers['accept-language'] || 'en',
+      }),
+
+      // Developer tools and debugging
+      playground: true, // Enable GraphQL Playground for development
+      debug: false, // Disable verbose debug logs in production
+      uploads: false, // Disable file uploads via GraphQL (use REST instead if needed)
+      csrfPrevention: false, // Disable CSRF protection (handled elsewhere)
+
+      // Enable real-time subscriptions via WebSocket
+      installSubscriptionHandlers: true,
+      subscriptions: {
+        // Legacy subscription transport (backward compatibility)
+        'subscriptions-transport-ws': {
+          path: '/graphql', // WebSocket endpoint
+          keepAlive: 10000, // Ping interval in milliseconds
+        },
+        // Modern GraphQL WebSocket support
+        'graphql-ws': true,
       },
-    });
-  }
-}
+
+      // OPTIONAL: Add query depth and complexity limits for security
+      // validationRules: [
+      //   depthLimit(5), // Prevent overly nested queries
+      //   queryComplexity({
+      //     estimators: [
+      //       fieldExtensionsEstimator(),
+      //       simpleEstimator({ defaultComplexity: 1 }),
+      //     ],
+      //     maximumComplexity: 1000, // Maximum allowed complexity score
+      //   }),
+      // ],
+
+      /**
+       * Custom error formatter to sanitize GraphQL error responses.
+       * Removes unnecessary fields such as stacktrace, location, and path.
+       */
+      formatError: (error) => {
+        return {
+          message: error.message,
+          extensions: {
+            ...error.extensions,
+            stacktrace: undefined,
+            locations: undefined,
+            path: undefined,
+          },
+        };
+      },
+    }),
+  ],
+
+  providers: [
+    /**
+     * Register the global exception filter to handle and format all GraphQL errors.
+     */
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+  ],
+})
+export class GraphqlModule {}
