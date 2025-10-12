@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/common",
-  "version": "1.0.2",
+  "version": "1.1.2",
   "description": "Shared NestJS utilities (modules, guards, interceptors, decorators, DTOs, and entities) for all @bts-soft packages.",
   "author": "BTS Soft <support@bts-soft.dev>",
   "license": "MIT",
@@ -30,6 +30,7 @@
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/graphql": "^13.0.0",
+    "@nestjs/apollo": "^13.1.0",
     "@nestjs/throttler": "^6.0.0",
     "graphql": "^16.0.0",
     "nestjs-i18n": "^10.0.0",
