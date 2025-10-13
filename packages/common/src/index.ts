@@ -7,6 +7,10 @@ export * from "./interceptors/main.interceptor"
 export * from "./bases/BaseResponse"
 export * from "./bases/BaseEntity"
 
+// Dtos
+export * from "./dtos/currentUser.dto"
+export * from "./dtos/pagintion"
+
 // Config Module
 export * from "./config/config.module"
 

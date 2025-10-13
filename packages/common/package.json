@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/common",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "Shared NestJS utilities (modules, guards, interceptors, decorators, DTOs, and entities) for all @bts-soft packages.",
   "author": "Omar Sabry",
   "license": "MIT",
