@@ -1,6 +1,4 @@
-Here’s a clean **README.md** (no emojis, professional format) for your `GraphqlModule` and `HttpExceptionFilter` setup:
 
----
 
 # GraphQL Module
 
