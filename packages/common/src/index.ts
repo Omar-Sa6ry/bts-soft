@@ -14,6 +14,10 @@ export * from "./config/config.module"
 // Throttler Module
 export * from "./throttler/throttling.module"
 
+
+// Translation Module
+export * from "./translation/translation.module"
+
 // Graphql Module
 export * from "./graphql/graphql.module"
 
