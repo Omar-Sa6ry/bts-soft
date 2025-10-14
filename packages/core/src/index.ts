@@ -1,5 +1,5 @@
-// Mail Queue Module
-export * from '@bts-soft/mail-queue';
+// Notification Module
+export * from '@bts-soft/notifications';
 
 // Redis Module
 export * from '@bts-soft/cache';

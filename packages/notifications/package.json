@@ -1,6 +1,6 @@
 {
-  "name": "@bts-soft/core",
-  "version": "1.6.9",
+  "name": "@bts-soft/notifications",
+  "version": "1.0.0",
   "author": "Omar Sabry",
   "description": "All bts-soft packages",
   "main": "dist/index.js",
@@ -10,11 +10,13 @@
     "packages/*"
   ],
   "dependencies": {
-    "@bts-soft/cache": "^1.0.1",
-    "@bts-soft/common": "1.1.9",
-    "@bts-soft/notifications": "^1.0.0",
-    "@bts-soft/upload": "^1.1.5",
-    "@bts-soft/validation": "^1.0.1"
+    "@nestjs/bull": "^11.0.4",
+    "@nestjs/config": "^4.0.2",
+    "@types/node-telegram-bot-api": "^0.64.11",
+    "bullmq": "^5.61.0",
+    "node-telegram-bot-api": "^0.66.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "@nestjs/common": "^10.0.0",
@@ -24,6 +26,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "@types/node": "^24.7.1"
+    "@types/node": "^24.7.1",
+    "@types/source-map-support": "^0.5.10"
   }
 }

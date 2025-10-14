@@ -1,0 +1,1 @@
+export type ChannelType = 'telegram' | 'whatsapp' | 'sms' | 'discord' | 'teams' | 'messenger';
