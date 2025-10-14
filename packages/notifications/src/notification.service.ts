@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { InjectQueue } from '@nestjs/bull';
+import { InjectQueue } from '@nestjs/bullmq';
 import { NotificationMessage } from './core/models/NotificationMessage.interface';
 import { ChannelType } from './core/models/ChannelType.const';
 

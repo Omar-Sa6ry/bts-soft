@@ -1,29 +1,23 @@
 import { NotificationService } from "./notification.service";
 import { Module } from "@nestjs/common";
-import { BullModule } from "@nestjs/bull";
+import { BullModule } from "@nestjs/bullmq";
 import { NotificationProcessor } from "./notification.processor";
-import { ConfigModule, ConfigService } from "@nestjs/config";
 
 const NOTIFICATION_QUEUE_NAME = "send-notification";
 
 @Module({
   imports: [
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        redis: {
-          host: config.get("REDIS_HOST"),
-          port: config.get("REDIS_PORT"),
-        },
-      }),
-      inject: [ConfigService],
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST || "127.0.0.1",
+        port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+      },
     }),
 
     BullModule.registerQueue({
       name: NOTIFICATION_QUEUE_NAME,
     }),
   ],
-  controllers: [],
   providers: [NotificationService, NotificationProcessor],
   exports: [NotificationService],
 })

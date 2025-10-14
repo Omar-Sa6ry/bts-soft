@@ -2,7 +2,7 @@ import {
   ChannelApiKeys,
   NotificationChannelFactory,
 } from "./core/factories/NotificationChannel.factory";
-import { Processor } from "@nestjs/bull";
+import { Processor } from "@nestjs/bullmq";
 import { Job } from "bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 

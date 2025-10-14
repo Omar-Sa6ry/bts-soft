@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/core",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "author": "Omar Sabry",
   "description": "All bts-soft packages",
   "main": "dist/index.js",
