@@ -26,9 +26,21 @@ export class NotificationProcessor extends WorkerHost {
           }
         : null;
 
+    const smsConfig =
+      process.env.TWILIO_ACCOUNT_SID &&
+      process.env.TWILIO_AUTH_TOKEN &&
+      process.env.TWILIO_SMS_NUMBER
+        ? {
+            accountSid: process.env.TWILIO_ACCOUNT_SID,
+            authToken: process.env.TWILIO_AUTH_TOKEN,
+            number: process.env.TWILIO_SMS_NUMBER,
+          }
+        : null;
+
     const API_KEYS: ChannelApiKeys = {
       telegram: process.env.TELEGRAM_BOT_TOKEN || null,
-      whatsapp: whatsappConfig, 
+      whatsapp: whatsappConfig,
+      sms: smsConfig,
     };
     this.channelFactory = new NotificationChannelFactory(API_KEYS);
   }

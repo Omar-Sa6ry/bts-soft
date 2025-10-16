@@ -1,3 +1,4 @@
+import { SmsChannel } from "../../sms/sms.channel";
 import { INotificationChannel } from "../../telegram/channels/INotificationChannel.interface";
 import { TelegramChannel } from "../../telegram/channels/Telegram.channel";
 import { WhatsAppChannel } from "../../whatsapp/channel/whatsapp.channel";
@@ -5,6 +6,7 @@ import { ChannelType } from "../models/ChannelType.const";
 
 export interface ChannelApiKeys {
   telegram: string;
+  sms: { accountSid: string; authToken: string; number: string } | null;
   whatsapp: { accountSid: string; authToken: string; number: string } | null;
 }
 
@@ -17,12 +19,6 @@ export class NotificationChannelFactory {
 
   public getChannel(channelType: ChannelType): INotificationChannel {
     switch (channelType) {
-      case ChannelType.TELEGRAM:
-        if (!this.apiKeys.telegram)
-          throw new Error("Telegram API Key is missing in configuration.");
-
-        return new TelegramChannel(this.apiKeys.telegram);
-
       case ChannelType.WHATSAPP:
         if (!this.apiKeys.whatsapp || !this.apiKeys.whatsapp.accountSid)
           throw new Error(
@@ -35,6 +31,23 @@ export class NotificationChannelFactory {
           this.apiKeys.whatsapp.number
         );
 
+      case ChannelType.TELEGRAM:
+        if (!this.apiKeys.telegram)
+          throw new Error("Telegram API Key is missing in configuration.");
+
+        return new TelegramChannel(this.apiKeys.telegram);
+
+      case ChannelType.SMS:
+        if (!this.apiKeys.sms || !this.apiKeys.sms.accountSid) {
+          throw new Error(
+            "SMS (Twilio) API keys are missing in configuration."
+          );
+        }
+        return new SmsChannel(
+          this.apiKeys.sms.accountSid,
+          this.apiKeys.sms.authToken,
+          this.apiKeys.sms.number
+        );
       default:
         throw new Error(`Unsupported channel type: ${channelType}`);
     }
