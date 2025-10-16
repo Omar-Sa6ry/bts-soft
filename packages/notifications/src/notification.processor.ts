@@ -14,9 +14,21 @@ export class NotificationProcessor extends WorkerHost {
 
   constructor() {
     super();
+
+    const whatsappConfig =
+      process.env.TWILIO_ACCOUNT_SID &&
+      process.env.TWILIO_AUTH_TOKEN &&
+      process.env.TWILIO_WHATSAPP_NUMBER
+        ? {
+            accountSid: process.env.TWILIO_ACCOUNT_SID,
+            authToken: process.env.TWILIO_AUTH_TOKEN,
+            number: process.env.TWILIO_WHATSAPP_NUMBER,
+          }
+        : null;
+
     const API_KEYS: ChannelApiKeys = {
       telegram: process.env.TELEGRAM_BOT_TOKEN || null,
-      whatsapp: "",
+      whatsapp: whatsappConfig, 
     };
     this.channelFactory = new NotificationChannelFactory(API_KEYS);
   }

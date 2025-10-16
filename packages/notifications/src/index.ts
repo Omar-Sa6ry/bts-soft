@@ -7,6 +7,7 @@ export * from './telegram/channels/INotificationChannel.interface';
 
 // ========== Channels ==========
 export * from './telegram/channels/Telegram.channel';
+export * from './whatsapp/channel/whatsapp.channel';
 
 // ========== Factory ==========
 export * from './core/factories/NotificationChannel.factory';
