@@ -1,6 +1,7 @@
 export enum ChannelType {
-  WHATSAPP = 'whatsapp',
-  TELEGRAM = 'telegram',
-  DISCORD = 'discord',
-  SMS = 'sms',
+  WHATSAPP = "whatsapp",
+  TELEGRAM = "telegram",
+  DISCORD = "discord",
+  TEAMS = "teams",
+  SMS = "sms",
 }

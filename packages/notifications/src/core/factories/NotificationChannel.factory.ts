@@ -1,13 +1,15 @@
 import { DiscordChannel } from "../../discord/discord.channel";
 import { SmsChannel } from "../../sms/sms.channel";
+import { TeamsChannel } from "../../teams/teams.channel";
 import { INotificationChannel } from "../../telegram/channels/INotificationChannel.interface";
 import { TelegramChannel } from "../../telegram/channels/Telegram.channel";
 import { WhatsAppChannel } from "../../whatsapp/channel/whatsapp.channel";
 import { ChannelType } from "../models/ChannelType.const";
 
 export interface ChannelApiKeys {
-  discord: string;
-  telegram: string;
+  discord: string | null;
+  telegram: string | null;
+  teams: string | null;
   sms: { accountSid: string; authToken: string; number: string } | null;
   whatsapp: { accountSid: string; authToken: string; number: string } | null;
 }
@@ -56,6 +58,15 @@ export class NotificationChannelFactory {
           this.apiKeys.sms.authToken,
           this.apiKeys.sms.number
         );
+
+      case ChannelType.TEAMS:
+        if (!this.apiKeys.teams) {
+          throw new Error(
+            "Microsoft Teams Webhook URL is missing in configuration."
+          );
+        }
+        return new TeamsChannel(this.apiKeys.teams);
+
       default:
         throw new Error(`Unsupported channel type: ${channelType}`);
     }
