@@ -20,6 +20,7 @@
     "paths": {
       "@bts-soft/mail-queue": ["packages/mail-queue/src/index.ts"],
       "@bts-soft/upload": ["packages/upload/src/index.ts"],
+      "@bts-soft/notifications": ["packages/notifications/src/index.ts"],
       "@bts-soft/cache": ["packages/cache/src/index.ts"],
       "@bts-soft/validation": ["packages/validation/src/index.ts"]
     }

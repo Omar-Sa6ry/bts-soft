@@ -1,6 +1,6 @@
-import { INotificationChannel } from "src/channels/interfaces/INotificationChannel.interface";
+import { INotificationChannel } from "../../telegram/channels/INotificationChannel.interface";
 import { ChannelType } from "../models/ChannelType.const";
-import { TelegramChannel } from "src/channels/Telegram.channel";
+import { TelegramChannel } from "../../telegram/channels/Telegram.channel";
 
 export interface ChannelApiKeys {
   telegram: string;

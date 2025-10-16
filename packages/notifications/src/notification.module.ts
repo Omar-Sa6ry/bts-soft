@@ -1,17 +1,20 @@
-import { NotificationService } from "./notification.service";
+import {
+  NOTIFICATION_QUEUE_NAME,
+  NotificationService,
+} from "./notification.service";
 import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
 import { NotificationProcessor } from "./notification.processor";
 
-const NOTIFICATION_QUEUE_NAME = "send-notification";
-
 @Module({
   imports: [
-    BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST || "127.0.0.1",
-        port: parseInt(process.env.REDIS_PORT, 10) || 6379,
-      },
+    BullModule.forRootAsync({
+      useFactory: () => ({
+        connection: {
+          host: process.env.REDIS_HOST,
+          port: +process.env.REDIS_PORT,
+        },
+      }),
     }),
 
     BullModule.registerQueue({
@@ -22,3 +25,6 @@ const NOTIFICATION_QUEUE_NAME = "send-notification";
   exports: [NotificationService],
 })
 export class NotificationModule {}
+
+if (process.env.ENABLE_TELEGRAM_BOT === "true")
+  import("./telegram/telegram.bot");

@@ -4,7 +4,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { NotificationMessage } from './core/models/NotificationMessage.interface';
 import { ChannelType } from './core/models/ChannelType.const';
 
-const NOTIFICATION_QUEUE_NAME = 'send-notification';
+export const NOTIFICATION_QUEUE_NAME = 'send-notification';
 
 export interface NotificationJobData {
   channel: ChannelType;

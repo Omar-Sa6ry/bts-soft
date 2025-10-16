@@ -1,9 +1,9 @@
-import { ApolloDriver } from '@nestjs/apollo';
-import { Module } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
-import { GraphQLModule } from '@nestjs/graphql';
-import { join } from 'path';
-import { HttpExceptionFilter } from './errorHandling.filter';
+import { ApolloDriver } from "@nestjs/apollo";
+import { Module } from "@nestjs/common";
+import { APP_FILTER } from "@nestjs/core";
+import { GraphQLModule } from "@nestjs/graphql";
+import { join } from "path";
+import { HttpExceptionFilter } from "./errorHandling.filter";
 // import depthLimit from 'graphql-depth-limit';
 // import {
 //   createComplexityRule as queryComplexity,
@@ -13,7 +13,7 @@ import { HttpExceptionFilter } from './errorHandling.filter';
 
 /**
  * GraphQL configuration module.
- * 
+ *
  * This module sets up the NestJS GraphQL environment, defines schema generation,
  * enables subscriptions, adds security features, and integrates a global exception filter.
  */
@@ -23,13 +23,15 @@ import { HttpExceptionFilter } from './errorHandling.filter';
       driver: ApolloDriver, // Use Apollo Server as the GraphQL driver
 
       // Auto-generate GraphQL schema file in the src/ directory
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      autoSchemaFile: join(process.cwd(), "src/schema.gql"),
 
       // Pass HTTP request and language headers into the GraphQL context
       context: ({ req }) => ({
         request: req,
-        language: req.headers['accept-language'] || 'en',
+        user: req.user,
+        language: req.headers["accept-language"] || "en",
       }),
+
 
       // Developer tools and debugging
       playground: true, // Enable GraphQL Playground for development
@@ -41,12 +43,12 @@ import { HttpExceptionFilter } from './errorHandling.filter';
       installSubscriptionHandlers: true,
       subscriptions: {
         // Legacy subscription transport (backward compatibility)
-        'subscriptions-transport-ws': {
-          path: '/graphql', // WebSocket endpoint
+        "subscriptions-transport-ws": {
+          path: "/graphql", // WebSocket endpoint
           keepAlive: 10000, // Ping interval in milliseconds
         },
         // Modern GraphQL WebSocket support
-        'graphql-ws': true,
+        "graphql-ws": true,
       },
 
       // OPTIONAL: Add query depth and complexity limits for security

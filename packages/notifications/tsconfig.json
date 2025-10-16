@@ -1,29 +1,9 @@
 {
-    "compilerOptions": {
-    "module": "commonjs",
-    "target": "es2020",
-    "declaration": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "sourceMap": true,
-    "incremental": true,
-    "skipLibCheck": true,
-    "strictNullChecks": false,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    // "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
-    "baseUrl": ".",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
     "outDir": "./dist",
     "typeRoots": ["./node_modules/@types"],
-    "paths": {
-      "@bts-soft/mail-queue": ["packages/mail-queue/src/index.ts"],
-      "@bts-soft/upload": ["packages/upload/src/index.ts"],
-      "@bts-soft/cache": ["packages/cache/src/index.ts"],
-      "@bts-soft/validation": ["packages/validation/src/index.ts"]
-    }
+    "types": ["node"]
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

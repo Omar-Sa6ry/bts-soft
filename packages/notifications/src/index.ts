@@ -1,11 +1,27 @@
+// ========== Core Exports ==========
+export * from './core/models/NotificationMessage.interface';
+export * from './core/models/ChannelType.const';
+
+// ========== Interfaces ==========
+export * from './telegram/channels/INotificationChannel.interface';
+
+// ========== Channels ==========
+export * from './telegram/channels/Telegram.channel';
+
+// ========== Factory ==========
+export * from './core/factories/NotificationChannel.factory';
+
+// ========== Notification System ==========
 export * from './notification.module';
 export * from './notification.service';
 export * from './notification.processor';
 
+// ========== Telegram Integration ==========
+export * from './telegram/telegram.module';
+export * from './telegram/telegram.service';
+export * from './telegram/telegram.controller';
+export * from './telegram/dto/Telegram-webhook.dto';
 
-export * from './core/models/ChannelType.const';
-export * from './core/models/NotificationMessage.interface';
-export * from './core/factories/NotificationChannel.factory';
+// ========== Constants ==========
+export * from './notification.service';
 
-export * from './channels/Telegram.channel';
-export * from './channels/interfaces/INotificationChannel.interface';
