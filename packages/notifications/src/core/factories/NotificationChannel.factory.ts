@@ -1,3 +1,4 @@
+import { DiscordChannel } from "../../discord/discord.channel";
 import { SmsChannel } from "../../sms/sms.channel";
 import { INotificationChannel } from "../../telegram/channels/INotificationChannel.interface";
 import { TelegramChannel } from "../../telegram/channels/Telegram.channel";
@@ -5,6 +6,7 @@ import { WhatsAppChannel } from "../../whatsapp/channel/whatsapp.channel";
 import { ChannelType } from "../models/ChannelType.const";
 
 export interface ChannelApiKeys {
+  discord: string;
   telegram: string;
   sms: { accountSid: string; authToken: string; number: string } | null;
   whatsapp: { accountSid: string; authToken: string; number: string } | null;
@@ -36,6 +38,12 @@ export class NotificationChannelFactory {
           throw new Error("Telegram API Key is missing in configuration.");
 
         return new TelegramChannel(this.apiKeys.telegram);
+
+      case ChannelType.DISCORD:
+        if (!this.apiKeys.discord) {
+          throw new Error("Discord Webhook URL is missing in configuration.");
+        }
+        return new DiscordChannel(this.apiKeys.discord);
 
       case ChannelType.SMS:
         if (!this.apiKeys.sms || !this.apiKeys.sms.accountSid) {

@@ -1,86 +1,85 @@
 
 # @bts-soft/notifications
 
-The `@bts-soft/notifications` package provides a **multi-channel notification system** for NestJS applications.  
-It supports sending messages through **Telegram**, **WhatsApp**, and **SMS** using a consistent, pluggable architecture.
-
-Each channel implements a common interface (`INotificationChannel`) to ensure scalability, maintainability, and easy extension with new notification methods such as **Discord**, **Microsoft Teams**, or **Email**.
-
----
-
-## Table of Contents
-
-- [Overview](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#overview)
-    
-- [Features](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#features)
-    
-- [Architecture](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#architecture)
-    
-- [Supported Channels](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#supported-channels)
-    
-    - [Telegram](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#telegram)
-        
-    - [WhatsApp](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#whatsapp)
-        
-    - [SMS](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#sms)
-        
-- [Installation](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#installation)
-    
-- [Environment Variables](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#environment-variables)
-    
-- [Usage Example](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#usage-example)
-    
-- [Extending the Package](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#extending-the-package)
-    
-- [License](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#license)
-    
-
----
-
 ## Overview
 
-This package is designed for enterprise-grade notification systems built with NestJS.  
-It integrates seamlessly with:
+The `@bts-soft/notifications` package provides a **modular, multi-channel notification system** designed for **NestJS** or any Node.js backend.  
+It allows developers to send messages through multiple communication platforms such as:
 
-- **BullMQ** for job queues and background message processing.
+- **Telegram**
     
-- **Redis** for distributed message handling.
+- **SMS (via Twilio)**
     
-- **Twilio** for SMS and WhatsApp delivery.
+- **WhatsApp (via Twilio)**
     
-- **Telegram Bot API** for Telegram messaging.
+- **Discord**
     
 
-By following the **Strategy Design Pattern**, the system dynamically selects the correct notification channel at runtime, allowing developers to send messages using a single, unified interface.
+Each channel implements a unified interface (`INotificationChannel`), making it easy to integrate, extend, and manage notifications in a consistent way.
 
 ---
 
 ## Features
 
-- Unified notification interface across all channels.
+- Multi-channel support (Telegram, SMS, WhatsApp, Discord)
     
-- Supports **Telegram**, **WhatsApp**, and **SMS** out of the box.
+- Queue-based processing using **BullMQ** and **Redis**
     
-- Queue-based message processing with **BullMQ**.
+- Consistent channel interface (`INotificationChannel`)
     
-- Extensible design for adding new channels easily.
+- Built-in logging and structured error handling
     
-- Environment-based configuration for secure credential management.
+- Easily extensible architecture for adding new channels
     
-- Error handling and retry mechanisms.
+- Ready-to-use for **NestJS**, **TypeScript**, and **GraphQL** backends
     
 
 ---
 
-## Architecture
+## Installation
+
+Install the package and its peer dependencies:
+
+```bash
+npm install @bts-soft/notifications bullmq redis axios twilio node-telegram-bot-api
+```
+
+---
+
+## Architecture Overview
+
+The package is built around the **Notification Channel** abstraction.  
+Each channel implements the `INotificationChannel` interface:
+
+```ts
+interface INotificationChannel {
+  name: string;
+  send(message: NotificationMessage): Promise<void>;
+}
+```
+
+And all channels share a common message structure:
+
+```ts
+interface NotificationMessage {
+  recipientId?: string;
+  body: string;
+  channelOptions?: Record<string, any>;
+}
+```
+
+This allows you to dynamically choose or switch between channels without changing your core business logic.
+
+---
+
+## Folder Structure
 
 ```
-@bts-soft/notifications
+@bts-soft/notifications/
 ├── core/
 │   ├── models/
 │   │   ├── NotificationMessage.interface.ts
-│   │   ├── ChannelType.enum.ts
-│   │   └── ...
+│   │   └── ChannelType.const.ts
 │   └── factories/
 │       └── NotificationChannel.factory.ts
 │
@@ -91,102 +90,52 @@ By following the **Strategy Design Pattern**, the system dynamically selects the
 │   ├── telegram.service.ts
 │   └── telegram.controller.ts
 │
+├── sms/
+│   └── SmsChannel.ts
+│
 ├── whatsapp/
 │   └── WhatsApp.channel.ts
 │
-├── sms/
-│   └── Sms.channel.ts
-│
-└── notification.module.ts
+└── discord/
+    └── DiscordChannel.ts
 ```
-
-Each submodule (Telegram, WhatsApp, SMS) provides:
-
-- Its own communication logic.
-    
-- Channel-specific configuration and credentials.
-    
-- Implementation of the shared `INotificationChannel` interface.
-    
 
 ---
 
-## Supported Channels
+## Channel Implementations
 
-### Telegram
+### 1. Telegram Channel
 
-Full Telegram integration with account linking, message delivery, and webhook handling.
+Provides full Telegram bot integration — including user linking, webhook handling, and message delivery via `node-telegram-bot-api`.
 
-For complete setup instructions, see [`/telegram/README.md`](https://chatgpt.com/c/telegram/README.md).
+**Setup:**
 
-**Key Components:**
-
-- `TelegramModule` — Registers all Telegram providers and controllers.
+- Create a bot using [@BotFather](https://t.me/BotFather)
     
-- `TelegramService` — Handles user linking and token management.
+- Set `TELEGRAM_BOT_TOKEN` in your environment file
     
-- `TelegramChannel` — Sends messages using the Telegram Bot API.
+- Configure your webhook endpoint in Telegram
     
-- `TelegramController` — Processes incoming webhook events.
+- Supports linking Telegram accounts with app users through tokens
     
 
-**Required Environment Variables:**
+**Environment Variables:**
 
 ```bash
 TELEGRAM_BOT_TOKEN=your_bot_token
 ENABLE_TELEGRAM_BOT=true
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
 
 ---
 
-### WhatsApp
+### 2. SMS Channel (Twilio)
 
-The `WhatsAppChannel` allows sending messages through the **Twilio API** to WhatsApp users.  
-It implements the same `INotificationChannel` interface for seamless integration.
+Sends SMS messages using **Twilio API**.  
+Ideal for authentication codes, alerts, or system notifications.
 
-**Installation:**
-
-```bash
-npm install twilio
-```
-
-**Required Environment Variables:**
-
-```bash
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
-```
-
-**Example:**
-
-```ts
-const channel = new WhatsAppChannel(
-  process.env.TWILIO_ACCOUNT_SID!,
-  process.env.TWILIO_AUTH_TOKEN!,
-  process.env.TWILIO_WHATSAPP_NUMBER!
-);
-
-await channel.send({
-  recipientId: '+201234567890',
-  body: 'Hello from WhatsApp!',
-});
-```
-
----
-
-### SMS
-
-The `SmsChannel` enables sending SMS messages via Twilio using the same channel interface.  
-It supports international phone numbers and optional Twilio parameters.
-
-**Installation:**
-
-```bash
-npm install twilio
-```
-
-**Required Environment Variables:**
+**Environment Variables:**
 
 ```bash
 TWILIO_ACCOUNT_SID=your_account_sid
@@ -211,98 +160,143 @@ await smsChannel.send({
 
 ---
 
-## Installation
+### 3. WhatsApp Channel (Twilio)
 
-Install the main package along with its dependencies:
+Sends WhatsApp messages via **Twilio’s WhatsApp Business API**.  
+Supports text and media messages with optional parameters.
 
-```bash
-npm install bullmq redis twilio node-telegram-bot-api typeorm nestjs-i18n
-```
-
-Ensure Redis is running locally or remotely:
+**Environment Variables:**
 
 ```bash
-docker run -d --name redis -p 6379:6379 redis
-```
-
----
-
-## Environment Variables
-
-```bash
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Telegram
-TELEGRAM_BOT_TOKEN=your_bot_token
-ENABLE_TELEGRAM_BOT=true
-
-# Twilio (SMS & WhatsApp)
 TWILIO_ACCOUNT_SID=your_account_sid
 TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_SMS_NUMBER=+1234567890
 TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 ```
 
+**Example:**
+
+```ts
+const whatsappChannel = new WhatsAppChannel(
+  process.env.TWILIO_ACCOUNT_SID!,
+  process.env.TWILIO_AUTH_TOKEN!,
+  process.env.TWILIO_WHATSAPP_NUMBER!
+);
+
+await whatsappChannel.send({
+  recipientId: '+201234567890',
+  body: 'Hello from WhatsApp!',
+});
+```
+
 ---
 
-## Usage Example
+### 4. Discord Channel
 
-Example of dynamically sending a message through different channels using a factory:
+Sends notifications to **Discord channels** using webhook URLs.  
+Useful for DevOps alerts, deployment messages, or system updates.
+
+**Setup:**
+
+- Go to your Discord server settings → Integrations → Webhooks → New Webhook
+    
+- Copy the webhook URL
+    
+
+**Example:**
+
+```ts
+const discordChannel = new DiscordChannel(
+  "https://discord.com/api/webhooks/your-webhook-id/your-webhook-token"
+);
+
+await discordChannel.send({
+  body: 'Server deployment completed successfully.',
+  channelOptions: {
+    username: 'Deployment Bot',
+  },
+});
+```
+
+---
+
+## Using the Notification Channel Factory
+
+You can dynamically select and send messages through any channel using the `NotificationChannelFactory`:
 
 ```ts
 import { NotificationChannelFactory } from './core/factories/NotificationChannel.factory';
-import { ChannelType } from './core/models/ChannelType.enum';
-import { NotificationMessage } from './core/models/NotificationMessage.interface';
+import { ChannelType } from './core/models/ChannelType.const';
 
-const factory = new NotificationChannelFactory();
+const factory = new NotificationChannelFactory({
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN!,
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID!,
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN!,
+  twilioSmsNumber: process.env.TWILIO_SMS_NUMBER!,
+  discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL!,
+});
 
-const message: NotificationMessage = {
+const channel = factory.getChannel(ChannelType.SMS);
+
+await channel.send({
   recipientId: '+201234567890',
-  body: 'Hello from BTS Soft Notifications!',
-};
+  body: 'Test message from factory-based channel selection',
+});
+```
 
-// Send via WhatsApp
-const whatsapp = factory.getChannel(ChannelType.WHATSAPP);
-await whatsapp.send(message);
+---
 
-// Send via SMS
-const sms = factory.getChannel(ChannelType.SMS);
-await sms.send(message);
+## Error Handling
 
-// Send via Telegram
-const telegram = factory.getChannel(ChannelType.TELEGRAM);
-await telegram.send({ recipientId: '<telegram_chat_id>', body: 'Welcome!' });
+Each channel implements structured error handling with:
+
+- Validation checks for missing credentials or invalid recipients
+    
+- Logging of request and response details
+    
+- Descriptive error messages for debugging
+    
+
+Example:
+
+```
+Failed to send SMS message to +201234567890: Error: The 'To' number is not valid.
+```
+
+---
+
+## Integration with Queues (BullMQ)
+
+You can integrate with **BullMQ** to process notifications asynchronously:
+
+- **NotificationService** — adds jobs to a Redis queue
+    
+- **NotificationProcessor** — processes each job and sends through the correct channel
+    
+
+Example job flow:
+
+```
+Queue: send-notification
+Job: Send Telegram message
+Result: Job completed successfully.
 ```
 
 ---
 
 ## Extending the Package
 
-To add a new channel (e.g., **Email**, **Discord**, or **Microsoft Teams**):
+To add a new channel (e.g., Slack, Microsoft Teams, Email):
 
-1. Create a new class implementing `INotificationChannel`.
+1. Create a new class that implements `INotificationChannel`.
     
-2. Implement the `send()` method for your new communication channel.
+2. Implement the `send()` method.
     
-3. Register it in the `NotificationChannelFactory`.
+3. Register the new channel in `NotificationChannelFactory`.
     
-
-Example:
-
-```ts
-export class EmailChannel implements INotificationChannel {
-  public name = 'email';
-  async send(message: NotificationMessage) {
-    // Implement email sending logic
-  }
-}
-```
 
 ---
 
 ## License
 
 This package is part of the **BTS Soft** ecosystem.  
-All rights reserved © 2025 **BTS Soft**.
+All rights reserved © BTS Soft.

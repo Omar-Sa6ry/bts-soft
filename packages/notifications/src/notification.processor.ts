@@ -39,6 +39,7 @@ export class NotificationProcessor extends WorkerHost {
 
     const API_KEYS: ChannelApiKeys = {
       telegram: process.env.TELEGRAM_BOT_TOKEN || null,
+      discord: process.env.DISCORD_WEBHOOK_URL || null,
       whatsapp: whatsappConfig,
       sms: smsConfig,
     };

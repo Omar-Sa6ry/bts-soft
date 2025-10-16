@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/core",
-  "version": "1.8.5",
+  "version": "1.8.7",
   "author": "Omar Sabry",
   "description": "All bts-soft packages",
   "main": "dist/index.js",
@@ -10,9 +10,9 @@
     "packages/*"
   ],
   "dependencies": {
+    "@bts-soft/notifications": "^1.2.7",
     "@bts-soft/cache": "^1.0.1",
     "@bts-soft/common": "1.2.0",
-    "@bts-soft/notifications": "^1.2.5",
     "@bts-soft/upload": "^1.1.5",
     "@bts-soft/validation": "^1.0.1"
   },
