@@ -62,6 +62,20 @@ export class NotificationProcessor extends WorkerHost {
       ? { pageAccessToken: process.env.FB_PAGE_ACCESS_TOKEN }
       : null;
 
+    const emailConfig =
+      process.env.EMAIL_USER && process.env.EMAIL_PASS
+        ? {
+            host: process.env.EMAIL_HOST,
+            port: process.env.EMAIL_PORT
+              ? parseInt(process.env.EMAIL_PORT, 10)
+              : undefined,
+            service: process.env.EMAIL_SERVICE,
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+            sender: process.env.EMAIL_SENDER || process.env.EMAIL_USER, 
+          }
+        : null;
+
     /**
      * Collect all API keys and credentials for supported channels
      */
@@ -71,6 +85,7 @@ export class NotificationProcessor extends WorkerHost {
       teams: process.env.TEAMS_WEBHOOK_URL || null,
       whatsapp: whatsappConfig,
       messenger: messenger,
+      email: emailConfig,
       sms: smsConfig,
     };
 

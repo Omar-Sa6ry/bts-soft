@@ -4,6 +4,6 @@ export enum ChannelType {
   TELEGRAM = "telegram",
   DISCORD = "discord",
   TEAMS = "teams",
-  MAIL = "mail",
+  EMAIL = "email",
   SMS = "sms",
 }

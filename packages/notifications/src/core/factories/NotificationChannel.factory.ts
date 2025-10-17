@@ -1,4 +1,5 @@
 import { DiscordChannel } from "../../discord/discord.channel";
+import { EmailChannel } from "../../mail/mail.channel";
 import { FacebookMessengerChannel } from "../../messenger/messenger.channel";
 import { SmsChannel } from "../../sms/sms.channel";
 import { TeamsChannel } from "../../teams/teams.channel";
@@ -11,9 +12,17 @@ export interface ChannelApiKeys {
   discord: string | null;
   telegram: string | null;
   teams: string | null;
-  messenger: { pageAccessToken: string; } | null;
+  messenger: { pageAccessToken: string } | null;
   sms: { accountSid: string; authToken: string; number: string } | null;
   whatsapp: { accountSid: string; authToken: string; number: string } | null;
+  email: {
+    host?: string;
+    port?: number;
+    service?: string;
+    user: string;
+    pass: string;
+    sender: string;
+  } | null;
 }
 
 export class NotificationChannelFactory {
@@ -25,6 +34,20 @@ export class NotificationChannelFactory {
 
   public getChannel(channelType: ChannelType): INotificationChannel {
     switch (channelType) {
+      case ChannelType.EMAIL:
+        const emailConfig = this.apiKeys.email;
+        if (!emailConfig || !emailConfig.user || !emailConfig.pass) {
+          throw new Error(
+            "Email (Nodemailer) user/pass configuration is missing."
+          );
+        }
+        if (!emailConfig.service && (!emailConfig.host || !emailConfig.port)) {
+          throw new Error(
+            "Email (Nodemailer) requires either 'service' or 'host' and 'port'."
+          );
+        }
+        return new EmailChannel(emailConfig); 
+
       case ChannelType.WHATSAPP:
         if (!this.apiKeys.whatsapp || !this.apiKeys.whatsapp.accountSid)
           throw new Error(
@@ -69,8 +92,11 @@ export class NotificationChannelFactory {
         }
         return new TeamsChannel(this.apiKeys.teams);
 
-        case ChannelType.MESSENGER:
-        if (!this.apiKeys.messenger || !this.apiKeys.messenger.pageAccessToken) {
+      case ChannelType.MESSENGER:
+        if (
+          !this.apiKeys.messenger ||
+          !this.apiKeys.messenger.pageAccessToken
+        ) {
           throw new Error(
             "Facebook Page Access Token is missing in configuration."
           );

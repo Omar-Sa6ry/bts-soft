@@ -1,149 +1,163 @@
 
-# Facebook Messenger Notification Channel
+# EmailChannel
 
-This module provides an implementation of a **Facebook Messenger notification channel** that allows sending messages through the **Facebook Graph API**.  
-It is designed to work as part of a multi-channel notification system, following a unified interface (`INotificationChannel`).
-
----
-
-## Overview
-
-The `FacebookMessengerChannel` class implements the `INotificationChannel` interface and enables sending text messages to Facebook Messenger users using a **Page Access Token**.
+The `EmailChannel` class provides a way to send email notifications through either an SMTP server or a predefined email service (e.g., Gmail, Outlook) using **Nodemailer**.  
+It implements the `INotificationChannel` interface, making it easily pluggable into any notification system.
 
 ---
 
 ## Features
 
-- Sends plain text messages via the Facebook Graph API.
+- Supports both **SMTP** and **service-based** email configurations.
     
-- Implements a consistent notification interface for integration with other channels.
+- Allows sending plain text emails with optional custom settings (HTML, attachments, etc.).
     
-- Handles API errors with clear logging and exception handling.
+- Uses **Nodemailer** as the underlying email transport library.
     
-- Designed for use in scalable and modular notification systems.
-    
-
----
-
-## Requirements
-
-To use this channel, you need:
-
-- A **Facebook Page Access Token** generated from your Facebook App.
-    
-- The recipient’s **Facebook Messenger ID**.
-    
-- An environment capable of making HTTPS requests (e.g., Node.js with Axios).
+- Fully compatible with the `NotificationMessage` interface.
     
 
 ---
 
-## Installation
+## File Location
 
-Install Axios if it is not already in your project:
-
-```bash
-npm install axios
+```
+src/email/email.channel.ts
 ```
 
 ---
 
-## Usage
+## Constructor
 
-### 1. Import the Channel
-
-```typescript
-import { FacebookMessengerChannel } from './channels/FacebookMessengerChannel';
-import { NotificationMessage } from '../core/models/NotificationMessage.interface';
+```ts
+constructor(config: EmailConfig)
 ```
 
-### 2. Initialize the Channel
+### Parameters
 
-```typescript
-const pageAccessToken = 'YOUR_FACEBOOK_PAGE_ACCESS_TOKEN';
-const facebookChannel = new FacebookMessengerChannel(pageAccessToken);
-```
+|Name|Type|Required|Description|
+|---|---|---|---|
+|`host`|`string`|Optional|SMTP host (e.g., `smtp.gmail.com`)|
+|`port`|`number`|Optional|SMTP port (465 for SSL, 587 for TLS)|
+|`service`|`string`|Optional|Predefined service name (e.g., `gmail`, `hotmail`)|
+|`user`|`string`|Required|Sender email username|
+|`pass`|`string`|Required|Sender email password or app-specific password|
+|`sender`|`string`|Required|Displayed "from" address in outgoing emails|
 
-### 3. Create a Notification Message
+---
 
-```typescript
+## Example Usage
+
+### 1. Using Gmail (Service-based)
+
+```ts
+import { EmailChannel } from "./email/email.channel";
+import { NotificationMessage } from "./core/models/NotificationMessage.interface";
+
+const emailChannel = new EmailChannel({
+  service: "gmail",
+  user: "your-email@gmail.com",
+  pass: "your-app-password",
+  sender: "your-email@gmail.com",
+});
+
 const message: NotificationMessage = {
-  recipientId: 'USER_FACEBOOK_ID',
-  body: 'Hello from Facebook Messenger!',
+  recipientId: "recipient@example.com",
+  subject: "Welcome to the Platform",
+  body: "Thank you for signing up. We are glad to have you with us!",
 };
-```
 
-### 4. Send the Message
-
-```typescript
-await facebookChannel.send(message);
+await emailChannel.send(message);
 ```
 
 ---
 
-## Class Details
+### 2. Using Custom SMTP Configuration
 
-### `FacebookMessengerChannel`
+```ts
+const emailChannel = new EmailChannel({
+  host: "smtp.mailtrap.io",
+  port: 587,
+  user: "your-smtp-user",
+  pass: "your-smtp-password",
+  sender: "no-reply@yourdomain.com",
+});
 
-|Property|Type|Description|
+const message = {
+  recipientId: "test@example.com",
+  subject: "System Alert",
+  body: "A new alert was generated in your system.",
+  channelOptions: {
+    html: "<h3>System Alert</h3><p>A new alert was generated in your system.</p>",
+  },
+};
+
+await emailChannel.send(message);
+```
+
+---
+
+## `send` Method
+
+```ts
+async send(message: NotificationMessage): Promise<void>
+```
+
+### Parameters
+
+|Name|Type|Description|
 |---|---|---|
-|`name`|`string`|The name of the channel (`FACEBOOK_MESSENGER`).|
-|`apiUrl`|`string`|The Facebook Graph API endpoint for sending messages.|
+|`message.recipientId`|`string`|The recipient's email address|
+|`message.subject`|`string`|Subject of the email|
+|`message.body`|`string`|Text content of the email|
+|`message.channelOptions`|`object`|Optional Nodemailer settings such as `html`, `attachments`, etc.|
 
-### `Constructor`
+### Behavior
 
-```typescript
-constructor(private readonly pageAccessToken: string)
-```
-
-- **pageAccessToken** – Your Facebook Page Access Token used for authentication.
+1. Validates that both `recipientId` and `subject` are provided.
     
-
-### `send(message: NotificationMessage): Promise<void>`
-
-Sends a message to a Facebook Messenger user.
-
-#### Parameters
-
-- `message.recipientId`: The Facebook ID of the user.
+2. Logs the sending process for monitoring.
     
-- `message.body`: The message text content.
+3. Uses the configured transporter to send the email.
     
-
-#### Behavior
-
-- Sends a POST request to the Facebook Graph API.
-    
-- Logs success or failure messages.
-    
-- Throws an error if the message cannot be sent.
+4. Logs a success or error message depending on the outcome.
     
 
 ---
 
-## Example Response Logs
+## Example `NotificationMessage` Interface
 
-**On Success:**
-
-```
-[FACEBOOK_MESSENGER] Message sent to 1234567890
-```
-
-**On Failure:**
-
-```
-[FACEBOOK_MESSENGER] Failed to send message: Invalid OAuth access token.
+```ts
+export interface NotificationMessage {
+  recipientId: string; // The email address of the recipient
+  subject?: string;    // The email subject
+  body: string;        // The body of the message
+  channelOptions?: any; // Optional settings (HTML, attachments, etc.)
+}
 ```
 
 ---
 
 ## Error Handling
 
-If message delivery fails (e.g., due to invalid token or missing recipient),  
-the method throws an error with details for easier debugging.
+If sending fails, the method throws a descriptive error message indicating the cause of failure, such as authentication issues or invalid SMTP configuration.
 
 ---
 
-## License
+## Requirements
 
-This module is part of the **@bts-soft/notifications** package and is licensed under your project’s main license.
+- **Node.js** v16 or higher
+    
+- **Nodemailer** installed in your project
+    
+    ```bash
+    npm install nodemailer
+    ```
+    
+
+---
+
+## Summary
+
+The `EmailChannel` class is a flexible and reusable way to handle email notifications in any NestJS or Node.js project.  
+It supports both **service-based** and **custom SMTP** configurations, provides clear error handling, and can easily integrate into a queue-based or event-driven notification system.
