@@ -1,6 +1,6 @@
 /**
  * @bts-soft/cache - Comprehensive Redis Service
- * 
+ *
  * This service provides a complete wrapper around Redis operations for NestJS applications.
  * It supports all Redis data types and patterns including:
  * - Key-Value operations
@@ -10,17 +10,17 @@
  * - Transactions and Lua scripting
  * - Distributed locking
  * - HyperLogLog probabilistic counting
- * 
+ *
  * The service automatically handles JSON serialization/deserialization and provides
  * consistent error handling and logging.
  */
 
-import { Injectable, Inject, Logger } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
-import { RedisClientType } from 'redis';
-import { ListConstant, SCORE } from './constant/redis.constant';
-import { IRedisInterface } from './interface/redis.interface';
+import { Injectable, Inject, Logger } from "@nestjs/common";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { Cache } from "cache-manager";
+import { RedisClientType } from "redis";
+import { ListConstant, SCORE } from "./constant/redis.constant";
+import { IRedisInterface } from "./interface/redis.interface";
 
 @Injectable()
 export class RedisService implements IRedisInterface {
@@ -28,7 +28,7 @@ export class RedisService implements IRedisInterface {
 
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-    @Inject('REDIS_CLIENT') private redisClient: RedisClientType,
+    @Inject("REDIS_CLIENT") private redisClient: RedisClientType
   ) {}
 
   // =================== Core Key-Value Operations ===================
@@ -44,7 +44,7 @@ export class RedisService implements IRedisInterface {
   async set(key: string, value: any, ttl: number = 3600): Promise<void> {
     try {
       const stringified =
-        typeof value === 'string' ? value : JSON.stringify(value);
+        typeof value === "string" ? value : JSON.stringify(value);
 
       await this.cacheManager.set(key, stringified, ttl);
     } catch (error) {
@@ -54,12 +54,33 @@ export class RedisService implements IRedisInterface {
   }
 
   /**
+   * Set a key-value pair with optional TTL (Time To Live)
+   * @param key - The key to store the value under
+   * @param value - The value to store (automatically stringified if not a string)
+   * @param ttl - Time to live in seconds (default: 3600 = 2 hours)
+   * @example
+   * await redisService.set('user:123', { name: 'John', age: 30 });
+   */
+
+  /**
    * Update an existing key with new value and TTL
    * This performs a delete-then-set operation to ensure consistency
    * @param key - The key to update
    * @param value - The new value
-   * @param ttl - New TTL in seconds (default: 3600 = 1 hour)
    */
+
+  async setForEever(key: string, value: any): Promise<void> {
+    try {
+      const stringified =
+        typeof value === "string" ? value : JSON.stringify(value);
+
+      await this.cacheManager.set(key, stringified);
+    } catch (error) {
+      this.logger.error(`Error setting key ${key}`, error.stack);
+      throw error;
+    }
+  }
+
   async update(key: string, value: any, ttl: number = 3600): Promise<void> {
     await this.del(key);
     this.set(key, value, ttl);
@@ -134,7 +155,7 @@ export class RedisService implements IRedisInterface {
   async getSet(key: string, value: any): Promise<string | null> {
     try {
       const stringValue =
-        typeof value === 'string' ? value : JSON.stringify(value);
+        typeof value === "string" ? value : JSON.stringify(value);
       const oldValue = await this.redisClient.getSet(key, stringValue);
       return oldValue;
     } catch (error) {
@@ -154,7 +175,7 @@ export class RedisService implements IRedisInterface {
     } catch (error) {
       this.logger.error(
         `Error getting string length for key ${key}`,
-        error.stack,
+        error.stack
       );
       throw error;
     }
@@ -217,8 +238,8 @@ export class RedisService implements IRedisInterface {
       return await this.redisClient.mGet(keys);
     } catch (error) {
       this.logger.error(
-        `Error in mGet for keys ${keys.join(',')}`,
-        error.stack,
+        `Error in mGet for keys ${keys.join(",")}`,
+        error.stack
       );
       throw error;
     }
@@ -252,7 +273,7 @@ export class RedisService implements IRedisInterface {
     } catch (error) {
       this.logger.error(
         `Error incrementing key ${key} by ${increment}`,
-        error.stack,
+        error.stack
       );
       throw error;
     }
@@ -270,7 +291,7 @@ export class RedisService implements IRedisInterface {
     } catch (error) {
       this.logger.error(
         `Error incrementing float key ${key} by ${increment}`,
-        error.stack,
+        error.stack
       );
       throw error;
     }
@@ -302,7 +323,7 @@ export class RedisService implements IRedisInterface {
     } catch (error) {
       this.logger.error(
         `Error decrementing key ${key} by ${decrement}`,
-        error.stack,
+        error.stack
       );
       throw error;
     }
@@ -386,7 +407,7 @@ export class RedisService implements IRedisInterface {
   async hGetAll(key: string): Promise<Record<string, any>> {
     const result = await this.redisClient.hGetAll(key);
     return Object.fromEntries(
-      Object.entries(result).map(([k, v]) => [k, v ? JSON.parse(v) : null]),
+      Object.entries(result).map(([k, v]) => [k, v ? JSON.parse(v) : null])
     );
   }
 
@@ -448,7 +469,7 @@ export class RedisService implements IRedisInterface {
   async hIncrBy(
     key: string,
     field: string,
-    increment: number,
+    increment: number
   ): Promise<number> {
     return this.redisClient.hIncrBy(key, field, increment);
   }
@@ -463,7 +484,7 @@ export class RedisService implements IRedisInterface {
   async hIncrByFloat(
     key: string,
     field: string,
-    increment: number,
+    increment: number
   ): Promise<number> {
     return this.redisClient.hIncrByFloat(key, field, increment);
   }
@@ -549,7 +570,7 @@ export class RedisService implements IRedisInterface {
   async sMove(
     source: string,
     destination: string,
-    member: string,
+    member: string
   ): Promise<boolean> {
     return this.redisClient.sMove(source, destination, member);
   }
@@ -636,7 +657,7 @@ export class RedisService implements IRedisInterface {
     key: string,
     start: number,
     stop: number,
-    withScores = false,
+    withScores = false
   ): Promise<string[]> {
     return this.redisClient.zRange(key, start, stop, {
       BY: SCORE,
@@ -657,7 +678,7 @@ export class RedisService implements IRedisInterface {
     key: string,
     min: number,
     max: number,
-    withScores = false,
+    withScores = false
   ): Promise<string[]> {
     return this.redisClient.zRange(key, min, max, {
       BY: SCORE,
@@ -677,7 +698,7 @@ export class RedisService implements IRedisInterface {
     key: string,
     start: number,
     stop: number,
-    withScores = false,
+    withScores = false
   ): Promise<string[]> {
     return this.redisClient.zRange(key, start, stop, {
       REV: true,
@@ -734,7 +755,7 @@ export class RedisService implements IRedisInterface {
   async zIncrBy(
     key: string,
     increment: number,
-    member: string,
+    member: string
   ): Promise<number> {
     return this.redisClient.zIncrBy(key, increment, member);
   }
@@ -759,7 +780,7 @@ export class RedisService implements IRedisInterface {
   async zRemRangeByRank(
     key: string,
     start: number,
-    stop: number,
+    stop: number
   ): Promise<number> {
     return this.redisClient.zRemRangeByRank(key, start, stop);
   }
@@ -774,7 +795,7 @@ export class RedisService implements IRedisInterface {
   async zRemRangeByScore(
     key: string,
     min: number,
-    max: number,
+    max: number
   ): Promise<number> {
     return this.redisClient.zRemRangeByScore(key, min, max);
   }
@@ -904,7 +925,7 @@ export class RedisService implements IRedisInterface {
     key: string,
     pivot: any,
     value: any,
-    position: ListConstant,
+    position: ListConstant
   ): Promise<number> {
     const stringPivot = JSON.stringify(pivot);
     const stringValue = JSON.stringify(value);
@@ -914,9 +935,9 @@ export class RedisService implements IRedisInterface {
   /**
    * Remove elements matching value from list
    * @param key - List key
-   * @param count - Number of occurrences to remove: 
-   *               >0: remove from head to tail, 
-   *               <0: remove from tail to head, 
+   * @param count - Number of occurrences to remove:
+   *               >0: remove from head to tail,
+   *               <0: remove from tail to head,
    *               0: remove all occurrences
    * @param value - Value to remove
    * @returns Number of elements removed
@@ -971,7 +992,7 @@ export class RedisService implements IRedisInterface {
   async lPos(
     key: string,
     value: any,
-    options?: { RANK?: number; COUNT?: number; MAXLEN?: number },
+    options?: { RANK?: number; COUNT?: number; MAXLEN?: number }
   ): Promise<number> {
     const stringValue = JSON.stringify(value);
     return this.redisClient.lPos(key, stringValue, options);
@@ -1015,7 +1036,7 @@ export class RedisService implements IRedisInterface {
    * @returns Debug information
    */
   async pfDebug(key: string): Promise<number> {
-    return this.redisClient.sendCommand(['PFDEBUG', 'ENCODING', key]);
+    return this.redisClient.sendCommand(["PFDEBUG", "ENCODING", key]);
   }
 
   /**
@@ -1041,7 +1062,7 @@ export class RedisService implements IRedisInterface {
     key: string,
     longitude: number,
     latitude: number,
-    member: string,
+    member: string
   ): Promise<number> {
     return this.redisClient.geoAdd(key, { longitude, latitude, member });
   }
@@ -1054,7 +1075,7 @@ export class RedisService implements IRedisInterface {
    */
   async geoPos(
     key: string,
-    member: string,
+    member: string
   ): Promise<{ longitude: string; latitude: string }[]> {
     return this.redisClient.geoPos(key, member);
   }
@@ -1071,7 +1092,7 @@ export class RedisService implements IRedisInterface {
     key: string,
     member1: string,
     member2: string,
-    unit: 'm' | 'km' | 'mi' | 'ft' = 'km',
+    unit: "m" | "km" | "mi" | "ft" = "km"
   ): Promise<number> {
     return this.redisClient.geoDist(key, member1, member2, unit);
   }
@@ -1147,8 +1168,8 @@ export class RedisService implements IRedisInterface {
    */
   async withTransaction(
     keysToWatch: string[],
-    transactionFn: (multi: ReturnType<RedisClientType['multi']>) => void,
-    maxRetries = 3,
+    transactionFn: (multi: ReturnType<RedisClientType["multi"]>) => void,
+    maxRetries = 3
   ): Promise<any[]> {
     let attempts = 0;
     while (attempts < maxRetries) {
@@ -1160,7 +1181,7 @@ export class RedisService implements IRedisInterface {
 
         const results = await multi.exec();
         if (results === null) {
-          throw new Error('Transaction conflict');
+          throw new Error("Transaction conflict");
         }
 
         return results;
@@ -1176,7 +1197,7 @@ export class RedisService implements IRedisInterface {
    * @returns 'OK' on success
    */
   async discard(): Promise<string> {
-    return this.redisClient.sendCommand(['DISCARD']);
+    return this.redisClient.sendCommand(["DISCARD"]);
   }
 
   /**
@@ -1211,7 +1232,7 @@ export class RedisService implements IRedisInterface {
    */
   async subscribe(
     channel: string,
-    callback: (message: string, channel: string) => void,
+    callback: (message: string, channel: string) => void
   ): Promise<void> {
     return this.redisClient.subscribe(channel, (message, channel) => {
       try {
@@ -1229,7 +1250,7 @@ export class RedisService implements IRedisInterface {
    */
   async pSubscribe(
     pattern: string,
-    callback: (message: string, channel: string) => void,
+    callback: (message: string, channel: string) => void
   ): Promise<void> {
     return this.redisClient.pSubscribe(pattern, (message, channel) => {
       try {
@@ -1261,7 +1282,7 @@ export class RedisService implements IRedisInterface {
    * @returns Object with subscription information
    */
   async getSubscriptions(): Promise<void> {
-    return this.redisClient.sendCommand(['PUBSUB', 'NUMSUB']);
+    return this.redisClient.sendCommand(["PUBSUB", "NUMSUB"]);
   }
 
   /**
@@ -1271,8 +1292,8 @@ export class RedisService implements IRedisInterface {
    */
   async getChannels(pattern?: string): Promise<void> {
     return pattern
-      ? this.redisClient.sendCommand(['PUBSUB', 'CHANNELS', pattern])
-      : this.redisClient.sendCommand(['PUBSUB', 'CHANNELS']);
+      ? this.redisClient.sendCommand(["PUBSUB", "CHANNELS", pattern])
+      : this.redisClient.sendCommand(["PUBSUB", "CHANNELS"]);
   }
 
   /**
@@ -1281,7 +1302,7 @@ export class RedisService implements IRedisInterface {
    * @returns Object mapping channel names to subscriber counts
    */
   async getSubCount(...channels: string[]): Promise<void> {
-    return this.redisClient.sendCommand(['PUBSUB', 'NUMSUB', ...channels]);
+    return this.redisClient.sendCommand(["PUBSUB", "NUMSUB", ...channels]);
   }
 
   /**
@@ -1290,7 +1311,7 @@ export class RedisService implements IRedisInterface {
    * @returns Message handler function ready for subscription
    */
   async createMessageHandler(
-    handler: (parsed: any, raw: string, channel: string) => void,
+    handler: (parsed: any, raw: string, channel: string) => void
   ): Promise<(rawMessage: string, channel: string) => void> {
     return (rawMessage: string, channel: string) => {
       try {
@@ -1314,7 +1335,7 @@ export class RedisService implements IRedisInterface {
   async acquireLock(
     lockKey: string,
     value: string = Date.now().toString(),
-    ttlMs: number = 10000,
+    ttlMs: number = 10000
   ): Promise<string> {
     return this.redisClient.set(lockKey, value, { NX: true, PX: ttlMs });
   }
@@ -1350,7 +1371,7 @@ export class RedisService implements IRedisInterface {
   async extendLock(
     lockKey: string,
     value: string,
-    additionalTtlMs: number,
+    additionalTtlMs: number
   ): Promise<any> {
     const script = `
     if redis.call("GET", KEYS[1]) == ARGV[1] then
@@ -1398,7 +1419,7 @@ export class RedisService implements IRedisInterface {
     value: string = Date.now().toString(),
     ttlMs: number = 10000,
     retryIntervalMs: number = 100,
-    timeoutMs: number = 5000,
+    timeoutMs: number = 5000
   ): Promise<boolean> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {

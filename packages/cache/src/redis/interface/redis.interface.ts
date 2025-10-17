@@ -14,6 +14,7 @@ import { ListConstant } from "../constant/redis.constant";
 export interface IRedisInterface {
   // =================== Core Key-Value Operations ===================
   set(key: string, value: any, ttl?: number): Promise<void>;
+  setForEever(key: string, value: any): Promise<void>;
   get<T = any>(key: string): Promise<T | null>;
   del(key: string): Promise<void>;
   mSet(data: Record<string, any>): Promise<void>;
