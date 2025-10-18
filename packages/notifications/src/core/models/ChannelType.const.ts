@@ -1,4 +1,5 @@
 export enum ChannelType {
+  FIREBASE_FCM = "firebase_fcm",
   MESSENGER = "messenger",
   WHATSAPP = "whatsapp",
   TELEGRAM = "telegram",

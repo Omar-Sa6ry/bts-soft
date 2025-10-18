@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
 import { Injectable, Logger } from "@nestjs/common";
@@ -5,6 +6,7 @@ import {
   ChannelApiKeys,
   NotificationChannelFactory,
 } from "./core/factories/NotificationChannel.factory";
+import * as path from "path";
 
 /**
  * NotificationProcessor is a BullMQ worker responsible for
@@ -27,9 +29,7 @@ export class NotificationProcessor extends WorkerHost {
   constructor() {
     super();
 
-    /**
-     * Configuration for WhatsApp channel using Twilio credentials
-     */
+    // ... (Your other channel configurations: whatsappConfig, smsConfig, messenger, emailConfig - unchanged) ...
     const whatsappConfig =
       process.env.TWILIO_ACCOUNT_SID &&
       process.env.TWILIO_AUTH_TOKEN &&
@@ -41,9 +41,6 @@ export class NotificationProcessor extends WorkerHost {
           }
         : null;
 
-    /**
-     * Configuration for SMS channel using Twilio credentials
-     */
     const smsConfig =
       process.env.TWILIO_ACCOUNT_SID &&
       process.env.TWILIO_AUTH_TOKEN &&
@@ -55,9 +52,6 @@ export class NotificationProcessor extends WorkerHost {
           }
         : null;
 
-    /**
-     * Configuration for Facebook Messenger channel
-     */
     const messenger = process.env.FB_PAGE_ACCESS_TOKEN
       ? { pageAccessToken: process.env.FB_PAGE_ACCESS_TOKEN }
       : null;
@@ -72,9 +66,44 @@ export class NotificationProcessor extends WorkerHost {
             service: process.env.EMAIL_SERVICE,
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS,
-            sender: process.env.EMAIL_SENDER || process.env.EMAIL_USER, 
+            sender: process.env.EMAIL_SENDER || process.env.EMAIL_USER,
           }
         : null;
+
+    let firebaseConfig = null;
+
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+      // Log the path as read from the environment for debugging
+      this.logger.log(
+        `Attempting to resolve Firebase service path: ${process.env.FIREBASE_SERVICE_ACCOUNT_PATH}`
+      );
+
+      const serviceAccountPath = path.resolve(
+        process.env.FIREBASE_SERVICE_ACCOUNT_PATH
+      );
+
+      if (fs.existsSync(serviceAccountPath)) {
+        this.logger.log(
+          `Firebase service account file found at: ${serviceAccountPath}`
+        );
+        firebaseConfig = {
+          serviceAccountPath: serviceAccountPath,
+          vapidKey: process.env.VAPID_PRIVATE_KEY || undefined,
+        };
+        firebaseConfig = {
+          serviceAccountPath: serviceAccountPath,
+          vapidKey: process.env.VAPID_PRIVATE_KEY || undefined,
+        };
+      } else {
+        this.logger.error(
+          `Firebase Service Account file NOT found. Resolved path: ${serviceAccountPath}`
+        );
+      }
+    } else {
+      this.logger.error(
+        "FIREBASE_SERVICE_ACCOUNT_PATH environment variable is NOT set."
+      );
+    }
 
     /**
      * Collect all API keys and credentials for supported channels
@@ -84,6 +113,7 @@ export class NotificationProcessor extends WorkerHost {
       discord: process.env.DISCORD_WEBHOOK_URL || null,
       teams: process.env.TEAMS_WEBHOOK_URL || null,
       whatsapp: whatsappConfig,
+      firebase: firebaseConfig,
       messenger: messenger,
       email: emailConfig,
       sms: smsConfig,
@@ -95,11 +125,6 @@ export class NotificationProcessor extends WorkerHost {
 
   /**
    * Processes a single notification job from the queue.
-   * The job data must include:
-   *  - channel: the name of the notification channel (e.g., "telegram", "discord", "sms")
-   *  - message: the NotificationMessage object containing recipient and content
-   *
-   * @param job - The BullMQ job containing notification details
    */
   async process(job: Job): Promise<void> {
     const { channel, message } = job.data;
@@ -120,7 +145,10 @@ export class NotificationProcessor extends WorkerHost {
       );
     } catch (error) {
       // Log and rethrow any error encountered during processing
-      this.logger.error(`Job ${job.id} (Channel: ${channel}) failed:`, error);
+      this.logger.error(
+        `Job ${job.id} (Channel: ${channel}) failed:`,
+        `Error: FCM send error: ${error.errorInfo?.message || error.message}`
+      );
       throw error;
     }
   }

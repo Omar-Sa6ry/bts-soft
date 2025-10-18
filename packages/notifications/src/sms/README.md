@@ -5,25 +5,6 @@ It allows you to integrate SMS notifications into your system by initializing a 
 
 ---
 
-## Table of Contents
-
-- [Overview](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#overview)
-    
-- [Installation](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#installation)
-    
-- [Configuration](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#configuration)
-    
-- [Usage](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#usage)
-    
-- [Example](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#example)
-    
-- [Error Handling](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#error-handling)
-    
-- [Interface References](https://chatgpt.com/c/68f0c82e-58e4-832d-ab2d-3b465b307748#interface-references)
-    
-
----
-
 ## Overview
 
 The `SmsChannel` is responsible for sending text messages (SMS) using Twilio.  

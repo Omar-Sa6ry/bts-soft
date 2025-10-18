@@ -1,4 +1,5 @@
 import { DiscordChannel } from "../../discord/discord.channel";
+import { FirebaseChannel } from "../../firebase/firebase.channel";
 import { EmailChannel } from "../../mail/mail.channel";
 import { FacebookMessengerChannel } from "../../messenger/messenger.channel";
 import { SmsChannel } from "../../sms/sms.channel";
@@ -15,6 +16,9 @@ export interface ChannelApiKeys {
   messenger: { pageAccessToken: string } | null;
   sms: { accountSid: string; authToken: string; number: string } | null;
   whatsapp: { accountSid: string; authToken: string; number: string } | null;
+  firebase: {
+    serviceAccountPath: string;
+  } | null;
   email: {
     host?: string;
     port?: number;
@@ -46,7 +50,16 @@ export class NotificationChannelFactory {
             "Email (Nodemailer) requires either 'service' or 'host' and 'port'."
           );
         }
-        return new EmailChannel(emailConfig); 
+        return new EmailChannel(emailConfig);
+
+      case ChannelType.FIREBASE_FCM:
+        const firebaseConfig = this.apiKeys.firebase;
+        if (!firebaseConfig || !firebaseConfig.serviceAccountPath) {
+          throw new Error(
+            "Firebase serviceAccountPath is missing in configuration."
+          );
+        }
+        return new FirebaseChannel(firebaseConfig);
 
       case ChannelType.WHATSAPP:
         if (!this.apiKeys.whatsapp || !this.apiKeys.whatsapp.accountSid)
