@@ -1,7 +1,3 @@
-Here’s a clean and professional `README.md` file for your `@bts-soft/validation` package — no emojis, fully formatted and documented.
-
----
-
 # @bts-soft/validation
 
 A powerful and reusable validation utilities package for NestJS applications.  

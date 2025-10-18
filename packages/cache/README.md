@@ -202,11 +202,6 @@ Make sure your application logger is configured to view Redis logs if needed.
 
 ---
 
-Would you like me to:
-
-1. Generate this as a **`README.md` file** ready for your repo, or
-    
-2. Include a **"Contributing" and "Changelog"** section as well for open-source publishing?
 
 ### 2. Advanced Data Structure Usage
 

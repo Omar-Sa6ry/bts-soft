@@ -1,7 +1,6 @@
 {
   "name": "bts-soft",
   "version": "1.0.0",
-  "private": true, 
   "description": "BTS Software Monorepo for NestJS Toolkit",
   "main": "index.js",
   "scripts": {
