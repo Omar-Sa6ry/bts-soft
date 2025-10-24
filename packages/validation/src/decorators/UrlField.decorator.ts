@@ -14,6 +14,7 @@ import { IsOptional, Matches, IsUrl } from "class-validator";
  * @returns PropertyDecorator
  */
 export function UrlField(
+  text: string = "url",
   nullable: boolean = false,
   isGraphql: boolean = true // REST/GraphQL switch
 ): PropertyDecorator {
@@ -29,11 +30,11 @@ export function UrlField(
     // Common validation rules
     IsOptional(),
     // Standard validation: Checks for basic Url structure (e.g., user@domain.com)
-    IsUrl({}, { message: "Must be a valid Url address" }),
+    IsUrl({}, { message: `Must be a valid ${text} address` }),
 
     // Security Check: SQL Injection Check
     Matches(SQL_INJECTION_REGEX, {
-      message: "Url contains forbidden SQL keywords or patterns",
+      message: `${text} contains forbidden SQL keywords or patterns`,
     }),
 
     // Transformation: Convert the Url to lowercase

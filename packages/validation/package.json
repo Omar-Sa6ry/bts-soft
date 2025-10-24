@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/validation",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A robust toolkit of flexible NestJS decorators for DTO validation, transformation, and security checks, compatible with both REST and GraphQL APIs.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
