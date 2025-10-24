@@ -5,6 +5,7 @@ export * from './decorators/CapitalField.decorator';
 export * from './decorators/EmailField.decorator';
 export * from './decorators/PasswordField.decorator';
 export * from './decorators/PhoneField.decorator';
+export * from './decorators/UrlField.decorator';
 export * from './decorators/nationalId.decorator';
 
 // --- Utility Functions & Constants ---
