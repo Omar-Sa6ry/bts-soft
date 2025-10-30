@@ -21,17 +21,16 @@ import { HttpExceptionFilter } from "./errorHandling.filter";
   imports: [
     GraphQLModule.forRoot({
       driver: ApolloDriver, // Use Apollo Server as the GraphQL driver
+      path: "/graphql",
 
       // Auto-generate GraphQL schema file in the src/ directory
       autoSchemaFile: join(process.cwd(), "src/schema.gql"),
-
       // Pass HTTP request and language headers into the GraphQL context
       context: ({ req }) => ({
         request: req,
         user: req.user,
         language: req.headers["accept-language"] || "en",
       }),
-
 
       // Developer tools and debugging
       playground: true, // Enable GraphQL Playground for development
