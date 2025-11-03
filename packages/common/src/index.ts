@@ -22,6 +22,7 @@ export * from "./translation/translation.module";
 
 // Graphql Module
 export * from "./graphql/graphql.module";
+export * from "./graphql/errorHandling.filter";
 
 // Production
 export * from "./production/displayConsoles";
