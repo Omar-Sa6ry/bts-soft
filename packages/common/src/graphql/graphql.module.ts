@@ -26,16 +26,11 @@ import { HttpExceptionFilter } from "./errorHandling.filter";
       // Auto-generate GraphQL schema file in the src/ directory
       autoSchemaFile: join(process.cwd(), "src/schema.gql"),
       // Pass HTTP request and language headers into the GraphQL context
-      context: ({ req }) => {
-        const user = req?.user ?? null;
-        const language = req?.headers?.["accept-language"] || "en";
-
-        return {
-          request: req,
-          user,
-          language,
-        };
-      },
+      context: ({ req }) => ({
+        request: req,
+        user: req.user,
+        language: req.headers["accept-language"] || "en",
+      }),
 
       // Developer tools and debugging
       playground: true, // Enable GraphQL Playground for development
