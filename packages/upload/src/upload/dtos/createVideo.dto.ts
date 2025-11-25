@@ -5,13 +5,13 @@ import * as GraphQLUpload from 'graphql-upload/GraphQLUpload.js';
 
 @InputType()
 export class CreateVideoDto {
-  @IsOptional()
+  @(IsOptional() as PropertyDecorator)
   @Field(() => String, { nullable: true })
   @IsString()
   @MaxLength(100)
   title?: string;
 
-  @IsOptional()
+  @(IsOptional() as PropertyDecorator)
   @Field(() => String, { nullable: true })
   @IsString()
   @MaxLength(500)

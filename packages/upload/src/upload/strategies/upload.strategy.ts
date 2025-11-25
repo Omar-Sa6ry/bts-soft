@@ -1,4 +1,4 @@
-import { IUploadStrategy } from '../interfaces/IUpload.interface';
+import { IUploadStrategy } from "../interfaces/IUpload.interface";
 
 export class CloudinaryUploadStrategy implements IUploadStrategy {
   constructor(private cloudinary: any) {}
@@ -10,7 +10,7 @@ export class CloudinaryUploadStrategy implements IUploadStrategy {
         (error, result) => {
           if (error) reject(error);
           else resolve(result);
-        },
+        }
       );
       stream.pipe(uploadStream);
     });

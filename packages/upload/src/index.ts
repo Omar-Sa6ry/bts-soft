@@ -25,6 +25,9 @@ export * from "./upload/commands/deleteVideo.command";
 // Command for uploading new images
 export * from "./upload/commands/uploadImage.command";
 
+// Command for uploading new files
+export * from "./upload/commands/uploadFile.command";
+
 // Command for uploading new videos
 export * from "./upload/commands/uploadVideo.command";
 
@@ -40,6 +43,10 @@ export * from "./upload/dtos/createImage.dto";
 
 // DTO for handling video upload requests
 export * from "./upload/dtos/createVideo.dto";
+
+// DTO for handling file upload requests
+export * from "./upload/dtos/createFile.dto";
+export * from "./upload/dtos/uploadResult.type";
 
 /* ============================== */
 /*         CONFIGURATION           */

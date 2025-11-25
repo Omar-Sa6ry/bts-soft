@@ -13,32 +13,35 @@
  * successful or failed uploads/deletions without tight coupling.
  */
 
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { UploadApiResponse } from 'cloudinary';
-import { UploadServiceFactory } from './factories/upload.factory';
+import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { UploadApiResponse } from "cloudinary";
+import { UploadServiceFactory } from "./factories/upload.factory";
 // Strategy Interfaces for decoupling the service from the cloud provider
-import { IUploadStrategy } from './interfaces/IUpload.interface';
-import { IDeleteStrategy } from './interfaces/IDaeleteStrategy.interface';
+import { IUploadStrategy } from "./interfaces/IUpload.interface";
+import { IDeleteStrategy } from "./interfaces/IDaeleteStrategy.interface";
 // Observer Interface for reactive programming
-import { IUploadObserver } from './interfaces/IUploadObserver.interface';
+import { IUploadObserver } from "./interfaces/IUploadObserver.interface";
 // Concrete Strategy Implementations
-import { CloudinaryUploadStrategy } from './strategies/upload.strategy';
-import { CloudinaryDeleteStrategy } from './strategies/delete.strategy';
+import { CloudinaryUploadStrategy } from "./strategies/upload.strategy";
+import { CloudinaryDeleteStrategy } from "./strategies/delete.strategy";
 // Command Objects to encapsulate upload/delete operations
-import { UploadImageCommand } from './commands/uploadImage.command';
-import { DeleteImageCommand } from './commands/deleteImage.command';
+import { UploadImageCommand } from "./commands/uploadImage.command";
+import { DeleteImageCommand } from "./commands/deleteImage.command";
 // DTOs and Commands for Video handling
-import { DeleteVideoCommand } from './commands/deleteVideo.command';
-import { UploadVideoCommand } from './commands/uploadVideo.command';
+import { DeleteVideoCommand } from "./commands/deleteVideo.command";
+import { UploadVideoCommand } from "./commands/uploadVideo.command";
 // Concrete Observer Implementation
-import { LoggingObserver } from './observer/upload.observer';
-import Stream from 'stream';
+import { LoggingObserver } from "./observer/upload.observer";
 
 // DTOs and GraphQL types (needed for GraphQL methods)
-import { CreateImageDto } from './dtos/createImage.dto';
-import { CreateVideoDto } from './dtos/createVideo.dto';
-import { FileUpload } from './dtos/fileUpload';
+import { CreateImageDto } from "./dtos/createImage.dto";
+import { CreateVideoDto } from "./dtos/createVideo.dto";
+import { UploadResult } from "./dtos/uploadResult.type";
+import { UploadFileCommand } from "./commands/uploadFile.command";
+import { CreateFileDto } from "./dtos/createFile.dto";
+import Stream = require("stream");
+
 // NEW: Define a unified file structure for service methods (Stream + filename)
 export interface UploadFile {
   stream: Stream;
@@ -100,39 +103,43 @@ export class UploadService {
    */
   async uploadImageCore(
     fileData: UploadFile,
-    dirUpload: string = 'avatars',
-  ): Promise<string> {
+    dirUpload: string = "avatars"
+  ): Promise<UploadResult> {
     const { stream, filename } = fileData;
 
     const options = {
       folder: dirUpload,
       public_id: `${Date.now()}-${filename}`,
-      resource_type: 'auto',
+      resource_type: "auto",
     };
 
-    // Command Pattern: Encapsulate the operation (upload)
     const command = new UploadImageCommand(
-      this.uploadStrategy, // The Strategy object
+      this.uploadStrategy,
       stream,
-      options,
+      options
     );
 
     try {
-      const result: UploadApiResponse = await command.execute();
+      const result = await command.execute();
 
       if (!result?.secure_url) {
         throw new HttpException(
-          'Cloudinary response invalid',
-          HttpStatus.BAD_REQUEST,
+          "Cloudinary response invalid",
+          HttpStatus.BAD_REQUEST
         );
       }
 
-      this.notifyUploadSuccess(result); // Notify observers
-      return result.secure_url;
+      this.notifyUploadSuccess(result);
+
+      return {
+        url: result.secure_url,
+        size: result.bytes ?? 0,
+        filename: result.original_filename ?? filename,
+        type: "image",
+      };
     } catch (error) {
-      this.notifyUploadError(error as Error); // Notify observers
-      // Re-throw the error as a standard NestJS exception
-      throw new HttpException('Upload failed', HttpStatus.BAD_REQUEST);
+      this.notifyUploadError(error as Error);
+      throw new HttpException("Upload failed", HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -145,47 +152,83 @@ export class UploadService {
    */
   async uploadVideoCore(
     fileData: UploadFile,
-    dirUpload: string = 'videos',
-  ): Promise<string> {
+    dirUpload: string = "videos"
+  ): Promise<UploadResult> {
     const { stream, filename } = fileData;
-
-    // Validate video duration (1 minute max)
-    const duration = await this.getVideoDuration(stream);
-    if (duration > 60) {
-      throw new HttpException(
-        'Video must be 1 minute or less',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
 
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.split('.')[0]}`,
-      resource_type: 'video',
-      chunk_size: 6000000, // Recommended for large files
+      public_id: `${Date.now()}-${filename.split(".")[0]}`,
+      resource_type: "video",
+      chunk_size: 6000000,
     };
 
     const command = new UploadVideoCommand(
       this.uploadStrategy,
       stream,
-      options,
+      options
     );
 
     try {
-      const result: UploadApiResponse = await command.execute();
+      const result = await command.execute();
 
       if (!result?.secure_url) {
         throw new HttpException(
-          'Cloudinary response invalid',
-          HttpStatus.BAD_REQUEST,
+          "Cloudinary response invalid",
+          HttpStatus.BAD_REQUEST
         );
       }
 
       this.notifyUploadSuccess(result);
-      return result.secure_url;
+
+      return {
+        url: result.secure_url,
+        size: result.bytes ?? 0,
+        filename: result.original_filename ?? filename,
+        type: "video",
+        duration: result.duration ?? 0, // ← هنا الإضافة الجديدة
+      };
     } catch (error) {
       this.notifyUploadError(error as Error);
-      throw new HttpException('Video upload failed', HttpStatus.BAD_REQUEST);
+      throw new HttpException("Video upload failed", HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  async uploadFileCore(
+    fileData: UploadFile,
+    dirUpload: string = "files"
+  ): Promise<UploadResult> {
+    const { stream, filename } = fileData;
+
+    const options = {
+      folder: dirUpload,
+      public_id: `${Date.now()}-${filename}`,
+      resource_type: "raw",
+    };
+
+    const command = new UploadFileCommand(this.uploadStrategy, stream, options);
+
+    try {
+      const result = await command.execute();
+
+      if (!result?.secure_url) {
+        throw new HttpException(
+          "Cloudinary response invalid",
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      this.notifyUploadSuccess(result);
+
+      return {
+        url: result.secure_url,
+        size: result.bytes ?? 0,
+        filename: result.original_filename ?? filename,
+        type: "file",
+      };
+    } catch (error) {
+      this.notifyUploadError(error as Error);
+      throw new HttpException("File upload failed", HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -195,21 +238,16 @@ export class UploadService {
    * Public interface for GraphQL image uploads.
    * Converts the GraphQL FileUpload promise into a stream for the core function.
    */
-  async uploadImage(
-    createImageInput: CreateImageDto,
-    dirUpload: string = 'avatars',
-  ): Promise<string> {
-    if (!createImageInput.image) return null;
+  async uploadImage(dto: CreateImageDto, dirUpload = "avatars") {
+    if (!dto.image) return null;
 
-    const uploadedFile = await createImageInput.image;
-    if (!uploadedFile || !uploadedFile.createReadStream) {
-      throw new HttpException('Invalid image file', HttpStatus.BAD_REQUEST);
-    }
+    const uploaded = await dto.image;
+    const stream = uploaded.createReadStream();
 
-    const { createReadStream, filename } = uploadedFile;
-    const stream = createReadStream();
-
-    return this.uploadImageCore({ stream, filename }, dirUpload);
+    return this.uploadImageCore(
+      { stream, filename: uploaded.filename },
+      dirUpload
+    );
   }
 
   /**
@@ -218,15 +256,15 @@ export class UploadService {
    */
   async uploadVideo(
     createVideoInput: CreateVideoDto,
-    dirUpload: string = 'videos',
-  ): Promise<string> {
+    dirUpload: string = "videos"
+  ): Promise<UploadResult> {
     if (!createVideoInput.video) {
-      throw new HttpException('Video file is required', HttpStatus.BAD_REQUEST);
+      throw new HttpException("Video file is required", HttpStatus.BAD_REQUEST);
     }
 
     const uploadedFile = await createVideoInput.video;
     if (!uploadedFile || !uploadedFile.createReadStream) {
-      throw new HttpException('Invalid video file', HttpStatus.BAD_REQUEST);
+      throw new HttpException("Invalid video file", HttpStatus.BAD_REQUEST);
     }
 
     const { createReadStream, filename } = uploadedFile;
@@ -240,9 +278,9 @@ export class UploadService {
    */
   async deleteImage(imageUrl: string): Promise<void> {
     // ... (Original deleteImage logic remains here, as it doesn't depend on file upload method)
-    const publicId = imageUrl?.split('/').pop()?.split('.')[0];
+    const publicId = imageUrl?.split("/").pop()?.split(".")[0];
     if (!publicId) {
-      throw new HttpException('Invalid image URL', HttpStatus.BAD_REQUEST);
+      throw new HttpException("Invalid image URL", HttpStatus.BAD_REQUEST);
     }
 
     const command = new DeleteImageCommand(this.deleteStrategy, publicId);
@@ -250,17 +288,17 @@ export class UploadService {
     try {
       const result = await command.execute();
 
-      if (result.result !== 'ok' && result.result !== 'not found') {
+      if (result.result !== "ok" && result.result !== "not found") {
         throw new HttpException(
           `Failed to delete image. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
 
       this.notifyDeleteSuccess(result);
     } catch (error) {
       this.notifyDeleteError(error as Error);
-      throw new HttpException('Delete failed', HttpStatus.BAD_REQUEST);
+      throw new HttpException("Delete failed", HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -269,34 +307,87 @@ export class UploadService {
    */
   async deleteVideo(videoUrl: string): Promise<void> {
     // ... (Original deleteVideo logic remains here, as it doesn't depend on file upload method)
-    const publicId = videoUrl?.split('/').pop()?.split('.')[0];
+    const publicId = videoUrl?.split("/").pop()?.split(".")[0];
     if (!publicId) {
-      throw new HttpException('Invalid video URL', HttpStatus.BAD_REQUEST);
+      throw new HttpException("Invalid video URL", HttpStatus.BAD_REQUEST);
     }
 
     const command = new DeleteVideoCommand(
       this.deleteStrategy,
       publicId,
-      'video',
+      "video"
     );
 
     try {
       const result = await command.execute();
 
-      if (result.result !== 'ok' && result.result !== 'not found') {
+      if (result.result !== "ok" && result.result !== "not found") {
         throw new HttpException(
           `Failed to delete video. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
 
       this.notifyDeleteSuccess(result);
     } catch (error) {
       this.notifyDeleteError(error as Error);
-      throw new HttpException('Video delete failed', HttpStatus.BAD_REQUEST);
+      throw new HttpException("Video delete failed", HttpStatus.BAD_REQUEST);
     }
   }
 
+  async uploadFile(
+    createFileInput: CreateFileDto,
+    dirUpload: string = "files"
+  ): Promise<UploadResult> {
+    if (!createFileInput.file) {
+      throw new HttpException("File is required", HttpStatus.BAD_REQUEST);
+    }
+
+    const uploadedFile = await createFileInput.file;
+    if (!uploadedFile || !uploadedFile.createReadStream) {
+      throw new HttpException("Invalid file", HttpStatus.BAD_REQUEST);
+    }
+
+    const { createReadStream, filename } = uploadedFile;
+    const stream = createReadStream();
+
+    return this.uploadFileCore({ stream, filename }, dirUpload);
+  }
+
+  async deleteFile(fileUrl: string): Promise<void> {
+    if (!fileUrl) {
+      throw new HttpException("File URL is required", HttpStatus.BAD_REQUEST);
+    }
+
+    // Extract public ID from URL
+    const publicId = fileUrl.split("/").pop()?.split(".")[0];
+
+    if (!publicId) {
+      throw new HttpException("Invalid file URL", HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      // Cloudinary delete for RAW files
+      const result = await this.cloudinary.uploader.destroy(publicId, {
+        resource_type: "raw",
+      });
+
+      if (result.result !== "ok" && result.result !== "not found") {
+        throw new HttpException(
+          `Failed to delete file. Reason: ${result.result}`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      this.notifyDeleteSuccess(result);
+    } catch (error) {
+      this.notifyDeleteError(error as Error);
+
+      throw new HttpException("File delete failed", HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  
   /**
    * Private helper function to determine video duration. (Original logic)
    */

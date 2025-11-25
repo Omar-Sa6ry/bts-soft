@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/core",
-  "version": "2.0.6",
+  "version": "2.1.2",
   "author": "Omar Sabry",
   "description": "All bts-soft packages",
   "main": "dist/index.js",
@@ -10,11 +10,11 @@
     "packages/*"
   ],
   "dependencies": {
+    "@bts-soft/upload": "^1.2.4",
     "@bts-soft/notifications": "^1.4.2",
     "@bts-soft/common": "1.2.7",
     "@bts-soft/cache": "^1.0.4",
-    "@bts-soft/validation": "^1.0.7",
-    "@bts-soft/upload": "^1.1.7"
+    "@bts-soft/validation": "^1.0.7"
   },
   "peerDependencies": {
     "@nestjs/common": "^10.0.0",
