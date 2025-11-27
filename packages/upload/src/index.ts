@@ -35,9 +35,6 @@ export * from "./upload/commands/uploadVideo.command";
 /*             DTOS               */
 /* ============================== */
 
-// DTO for general file upload metadata
-export * from "./upload/dtos/fileUpload";
-
 // DTO for handling image upload requests
 export * from "./upload/dtos/createImage.dto";
 

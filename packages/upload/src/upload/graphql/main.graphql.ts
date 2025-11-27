@@ -2,8 +2,8 @@
 // This file assumes it's part of the @bts-soft/upload package structure.
 
 import { INestApplication } from '@nestjs/common';
+import { graphqlUploadExpress } from 'graphql-upload-minimal';
 // IMPORTANT: Use the specific ES module import path for 'graphql-upload'
-import * as graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.js';
 
 /**
  * Applies the 'graphql-upload-express' middleware globally to the NestJS application.

@@ -386,15 +386,4 @@ export class UploadService {
       throw new HttpException("File delete failed", HttpStatus.BAD_REQUEST);
     }
   }
-
-  
-  /**
-   * Private helper function to determine video duration. (Original logic)
-   */
-  private async getVideoDuration(stream: Stream): Promise<number> {
-    // NOTE: This implementation is currently a placeholder, always resolving to 60 seconds (1 minute).
-    return new Promise((resolve, reject) => {
-      resolve(60); // Assume 60 seconds for demo purposes
-    });
-  }
 }

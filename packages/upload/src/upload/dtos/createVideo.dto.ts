@@ -1,22 +1,22 @@
-import { Field, InputType } from '@nestjs/graphql';
-import { FileUpload } from './fileUpload';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
-import * as GraphQLUpload from 'graphql-upload/GraphQLUpload.js';
+import { Field, InputType } from "@nestjs/graphql";
+import { IsOptional, IsString, MaxLength } from "class-validator";
+import { FileUpload, GraphQLUpload } from "graphql-upload-minimal";
 
 @InputType()
 export class CreateVideoDto {
-  @(IsOptional() as PropertyDecorator)
   @Field(() => String, { nullable: true })
+  @IsOptional()
   @IsString()
   @MaxLength(100)
   title?: string;
 
-  @(IsOptional() as PropertyDecorator)
   @Field(() => String, { nullable: true })
+  @IsOptional()
   @IsString()
   @MaxLength(500)
   description?: string;
 
   @Field(() => GraphQLUpload)
-  video: Promise<FileUpload>;
+  @IsOptional()
+  video?: Promise<FileUpload>;
 }

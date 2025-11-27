@@ -1,35 +1,29 @@
 {
   "name": "@bts-soft/upload",
-  "version": "1.2.4",
-  "description": "Upload module for handling file uploads and deletions in NestJS using Cloudinary and command/strategy design patterns.",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "1.3.4",
+  "description": "Upload package for NestJS + GraphQL using Cloudinary with Strategy + Command + Observer patterns.",
   "author": "Omar Sabry",
   "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.0.0",
-    "@nestjs/core": "^10.0.0",
-    "@nestjs/graphql": "^12.0.0 || ^13.0.0",
-    "@nestjs/platform-express": "^10.0.0",
-    "class-validator": "^0.14.2",
-    "cloudinary": "^1.41.3",
-    "graphql-upload": "^14.0.0",
-    "multer": "^1.4.5-lts.1"
+    "@nestjs/graphql": "^12.0.0",
+    "cloudinary": "^2.0.0"
   },
   "devDependencies": {
-    "@types/multer": "^1.4.13",
-    "@types/node": "^20.11.10",
-    "@types/source-map-support": "^0.5.10",
-    "rimraf": "^5.0.5",
-    "ts-morph": "^25.0.1",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.3.3"
+    "@types/node": "^24.10.1",
+    "typescript": "^5.0.0"
   },
-  "publishConfig": {
-    "access": "public"
+  "dependencies": {
+    "class-validator": "^0.14.3",
+    "graphql-upload-minimal": "^1.6.3"
   }
 }
