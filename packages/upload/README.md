@@ -1,428 +1,205 @@
 # @bts-soft/upload
 
-  
-
-A modular NestJS package for handling file uploads and deletions with support for both GraphQL and REST APIs.  
-
-This package uses Cloudinary as the default storage provider and follows advanced design patterns for scalability, flexibility, and clean architecture.
-
-  
+A modular, enterprise-grade NestJS package for handling file uploads (Images, Videos, Audio, Documents) using **Cloudinary**.
+It is designed with **Clean Architecture** principles and supports both **GraphQL** and **REST API** applications.
 
 ---
 
-  
+## 🚀 Features
 
-## Features
-
-  
-
-- Supports both REST and GraphQL APIs  
-
-- Upload and delete images and videos using Cloudinary  
-
-- Built with maintainable and scalable design patterns:
-
-  - Strategy Pattern → Switch between different cloud providers easily
-
-  - Command Pattern → Encapsulates upload and delete logic
-
-  - Observer Pattern → Enables event-driven reactions to upload and delete operations
-
-- Configurable upload limits via middleware (`setupGraphqlUpload`)
-
-- Modular, reusable, and suitable for monorepos or microservices
-
-  
+- **Multi-Format Support**:
+  - 🖼️ **Images**: `jpg, png, jpeg, webp, gif` (Auto-optimized to WebP/AVIF).
+  - 🎥 **Videos**: `mp4, webm, avi, mov` (Auto-transcoded).
+  - 🎵 **Audio**: `mp3, wav, ogg, m4a` (New!).
+  - 📄 **Files**: `pdf, doc, docx, xls, zip`, etc.
+- **Robust Validation**: Enforces file type and size limits before upload.
+- **Cloudinary Optimization**: Automatically applies `f_auto` and `q_auto` to images and videos for best performance.
+- **Dual API Support**: Ready-to-use methods for both **GraphQL** (`Promise<FileUpload>`) and **REST** (`Stream` based).
+- **Design Patterns**:
+  - **Strategy**: easily swap Cloudinary with S3 or Local storage.
+  - **Command**: Encapsulated upload/delete logic.
+  - **Observer**: Hook into upload events (logging, analytics).
 
 ---
 
-  
-
-## Installation
-
-  
+## 📦 Installation
 
 ```bash
-
 npm install @bts-soft/upload
-
-````
-
-  
-
-> Make sure you have `@nestjs/common`, `@nestjs/graphql`, and `graphql-upload` installed.
-
-  
+```
+*Note: Ensure you have `@nestjs/common`, `@nestjs/config` installed in your project.*
 
 ---
 
-  
+## ⚙️ Configuration
 
-## Configuration
-
-  
-
-Set your Cloudinary credentials in the `.env` file or through NestJS ConfigModule:
-
-  
+Add your Cloudinary credentials to your `.env` file:
 
 ```env
-
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-
-CLOUDINARY_API_KEY=your-api-key
-
-CLOUDINARY_API_SECRET=your-api-secret
-
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
-  
+Import the `UploadModule` into your root `AppModule`:
 
----
-
-  
-
-## Project Structure
-
-  
-
-```
-
-upload/
-
-├── node_modules/
-
-├── src/
-
-│   └── upload/
-
-│       ├── commands/
-
-│       │   ├── deleteImage.command.ts
-
-│       │   ├── deleteVideo.command.ts
-
-│       │   ├── uploadImage.command.ts
-
-│       │   └── uploadVideo.command.ts
-
-│       │
-
-│       ├── config/
-
-│       │   └── cloudinary.ts
-
-│       │
-
-│       ├── dtos/
-
-│       │   ├── createImage.dto.ts
-
-│       │   ├── createVideo.dto.ts
-
-│       │   └── fileUpload.ts
-
-│       │
-
-│       ├── factories/
-
-│       │   └── upload.factory.ts
-
-│       │
-
-│       ├── graphql/
-
-│       │   └── main.graphql
-
-│       │
-
-│       ├── interfaces/
-
-│       │   ├── IDaeleteStrategy.interface.ts
-
-│       │   ├── IUpload.interface.ts
-
-│       │   ├── IUploadCommand.interface.ts
-
-│       │   └── IUploadObserver.interface.ts
-
-│       │
-
-│       ├── observer/
-
-│       │   └── upload.observer.ts
-
-│       │
-
-│       ├── strategies/
-
-│       │   ├── delete.strategy.ts
-
-│       │   └── upload.strategy.ts
-
-│       │
-
-
-│       ├── upload.module.ts
-
-│       ├── upload.service.ts
-
-│       └── index.ts
-
-│
-
-├── license
-
-├── package.json
-
-├── package-lock.json
-
-├── README.md
-
-└── tsconfig.json
-
-  
-
-```
-
-  
-
----
-
-  
-
-## Design Patterns Overview
-
-  
-
-### 1. Strategy Pattern
-
-  
-
-Encapsulates cloud storage logic.  
-
-You can replace Cloudinary with AWS S3, Firebase, or any other provider by implementing `IUploadStrategy` and `IDeleteStrategy`.
-
-  
-
-### 2. Command Pattern
-
-  
-
-Each upload and delete operation is represented by a Command class (e.g., `UploadImageCommand`).  
-
-This isolates business logic from the service orchestration layer.
-
-  
-
-### 3. Observer Pattern
-
-  
-
-Observers like `LoggingObserver` listen to upload or delete events and allow you to perform actions such as logging, analytics, or notifications.
-
-  
-
-
----
-
-  
-
-## GraphQL Integration
-
-  
-
-Enable file uploads in GraphQL using the helper middleware:
-
-  
-
-```ts
-
-// main.ts
-
-import { setupGraphqlUpload } from '@bts-soft/upload';
-
-import { NestFactory } from '@nestjs/core';
-
-import { AppModule } from './app.module';
-
-  
-
-async function bootstrap() {
-
-  const app = await NestFactory.create(AppModule);
-
-  
-
-  // Enable GraphQL file uploads
-
-  setupGraphqlUpload(app, 10_000_000, 3); // 10 MB max, 3 files allowed
-
-  
-
-  await app.listen(3000);
-
-}
-
-bootstrap();
-
-```
-
-  
-
-Then in GraphQL:
-
-  
-
-```graphql
-
-mutation UploadImage($file: Upload!) {
-
-  uploadImage(createImageInput: { image: $file })
-
-}
-
-```
-
-  
-
----
-
-  
-
-## Example Usage in a Module
-
-  
-
-```ts
-
+```typescript
 import { Module } from '@nestjs/common';
-
 import { UploadModule } from '@bts-soft/upload';
-
-  
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-
-  imports: [UploadModule],
-
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }), // Required for env vars
+    UploadModule
+  ],
 })
-
 export class AppModule {}
-
 ```
 
+---
+
+## 📖 Usage Guide
+
+### 1️⃣ Using with GraphQL
+
+First, setup the middleware to handle multipart requests in `main.ts`:
+
+```typescript
+import { setupGraphqlUpload } from '@bts-soft/upload';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
   
+  // Enable GraphQL uploads (Max 10MB file, 5 files max)
+  setupGraphqlUpload(app, 10_000_000, 5);
+  
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+Then, use `UploadService` in your **Resolver**:
+
+```typescript
+import { Resolver, Mutation, Args } from '@nestjs/graphql';
+import { UploadService, CreateImageDto } from '@bts-soft/upload';
+
+@Resolver()
+export class UserResolver {
+  constructor(private readonly uploadService: UploadService) {}
+
+  @Mutation(() => String)
+  async updateAvatar(@Args('input') input: CreateImageDto) {
+    // input.image is a Promise<FileUpload>
+    const result = await this.uploadService.uploadImage(input);
+    return result.url;
+  }
+}
+```
+
+### 2️⃣ Using with REST API (Express/NestJS)
+
+For REST APIs, use the `*Core` methods (`uploadImageCore`, `uploadVideoCore`, etc.) which accept a standard stream.
+
+Example **Controller** using `FileInterceptor`:
+
+```typescript
+import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadService } from '@bts-soft/upload';
+import { Readable } from 'stream';
+
+@Controller('upload')
+export class UploadController {
+  constructor(private readonly uploadService: UploadService) {}
+
+  @Post('image')
+  @UseInterceptors(FileInterceptor('file')) // Standard Express/Multer interceptor
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    
+    // Convert Buffer to Stream
+    const stream = Readable.from(file.buffer);
+
+    const result = await this.uploadService.uploadImageCore({
+      stream,
+      filename: file.originalname
+    });
+
+    return { url: result.url };
+  }
+  
+  @Post('audio')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAudio(@UploadedFile() file: Express.Multer.File) {
+     const stream = Readable.from(file.buffer);
+     return this.uploadService.uploadAudioCore({
+        stream,
+        filename: file.originalname
+     });
+  }
+}
+```
 
 ---
 
-  
+## 🛡️ Validation Rules
 
-## Core Service
+The package enforces the following limits by default. Requests violating these rules will throw a `400 Bad Request`.
 
-  
-
-The `UploadService` handles both REST and GraphQL uploads.  
-
-It includes:
-
-  
-
-- `uploadImageCore()` and `uploadVideoCore()` for low-level operations
-
-- `uploadImage()` and `uploadVideo()` for GraphQL upload handling
-
-- `deleteImage()` and `deleteVideo()` for unified deletion logic
-
-  
+| Type | Max Size | Allowed Extensions |
+| :--- | :--- | :--- |
+| **Image** | 5 MB | `jpg, jpeg, png, webp, gif` |
+| **Video** | 100 MB | `mp4, webm, avi, mov` |
+| **Audio** | 50 MB | `mp3, wav, ogg, m4a` |
+| **File** | 10 MB | `pdf, doc, docx, xls, xlsx, ppt, pptx, txt, zip` |
 
 ---
 
-  
+## 🏗️ Architecture & Design Patterns
 
-## Observer Example
+### Strategy Pattern
+Logic for **how** files are uploaded is abstracted behind `IUploadStrategy`.
+- **Current**: `CloudinaryUploadStrategy`.
+- **Future**: You can implement `S3UploadStrategy` and swap it in `UploadService` without changing any controller code.
 
-  
+### Command Pattern
+Every action (`UploadImageCommand`, `DeleteVideoCommand`) is a self-contained class.
+- This ensures that validation, options, and execution logic are encapsulated.
+- Makes unit testing easier and code more readable.
 
-The observer logs every upload or delete event automatically.  
-
-You can extend it to integrate with Redis, WebSockets, or a message broker.
-
-  
-
----
-
-  
-
-## Extending the Package
-
-  
-
-To switch from Cloudinary to another provider:
-
-  
-
-1. Implement `IUploadStrategy` and `IDeleteStrategy`
-
-2. Replace `CloudinaryUploadStrategy` and `CloudinaryDeleteStrategy` in `UploadService`
-
-3. Optionally update the factory (`upload.factory.ts`)
-
-  
+### Observer Pattern
+The service notifies registered observers on success or failure.
+- **Default**: `LoggingObserver` logs actions to console.
+- **Extensibility**: You can add a `NotificationObserver` to send Emails/Slack alerts on upload failure.
 
 ---
 
-  
+## 🔧 API Reference
 
-## Author
+### `UploadService` Methods
 
-  
-
-BTS Soft — Upload Package  
-
-Developed by Omar Sabry  
-
-Focused on clean architecture, scalability, and support for both REST and GraphQL interfaces.
-
-  
+- **`uploadImage(dto)`**: For GraphQL.
+- **`uploadVideo(dto)`**: For GraphQL.
+- **`uploadAudio(dto)`**: For GraphQL.
+- **`uploadFile(dto)`**: For GraphQL.
 
 ---
 
-  
-
-## License
-
-  
-
-MIT License © 2025 BTS Soft
-
-  
-  
+- **`uploadImageCore({ stream, filename })`**: For REST/Service-to-Service.
+- **`uploadVideoCore({ stream, filename })`**: For REST/Service-to-Service.
+- **`uploadAudioCore({ stream, filename })`**: For REST/Service-to-Service.
+- **`uploadFileCore({ stream, filename })`**: For REST/Service-to-Service.
 
 ---
 
-  
-
-## **Contact**
-
-  
-
-**Author:** Omar Sabry  
-
-**Email:** [omar.sabry.dev@gmail.com](mailto:omar.sabry.dev@gmail.com)  
-
-**LinkedIn:** [Omar Sabry](https://www.linkedin.com/in/omarsa6ry/)  
-
-**Portfolio:** [https://omarsabry.netlify.app/](https://omarsabry.netlify.app/)
-
-  
+- **`deleteImage(url)`**: Extracts public ID and deletes.
+- **`deleteVideo(url)`**: Extracts public ID and deletes.
+- **`deleteAudio(url)`**: Extracts public ID and deletes.
+- **`deleteFile(url)`**: Extracts public ID and deletes.
 
 ---
 
-  
+## 📄 License
 
-## **Repository**
-
-  
-
-**GitHub:** [Github Repo](https://github.com/Omar-Sa6ry/bts-soft/tree/main/packages/upload)
+MIT © 2025 BTS Soft - Developed by **Omar Sabry**.

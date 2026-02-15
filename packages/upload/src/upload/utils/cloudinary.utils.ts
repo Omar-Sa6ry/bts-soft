@@ -1,4 +1,4 @@
-export const extractPublicId = (url: string, resourceType: 'image' | 'video' | 'raw' = 'image'): string | null => {
+export const extractPublicId = (url: string, resourceType: 'image' | 'video' | 'raw' | 'audio' = 'image'): string | null => {
   if (!url) return null;
   
   // For raw files, the extension is part of the public ID

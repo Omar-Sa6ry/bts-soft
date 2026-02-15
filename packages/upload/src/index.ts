@@ -22,6 +22,9 @@ export * from "./upload/commands/deleteImage.command";
 // Command for deleting uploaded videos
 export * from "./upload/commands/deleteVideo.command";
 
+// Command for deleting uploaded audio
+export * from "./upload/commands/deleteAudio.command";
+
 // Command for uploading new images
 export * from "./upload/commands/uploadImage.command";
 
@@ -34,6 +37,9 @@ export * from "./upload/commands/deleteFile.command";
 // Command for uploading new videos
 export * from "./upload/commands/uploadVideo.command";
 
+// Command for uploading new audio
+export * from "./upload/commands/uploadAudio.command";
+
 /* ============================== */
 /*             DTOS               */
 /* ============================== */
@@ -43,6 +49,9 @@ export * from "./upload/dtos/createImage.dto";
 
 // DTO for handling video upload requests
 export * from "./upload/dtos/createVideo.dto";
+
+// DTO for handling audio upload requests
+export * from "./upload/dtos/createAudio.dto";
 
 // DTO for handling file upload requests
 export * from "./upload/dtos/createFile.dto";

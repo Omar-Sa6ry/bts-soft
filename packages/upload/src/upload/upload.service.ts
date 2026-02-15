@@ -43,6 +43,9 @@ import { CreateFileDto } from "./dtos/createFile.dto";
 import Stream = require("stream");
 import { DeleteFileCommand } from "./commands/deleteFile.command";
 import { extractPublicId } from "./utils/cloudinary.utils";
+import { CreateAudioDto } from "./dtos/createAudio.dto";
+import { UploadAudioCommand } from "./commands/uploadAudio.command";
+import { DeleteAudioCommand } from "./commands/deleteAudio.command";
 
 // NEW: Define a unified file structure for service methods (Stream + filename)
 export interface UploadFile {
@@ -150,34 +153,39 @@ export class UploadService {
     }
   }
 
+
+
   /**
    * Validates file size and type based on the upload category.
    * @param filename The original filename
    * @param size The file size in bytes (if available from stream, otherwise estimated)
-   * @param type 'image' | 'video' | 'file'
+   * @param type 'image' | 'video' | 'file' | 'audio'
    */
-  private validateFile(filename: string, type: 'image' | 'video' | 'file') {
+  private validateFile(filename: string, type: 'image' | 'video' | 'file' | 'audio') {
     const ext = filename.split('.').pop()?.toLowerCase();
     
     // Limits
     const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
     const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+    const MAX_AUDIO_SIZE = 50 * 1024 * 1024; // 50MB
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
     const ALLOWED_IMAGES = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
     const ALLOWED_VIDEOS = ['mp4', 'webm', 'avi', 'mov'];
+    const ALLOWED_AUDIOS = ['mp3', 'wav', 'ogg', 'm4a'];
     const ALLOWED_FILES = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip'];
 
     if (type === 'image') {
       if (!ALLOWED_IMAGES.includes(ext || '')) {
         throw new HttpException(`Invalid image type. Allowed: ${ALLOWED_IMAGES.join(', ')}`, HttpStatus.BAD_REQUEST);
       }
-      // Note: Stream size validation is tricky without buffering. 
-      // We rely on Cloudinary or upstream limits for exact size, 
-      // but if we had the size here we would check it.
     } else if (type === 'video') {
        if (!ALLOWED_VIDEOS.includes(ext || '')) {
         throw new HttpException(`Invalid video type. Allowed: ${ALLOWED_VIDEOS.join(', ')}`, HttpStatus.BAD_REQUEST);
+      }
+    } else if (type === 'audio') {
+       if (!ALLOWED_AUDIOS.includes(ext || '')) {
+        throw new HttpException(`Invalid audio type. Allowed: ${ALLOWED_AUDIOS.join(', ')}`, HttpStatus.BAD_REQUEST);
       }
     } else if (type === 'file') {
        if (!ALLOWED_FILES.includes(ext || '')) {
@@ -238,6 +246,59 @@ export class UploadService {
     } catch (error) {
       this.notifyUploadError(error as Error);
       throw new HttpException("Video upload failed", HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  /**
+   * Core function to handle audio upload from a file stream.
+   * @param fileData Contains the readable stream and original filename.
+   * @param dirUpload The target folder/directory (default: 'audios').
+   * @returns The secure URL of the uploaded audio.
+   */
+  async uploadAudioCore(
+    fileData: UploadFile,
+    dirUpload: string = "audios"
+  ): Promise<UploadResult> {
+    const { stream, filename } = fileData;
+
+    this.validateFile(filename, 'audio');
+
+    const options = {
+      folder: dirUpload,
+      public_id: `${Date.now()}-${filename.split(".")[0]}`,
+      resource_type: "video", // Audio is treated as video in Cloudinary
+      chunk_size: 6000000,
+      resource_type_param: "video", // Explicitly set param if strategy checks it
+    };
+
+    const command = new UploadAudioCommand(
+      this.uploadStrategy,
+      stream,
+      options
+    );
+
+    try {
+      const result = await command.execute();
+
+      if (!result?.secure_url) {
+        throw new HttpException(
+          "Cloudinary response invalid",
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      this.notifyUploadSuccess(result);
+
+      return {
+        url: result.secure_url,
+        size: result.bytes ?? 0,
+        filename: result.original_filename ?? filename,
+        type: "audio",
+        duration: result.duration ?? 0,
+      };
+    } catch (error) {
+      this.notifyUploadError(error as Error);
+      throw new HttpException("Audio upload failed", HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -323,6 +384,28 @@ export class UploadService {
   }
 
   /**
+   * Public interface for GraphQL audio uploads.
+   */
+  async uploadAudio(
+    createAudioInput: CreateAudioDto,
+    dirUpload: string = "audios"
+  ): Promise<UploadResult> {
+    if (!createAudioInput.audio) {
+      throw new HttpException("Audio file is required", HttpStatus.BAD_REQUEST);
+    }
+
+    const uploadedFile = await createAudioInput.audio;
+    if (!uploadedFile || !uploadedFile.createReadStream) {
+      throw new HttpException("Invalid audio file", HttpStatus.BAD_REQUEST);
+    }
+
+    const { createReadStream, filename } = uploadedFile;
+    const stream = createReadStream();
+
+    return this.uploadAudioCore({ stream, filename }, dirUpload);
+  }
+
+  /**
    * Deletes an image file from the configured cloud service. (Unchanged)
    */
   async deleteImage(imageUrl: string): Promise<void> {
@@ -381,6 +464,38 @@ export class UploadService {
     } catch (error) {
       this.notifyDeleteError(error as Error);
       throw new HttpException("Video delete failed", HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  /**
+   * Deletes an audio file from the configured cloud service.
+   */
+  async deleteAudio(audioUrl: string): Promise<void> {
+    const publicId = extractPublicId(audioUrl, 'audio'); // Audio handled as video/audio
+    if (!publicId) {
+      throw new HttpException("Invalid audio URL", HttpStatus.BAD_REQUEST);
+    }
+
+    const command = new DeleteAudioCommand(
+      this.deleteStrategy,
+      publicId,
+      "video" // Cloudinary resource type for audio is video
+    );
+
+    try {
+      const result = await command.execute();
+
+      if (result.result !== "ok" && result.result !== "not found") {
+        throw new HttpException(
+          `Failed to delete audio. Reason: ${result.result}`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      this.notifyDeleteSuccess(result);
+    } catch (error) {
+      this.notifyDeleteError(error as Error);
+      throw new HttpException("Audio delete failed", HttpStatus.BAD_REQUEST);
     }
   }
 
