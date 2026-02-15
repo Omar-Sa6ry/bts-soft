@@ -41,6 +41,8 @@ import { UploadResult } from "./dtos/uploadResult.type";
 import { UploadFileCommand } from "./commands/uploadFile.command";
 import { CreateFileDto } from "./dtos/createFile.dto";
 import Stream = require("stream");
+import { DeleteFileCommand } from "./commands/deleteFile.command";
+import { extractPublicId } from "./utils/cloudinary.utils";
 
 // NEW: Define a unified file structure for service methods (Stream + filename)
 export interface UploadFile {
@@ -107,10 +109,14 @@ export class UploadService {
   ): Promise<UploadResult> {
     const { stream, filename } = fileData;
 
+    this.validateFile(filename, 'image');
+
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename}`,
+      public_id: `${Date.now()}-${filename.split(".")[0]}`,
       resource_type: "auto",
+      fetch_format: "auto",
+      quality: "auto",
     };
 
     const command = new UploadImageCommand(
@@ -145,6 +151,42 @@ export class UploadService {
   }
 
   /**
+   * Validates file size and type based on the upload category.
+   * @param filename The original filename
+   * @param size The file size in bytes (if available from stream, otherwise estimated)
+   * @param type 'image' | 'video' | 'file'
+   */
+  private validateFile(filename: string, type: 'image' | 'video' | 'file') {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    
+    // Limits
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+    const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+    const ALLOWED_IMAGES = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    const ALLOWED_VIDEOS = ['mp4', 'webm', 'avi', 'mov'];
+    const ALLOWED_FILES = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip'];
+
+    if (type === 'image') {
+      if (!ALLOWED_IMAGES.includes(ext || '')) {
+        throw new HttpException(`Invalid image type. Allowed: ${ALLOWED_IMAGES.join(', ')}`, HttpStatus.BAD_REQUEST);
+      }
+      // Note: Stream size validation is tricky without buffering. 
+      // We rely on Cloudinary or upstream limits for exact size, 
+      // but if we had the size here we would check it.
+    } else if (type === 'video') {
+       if (!ALLOWED_VIDEOS.includes(ext || '')) {
+        throw new HttpException(`Invalid video type. Allowed: ${ALLOWED_VIDEOS.join(', ')}`, HttpStatus.BAD_REQUEST);
+      }
+    } else if (type === 'file') {
+       if (!ALLOWED_FILES.includes(ext || '')) {
+        throw new HttpException(`Invalid file type. Allowed: ${ALLOWED_FILES.join(', ')}`, HttpStatus.BAD_REQUEST);
+      }
+    }
+  }
+
+  /**
    * Core function to handle video upload from a file stream.
    * This is used by both REST and GraphQL handlers.
    * @param fileData Contains the readable stream and original filename.
@@ -157,11 +199,15 @@ export class UploadService {
   ): Promise<UploadResult> {
     const { stream, filename } = fileData;
 
+    this.validateFile(filename, 'video');
+
     const options = {
       folder: dirUpload,
       public_id: `${Date.now()}-${filename.split(".")[0]}`,
       resource_type: "video",
       chunk_size: 6000000,
+      fetch_format: "auto",
+      quality: "auto",
     };
 
     const command = new UploadVideoCommand(
@@ -200,6 +246,8 @@ export class UploadService {
     dirUpload: string = "files"
   ): Promise<UploadResult> {
     const { stream, filename } = fileData;
+
+    this.validateFile(filename, 'file');
 
     const options = {
       folder: dirUpload,
@@ -279,7 +327,7 @@ export class UploadService {
    */
   async deleteImage(imageUrl: string): Promise<void> {
     // ... (Original deleteImage logic remains here, as it doesn't depend on file upload method)
-    const publicId = imageUrl?.split("/").pop()?.split(".")[0];
+    const publicId = extractPublicId(imageUrl, 'image');
     if (!publicId) {
       throw new HttpException("Invalid image URL", HttpStatus.BAD_REQUEST);
     }
@@ -308,7 +356,7 @@ export class UploadService {
    */
   async deleteVideo(videoUrl: string): Promise<void> {
     // ... (Original deleteVideo logic remains here, as it doesn't depend on file upload method)
-    const publicId = videoUrl?.split("/").pop()?.split(".")[0];
+    const publicId = extractPublicId(videoUrl, 'video');
     if (!publicId) {
       throw new HttpException("Invalid video URL", HttpStatus.BAD_REQUEST);
     }
@@ -361,17 +409,16 @@ export class UploadService {
     }
 
     // Extract public ID from URL
-    const publicId = fileUrl.split("/").pop()?.split(".")[0];
+    const publicId = extractPublicId(fileUrl, 'raw');
 
     if (!publicId) {
       throw new HttpException("Invalid file URL", HttpStatus.BAD_REQUEST);
     }
 
+    const command = new DeleteFileCommand(this.deleteStrategy, publicId);
+
     try {
-      // Cloudinary delete for RAW files
-      const result = await this.cloudinary.uploader.destroy(publicId, {
-        resource_type: "raw",
-      });
+      const result = await command.execute();
 
       if (result.result !== "ok" && result.result !== "not found") {
         throw new HttpException(

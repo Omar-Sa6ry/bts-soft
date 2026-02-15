@@ -28,6 +28,9 @@ export * from "./upload/commands/uploadImage.command";
 // Command for uploading new files
 export * from "./upload/commands/uploadFile.command";
 
+// Command for deleting uploaded files
+export * from "./upload/commands/deleteFile.command";
+
 // Command for uploading new videos
 export * from "./upload/commands/uploadVideo.command";
 
