@@ -1,6 +1,7 @@
-import axios from "axios";
 import { INotificationChannel } from "../telegram/channels/INotificationChannel.interface";
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
+import { HttpService } from "@nestjs/axios";
+import { firstValueFrom } from "rxjs";
 
 /**
  * DiscordChannel class implements the INotificationChannel interface
@@ -10,16 +11,15 @@ export class DiscordChannel implements INotificationChannel {
   // The name of this notification channel
   public name: string = "discord";
 
-  // The Discord Webhook URL used to post messages
-  private webhookUrl: string;
-
   /**
    * Constructor initializes the Discord webhook URL.
    * @param webhookUrl - The Discord Webhook URL where messages will be sent
+   * @param httpService - NestJS HttpService for making requests
    */
-  constructor(webhookUrl: string) {
-    this.webhookUrl = webhookUrl;
-  }
+  constructor(
+    private webhookUrl: string,
+    private httpService: HttpService
+  ) {}
 
   /**
    * Sends a message to a Discord channel via the configured webhook.
@@ -41,8 +41,8 @@ export class DiscordChannel implements INotificationChannel {
     console.log(`Sending Discord notification to Webhook.`);
 
     try {
-      // Send the message to Discord using an HTTP POST request
-      await axios.post(this.webhookUrl, discordPayload);
+      // Send the message to Discord using HttpService
+      await firstValueFrom(this.httpService.post(this.webhookUrl, discordPayload));
 
       // Log a success message if the request succeeds
       console.log(`Discord message sent successfully.`);

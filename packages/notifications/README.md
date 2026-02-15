@@ -1,309 +1,356 @@
 # @bts-soft/notifications
 
-A comprehensive, multi-channel notification system for Node.js applications that supports multiple messaging platforms through a unified interface.
+A professional, enterprise-grade notification library designed for NestJS applications. It provides a unified API to send notifications across multiple channels such as Email, SMS, WhatsApp, Telegram, Discord, Microsoft Teams, Facebook Messenger, and Firebase Cloud Messaging (FCM).
 
----
-## Overview
+This package is built on top of `BullMQ` for reliable, asynchronous job processing.
 
-The `@bts-soft/notifications` package provides a flexible and extensible notification system that allows sending messages through various channels including Email, SMS, WhatsApp, Telegram, Discord, Microsoft Teams, Facebook Messenger, and Firebase Cloud Messaging (FCM). The system uses a queue-based architecture with BullMQ for reliable message delivery.
+## Table of Contents
 
----
-## Features
-
-- **Multi-channel Support**: Send notifications through 8 different channels
-- **Queue-based Processing**: Built on BullMQ for reliable message delivery with retry mechanisms
-- **Unified Interface**: Consistent API across all notification channels
-- **Extensible Architecture**: Easy to add new notification channels
-- **TypeScript Support**: Fully typed for better development experience
-- **Production Ready**: Includes error handling, logging, and configuration validation
-
----
-## Supported Channels
-
-| Channel                | Provider           | Configuration                                    |
-| ---------------------- | ------------------ | ------------------------------------------------ |
-| **Email**              | Nodemailer (SMTP)  | Service-based (Gmail/Outlook) or custom SMTP     |
-| **SMS**                | Twilio             | Twilio Account SID, Auth Token, and Phone Number |
-| **WhatsApp**           | Twilio             | Twilio WhatsApp-enabled number                   |
-| **Telegram**           | Telegram Bot API   | Bot Token                                        |
-| **Discord**            | Discord Webhooks   | Webhook URL                                      |
-| **Microsoft Teams**    | Teams Webhooks     | Incoming Webhook URL                             |
-| **Facebook Messenger** | Facebook Graph API | Page Access Token                                |
-| **Firebase FCM**       | Firebase Admin SDK | Service Account JSON file                        |
+1.  [Installation](#installation)
+2.  [Configuration](#configuration)
+3.  [NestJS Integration](#nestjs-integration)
+4.  [Express / Non-NestJS Integration](#express--non-nestjs-integration)
+5.  [Core API](#core-api)
+6.  [Channel Details & Examples](#channel-details--examples)
+    *   [Email](#1-email)
+    *   [WhatsApp](#2-whatsapp)
+    *   [SMS](#3-sms)
+    *   [Telegram](#4-telegram)
+    *   [Discord](#5-discord)
+    *   [Microsoft Teams](#6-microsoft-teams)
+    *   [Facebook Messenger](#7-facebook-messenger)
+    *   [Firebase (FCM)](#8-firebase-push-notifications)
 
 ---
 
 ## Installation
 
+Install the package using npm:
+
 ```bash
 npm install @bts-soft/notifications
 ```
 
+## Configuration
+
+The package relies on environment variables. You must create a `.env` file in your project root or ensure these variables are available in your environment.
+
+**General / Queue Configuration**
+*   `REDIS_HOST`: The hostname of your Redis server (e.g., `localhost`).
+*   `REDIS_PORT`: The port of your Redis server (e.g., `6379`).
+
+**Email (Nodemailer)**
+*   `EMAIL_USER`: SMTP username or email address.
+*   `EMAIL_PASS`: SMTP password or app-specific password.
+*   `EMAIL_HOST`: SMTP server host (e.g., `smtp.gmail.com`).
+*   `EMAIL_PORT`: SMTP port (e.g., `587` or `465`).
+*   `EMAIL_SENDER`: Default sender alias (e.g., `"My App <no-reply@myapp.com>"`).
+*   `EMAIL_SERVICE`: (Optional) Use a predefined service name like `gmail`.
+
+**Twilio (WhatsApp & SMS)**
+*   `TWILIO_ACCOUNT_SID`: Your Twilio Account SID.
+*   `TWILIO_AUTH_TOKEN`: Your Twilio Auth Token.
+*   `TWILIO_SMS_NUMBER`: Your Twilio SMS-capable number.
+*   `TWILIO_WHATSAPP_NUMBER`: Your Twilio WhatsApp number (e.g., `+14155238886`).
+
+**Telegram**
+*   `TELEGRAM_BOT_TOKEN`: The API Token for your Telegram Bot (from @BotFather).
+*   `ENABLE_TELEGRAM_BOT`: Set to `true` to enable the bot listener specific logic (if applicable).
+
+**Discord**
+*   `DISCORD_WEBHOOK_URL`: The Webhook URL provided by Discord Channel Integrations.
+
+**Microsoft Teams**
+*   `TEAMS_WEBHOOK_URL`: The Incoming Webhook URL for your Teams channel.
+
+**Facebook Messenger**
+*   `FB_PAGE_ACCESS_TOKEN`: Page Access Token for the Facebook Graph API.
+*   `FB_GRAPH_API_VERSION`: (Optional) version of the API, defaults to `v18.0`.
+
+**Firebase Cloud Messaging (FCM)**
+*   `FIREBASE_SERVICE_ACCOUNT_PATH`: Absolute path to your `service-account.json` file.
+*   `VAPID_PRIVATE_KEY`: (Optional) VAPID key for web push if needed.
+
 ---
 
-## Dependencies
+## NestJS Integration
 
-The package requires the following peer dependencies:
+This is the primary way to use the library.
 
-```bash
-npm install bullmq @nestjs/bullmq nodemailer twilio firebase-admin axios node-telegram-bot-api
-```
+### 1. Register the Module
 
----
-## Quick Start
-
-### 1. Import the Module
+Import `NotificationModule` in your application's root module (usually `AppModule`).
 
 ```typescript
 import { Module } from '@nestjs/common';
 import { NotificationModule } from '@bts-soft/notifications';
 
 @Module({
-  imports: [NotificationModule],
+  imports: [
+    NotificationModule,
+    // ... your other modules
+  ],
 })
 export class AppModule {}
 ```
 
----
-### 2. Configure Environment Variables
+### 2. Inject and Use the Service
 
-```env
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Email Configuration (Nodemailer)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-app-password
-EMAIL_SENDER=no-reply@yourdomain.com
-
-# SMS/WhatsApp Configuration (Twilio)
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_SMS_NUMBER=+1234567890
-TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
-
-# Telegram Configuration
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-ENABLE_TELEGRAM_BOT=true
-
-# Discord Configuration
-DISCORD_WEBHOOK_URL=your_discord_webhook_url
-
-# Microsoft Teams Configuration
-TEAMS_WEBHOOK_URL=your_teams_webhook_url
-
-# Facebook Messenger Configuration
-FB_PAGE_ACCESS_TOKEN=your_page_access_token
-
-# Firebase Configuration
-FIREBASE_SERVICE_ACCOUNT_PATH=./path/to/serviceAccountKey.json
-```
-
----
-### 3. Use the Notification Service
+Inject `NotificationService` into any provider or controller.
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { NotificationService } from '@bts-soft/notifications';
+import { ChannelType } from '@bts-soft/notifications/dist/core/models/ChannelType.const';
 
 @Injectable()
 export class UserService {
-  constructor(private notificationService: NotificationService) {}
+  constructor(private readonly notificationService: NotificationService) {}
 
-  async sendWelcomeNotification(userEmail: string, userName: string) {
-    // Send email
+  async notifyUser(email: string, phone: string) {
+    // 1. Send an Email
     await this.notificationService.send(ChannelType.EMAIL, {
-      recipientId: userEmail,
-      subject: 'Welcome to Our Platform',
-      body: `Hello ${userName}, welcome to our platform!`,
+      recipientId: email,
+      title: 'Welcome!',
+      body: '<h1>Welcome to our platform</h1>',
     });
 
-    // Send SMS
-    await this.notificationService.send(ChannelType.SMS, {
-      recipientId: '+1234567890',
-      body: `Welcome ${userName}! Your account has been created.`,
+    // 2. Send a WhatsApp message
+    await this.notificationService.send(ChannelType.WHATSAPP, {
+      recipientId: phone,
+      body: 'Your account has been created successfully.',
     });
   }
 }
 ```
 
 ---
-## Core Components
 
-### NotificationService
+## Express / Non-NestJS Integration
 
-The main service for queuing notification jobs:
+Since this package is deeply integrated with NestJS (Dependency Injection, Modules), using it directly in a plain Express app requires a different approach. The recommended pattern is **Message Queuing**.
 
+### The Architecture
+1.  **Worker Service (NestJS)**: Run this package inside a small NestJS application workers. This worker listens to the Redis queue named `send-notification`.
+2.  **Producer App (Express)**: Your Express app connects to the SAME Redis instance and pushes notification jobs to that queue.
+
+### Step-by-Step Implementation for Express
+
+1.  Install `bullmq` in your Express app:
+    ```bash
+    npm install bullmq
+    ```
+
+2.  Create a Producer helper in your code:
+
+    ```javascript
+    const { Queue } = require('bullmq');
+
+    // Connect to the exact same Redis as your NestJS worker
+    const notificationQueue = new Queue('send-notification', {
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: process.env.REDIS_PORT || 6379,
+      },
+    });
+
+    /**
+     * Helper function to send notifications
+     * @param {string} channel - e.g. 'email', 'whatsapp', 'sms'
+     * @param {object} message - The message payload
+     */
+    async function sendNotification(channel, message) {
+      await notificationQueue.add('send-notification-job', {
+        channel,
+        message,
+      });
+      console.log(`Notification queued for ${channel}`);
+    }
+
+    // Usage Example
+    async function run() {
+      await sendNotification('email', {
+        recipientId: 'client@example.com',
+        title: 'Hello from Express',
+        body: 'This email was triggered by an Express app via Redis!',
+      });
+    }
+
+    run();
+    ```
+
+This approach decouples your Express API from the heavy lifting of sending emails or contacting third-party APIs.
+
+---
+
+## Core API
+
+### `send(channel: ChannelType, message: NotificationMessage)`
+
+**Parameters:**
+
+1.  **`channel`**: An enum value from `ChannelType` (or string equivalent).
+    *   `'email'`
+    *   `'whatsapp'`
+    *   `'sms'`
+    *   `'telegram'`
+    *   `'discord'`
+    *   `'teams'`
+    *   `'facebook_messenger'`
+    *   `'firebase_fcm'`
+
+2.  **`message`**: An object adhering to `NotificationMessage` interface.
+
+    ```typescript
+    interface NotificationMessage {
+      recipientId?: string;  // The target (email, phone, chatID, token)
+      body: string;          // Main content
+      title?: string;        // Subject or Title (Email/FCM)
+      channelOptions?: any;  // Extra platform-specific objects
+    }
+    ```
+
+---
+
+## Channel Details & Examples
+
+### 1. Email
+Uses **Nodemailer**. Supports HTML content and attachments.
+
+*   `recipientId`: The receiver's email address.
+*   `title`: The email subject line.
+*   `body`: The email content (can be HTML).
+*   `channelOptions`: Can contain additional Nodemailer options (e.g., attachments, cc, bcc).
+
+**Example:**
 ```typescript
-export class NotificationService {
-  async send(channel: ChannelType, message: NotificationMessage): Promise<void>
-}
-```
-
-### NotificationProcessor
-
-BullMQ worker that processes queued notifications and routes them to the appropriate channels.
-
-### NotificationChannelFactory
-
-Factory class that creates channel instances based on configuration.
-
-## Channel-Specific Usage
-
-### Email Channel
-
-```typescript
-await notificationService.send(ChannelType.EMAIL, {
-  recipientId: 'user@example.com',
-  subject: 'Test Email',
-  body: 'This is a test email message.',
+this.notificationService.send(ChannelType.EMAIL, {
+  recipientId: 'customer@example.com',
+  title: 'Invoice #1023',
+  body: '<p>Please find your invoice attached.</p>',
   channelOptions: {
-    html: '<h1>Test Email</h1><p>This is a test email message.</p>'
+    cc: 'manager@example.com',
+    attachments: [
+      { filename: 'invoice.pdf', path: '/path/to/invoice.pdf' }
+    ]
   }
 });
 ```
 
-### SMS Channel (Twilio)
+### 2. WhatsApp
+Uses **Twilio**.
 
+*   `recipientId`: The receiver's phone number. The library handles smart normalization (e.g., converts `010...` to `+2010...` for Egypt).
+*   `body`: The text message.
+
+**Example:**
 ```typescript
-await notificationService.send(ChannelType.SMS, {
+this.notificationService.send(ChannelType.WHATSAPP, {
   recipientId: '+201234567890',
-  body: 'Your verification code is 123456',
+  body: 'Your OTP is 9988',
 });
 ```
 
-### WhatsApp Channel (Twilio)
+### 3. SMS
+Uses **Twilio**.
 
+*   `recipientId`: Phone number (must be in specific format if not normalized).
+*   `body`: Text content.
+
+**Example:**
 ```typescript
-await notificationService.send(ChannelType.WHATSAPP, {
-  recipientId: '+201234567890',
-  body: 'Hello! This is a WhatsApp test message.',
+this.notificationService.send(ChannelType.SMS, {
+  recipientId: '+15551234567',
+  body: 'System Alert: Server Down',
 });
 ```
 
-### Telegram Channel
+### 4. Telegram
+Uses **node-telegram-bot-api**.
 
+*   `recipientId`: The Chat ID (User ID or Group ID).
+*   `body`: The message text. Supports Markdown by default.
+
+**Example:**
 ```typescript
-await notificationService.send(ChannelType.TELEGRAM, {
-  recipientId: 'TELEGRAM_CHAT_ID',
-  body: 'Hello from Telegram bot!',
+this.notificationService.send(ChannelType.TELEGRAM, {
+  recipientId: '123456789', // Chat ID
+  body: '*Bold* Notification received!',
 });
 ```
 
-### Discord Channel
+### 5. Discord
+Uses **Webhooks**.
 
+*   `recipientId`: (Ignored, uses Configured Webhook URL).
+*   `body`: The message content.
+*   `channelOptions`: Additional Discord payload fields (embeds, username override, avatar).
+
+**Example:**
 ```typescript
-await notificationService.send(ChannelType.DISCORD, {
-  body: 'System Alert: Deployment completed successfully!',
+this.notificationService.send(ChannelType.DISCORD, {
+  body: 'Build Successful!',
   channelOptions: {
-    username: 'Notification Bot',
-    avatar_url: 'https://example.com/avatar.png',
-  },
+    username: 'CI Bot',
+    embeds: [{ title: 'Status', description: 'All tests passed.', color: 3066993 }]
+  }
 });
 ```
 
-### Microsoft Teams Channel
+### 6. Microsoft Teams
+Uses **Incoming Webhooks**.
 
+*   `recipientId`: (Ignored, uses Configured Webhook URL).
+*   `body`: The message text.
+*   `channelOptions`: Can include Adaptive Card JSON or other payload fields.
+
+**Example:**
 ```typescript
-await notificationService.send(ChannelType.TEAMS, {
-  body: 'System Alert: Server CPU usage exceeded 90%',
+this.notificationService.send(ChannelType.TEAMS, {
+  body: 'New Support Ticket Created',
 });
 ```
 
-### Firebase FCM Channel
+### 7. Facebook Messenger
+Uses **Facebook Graph API**.
 
+*   `recipientId`: The PSID (Page Scoped User ID) of the user.
+*   `body`: The text to send.
+
+**Example:**
 ```typescript
-await notificationService.send(ChannelType.FIREBASE_FCM, {
-  recipientId: 'DEVICE_FCM_TOKEN',
-  title: 'Welcome',
-  body: 'Thank you for joining our app!',
+this.notificationService.send(ChannelType.MESSENGER, {
+  recipientId: '123456789012345',
+  body: 'Hello from our Page!',
+});
+```
+
+### 8. Firebase Push Notifications
+Uses **firebase-admin**.
+
+*   `recipientId`: The Device Registration Token (FCM Token).
+*   `title`: Notification title.
+*   `body`: Notification body.
+*   `channelOptions`: Additional data payload or configuration.
+
+**Example:**
+```typescript
+this.notificationService.send(ChannelType.FIREBASE_FCM, {
+  recipientId: 'device_token_abc123...',
+  title: 'Discount Alert',
+  body: '50% off on all items!',
   channelOptions: {
-    data: { userId: '12345' },
-  },
+    data: { promoCode: 'SUMMER50' },
+    android: { priority: 'high' }
+  }
 });
-```
-
-## Message Structure
-
-All channels use the unified `NotificationMessage` interface:
-
-```typescript
-interface NotificationMessage {
-  recipientId: string;      // Channel-specific recipient identifier
-  body: string;            // Main message content
-  title?: string;          // Optional title (FCM, etc.)
-  subject?: string;        // Email subject
-  channelOptions?: any;    // Channel-specific options
-}
 ```
 
 ---
+
 ## Error Handling
 
-The system includes comprehensive error handling:
-
-- Failed jobs are automatically retried with exponential backoff
-- Detailed logging for debugging and monitoring
-- Configuration validation at startup
-- Graceful error propagation
-
----
-## Queue Configuration
-
-Notifications are processed through a BullMQ queue with the following settings:
-
-- **Queue Name**: `send-notification`
-- **Retry Attempts**: 3
-- **Backoff Strategy**: Exponential with 5-second delay
-- **Redis**: Required for queue persistence
-
----
-## Advanced Configuration
-
-### Custom Channel Configuration
-
-You can provide custom configuration for each channel through the factory:
-
-```typescript
-const customApiKeys = {
-  email: {
-    service: 'gmail',
-    user: 'custom@gmail.com',
-    pass: 'custom-password',
-    sender: 'no-reply@custom.com'
-  },
-  // ... other channel configurations
-};
-```
-
-### Telegram Webhook Setup
-
-For Telegram integration, set up the webhook:
-
-```bash
-curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<YOUR_PUBLIC_URL>/telegram/webhook"
-```
-
----
-## License
-
-This package is part of the `@bts-soft` ecosystem. All rights reserved © BTS Soft.
-
----
-## Contact
-
-**Author:** Omar Sabry  
-
-**Email:** [Email](mailto:omar.sabry.dev@gmail.com)  
-
-**LinkedIn:** [Omar Sabry | LinkedIn](https://www.linkedin.com/in/omarsa6ry/)
-
-Portfolio: [Portfolio](https://omarsabry.netlify.app/)
-
----
-## Repository
-
-**GitHub:** [GitHub Repo](https://github.com/Omar-Sa6ry/bts-soft/tree/main/packages/notifications)
+If a message fails to send:
+1.  The error is logged with details (Channel name, error message).
+2.  Because `BullMQ` is used, the job will fail. You can configure `BullMQ` retries in `NotificationModule` if you want automatic retries for transient errors (like network timeouts).
+3.  A custom `NotificationError` is thrown internally for consistent error tracing.

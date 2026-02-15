@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/notifications",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "author": "Omar Sabry",
   "description": "All bts-soft packages",
   "main": "dist/index.js",
@@ -10,10 +10,12 @@
     "packages/*"
   ],
   "dependencies": {
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/bullmq": "^11.0.4",
+    "@nestjs/common": "^10.4.20",
     "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^10.0.0",
     "@nestjs/graphql": "^13.2.0",
-    "@types/node-telegram-bot-api": "^0.64.11",
     "axios": "^1.12.2",
     "bullmq": "^5.61.0",
     "class-transformer": "^0.5.1",
@@ -21,12 +23,8 @@
     "nestjs-i18n": "^10.5.1",
     "node-telegram-bot-api": "^0.66.0",
     "nodemailer": "^7.0.9",
-    "ts-node": "^10.9.2",
     "twilio": "^5.10.3",
-    "typeorm-transactional": "^0.5.0",
-    "typescript": "^5.9.3",
-    "@nestjs/common": "^10.4.20",
-    "@nestjs/core": "^10.0.0"
+    "typeorm-transactional": "^0.5.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
@@ -36,6 +34,9 @@
     "@types/node": "^24.7.1",
     "@types/nodemailer": "^7.0.2",
     "@types/source-map-support": "^0.5.10",
-    "@types/twilio": "^3.19.3"
+    "@types/twilio": "^3.19.3",
+    "@types/node-telegram-bot-api": "^0.64.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

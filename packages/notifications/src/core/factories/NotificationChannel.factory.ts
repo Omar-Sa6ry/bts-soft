@@ -1,3 +1,4 @@
+import { HttpService } from "@nestjs/axios";
 import { DiscordChannel } from "../../discord/discord.channel";
 import { FirebaseChannel } from "../../firebase/firebase.channel";
 import { EmailChannel } from "../../mail/mail.channel";
@@ -8,115 +9,99 @@ import { INotificationChannel } from "../../telegram/channels/INotificationChann
 import { TelegramChannel } from "../../telegram/channels/Telegram.channel";
 import { WhatsAppChannel } from "../../whatsapp/channel/whatsapp.channel";
 import { ChannelType } from "../models/ChannelType.const";
-
-export interface ChannelApiKeys {
-  discord: string | null;
-  telegram: string | null;
-  teams: string | null;
-  messenger: { pageAccessToken: string } | null;
-  sms: { accountSid: string; authToken: string; number: string } | null;
-  whatsapp: { accountSid: string; authToken: string; number: string } | null;
-  firebase: {
-    serviceAccountPath: string;
-  } | null;
-  email: {
-    host?: string;
-    port?: number;
-    service?: string;
-    user: string;
-    pass: string;
-    sender: string;
-  } | null;
-}
+import { NotificationConfigService } from "../config/notification.config";
 
 export class NotificationChannelFactory {
-  private apiKeys: ChannelApiKeys;
-
-  constructor(apiKeys: ChannelApiKeys) {
-    this.apiKeys = apiKeys;
-  }
+  constructor(
+    private configService: NotificationConfigService,
+    private httpService: HttpService
+  ) {}
 
   public getChannel(channelType: ChannelType): INotificationChannel {
     switch (channelType) {
       case ChannelType.EMAIL:
-        const emailConfig = this.apiKeys.email;
-        if (!emailConfig || !emailConfig.user || !emailConfig.pass) {
+        const emailConfig = {
+            host: this.configService.emailHost,
+            port: this.configService.emailPort,
+            service: this.configService.emailService,
+            user: this.configService.emailUser,
+            pass: this.configService.emailPass,
+            sender: this.configService.emailSender
+        };
+        
+        if (!emailConfig.user || !emailConfig.pass) {
           throw new Error(
             "Email (Nodemailer) user/pass configuration is missing."
-          );
-        }
-        if (!emailConfig.service && (!emailConfig.host || !emailConfig.port)) {
-          throw new Error(
-            "Email (Nodemailer) requires either 'service' or 'host' and 'port'."
           );
         }
         return new EmailChannel(emailConfig);
 
       case ChannelType.FIREBASE_FCM:
-        const firebaseConfig = this.apiKeys.firebase;
-        if (!firebaseConfig || !firebaseConfig.serviceAccountPath) {
+        const firebasePath = this.configService.firebaseServiceAccountPath;
+        if (!firebasePath) {
           throw new Error(
             "Firebase serviceAccountPath is missing in configuration."
           );
         }
-        return new FirebaseChannel(firebaseConfig);
+        return new FirebaseChannel({ serviceAccountPath: firebasePath });
 
       case ChannelType.WHATSAPP:
-        if (!this.apiKeys.whatsapp || !this.apiKeys.whatsapp.accountSid)
+        const waSid = this.configService.twilioAccountSid;
+        const waToken = this.configService.twilioAuthToken;
+        const waNum = this.configService.twilioWhatsappNumber;
+
+        if (!waSid || !waToken)
           throw new Error(
             "WhatsApp (Twilio) API keys are missing in configuration."
           );
 
-        return new WhatsAppChannel(
-          this.apiKeys.whatsapp.accountSid,
-          this.apiKeys.whatsapp.authToken,
-          this.apiKeys.whatsapp.number
-        );
+        return new WhatsAppChannel(waSid, waToken, waNum);
 
       case ChannelType.TELEGRAM:
-        if (!this.apiKeys.telegram)
+        const tgToken = this.configService.telegramToken;
+        if (!tgToken)
           throw new Error("Telegram API Key is missing in configuration.");
 
-        return new TelegramChannel(this.apiKeys.telegram);
+        return new TelegramChannel(tgToken);
 
       case ChannelType.DISCORD:
-        if (!this.apiKeys.discord) {
+        const discordUrl = this.configService.discordWebhookUrl;
+        if (!discordUrl) {
           throw new Error("Discord Webhook URL is missing in configuration.");
         }
-        return new DiscordChannel(this.apiKeys.discord);
+        return new DiscordChannel(discordUrl, this.httpService);
 
       case ChannelType.SMS:
-        if (!this.apiKeys.sms || !this.apiKeys.sms.accountSid) {
+         const smsSid = this.configService.twilioAccountSid;
+         const smsToken = this.configService.twilioAuthToken;
+         const smsNum = this.configService.twilioSmsNumber;
+
+        if (!smsSid || !smsToken) {
           throw new Error(
             "SMS (Twilio) API keys are missing in configuration."
           );
         }
-        return new SmsChannel(
-          this.apiKeys.sms.accountSid,
-          this.apiKeys.sms.authToken,
-          this.apiKeys.sms.number
-        );
+        return new SmsChannel(smsSid, smsToken, smsNum);
 
       case ChannelType.TEAMS:
-        if (!this.apiKeys.teams) {
+        const teamsUrl = this.configService.teamsWebhookUrl;
+        if (!teamsUrl) {
           throw new Error(
             "Microsoft Teams Webhook URL is missing in configuration."
           );
         }
-        return new TeamsChannel(this.apiKeys.teams);
+        return new TeamsChannel(teamsUrl, this.httpService);
 
       case ChannelType.MESSENGER:
-        if (
-          !this.apiKeys.messenger ||
-          !this.apiKeys.messenger.pageAccessToken
-        ) {
+        const pageToken = this.configService.facebookPageAccessToken;
+        if (!pageToken) {
           throw new Error(
             "Facebook Page Access Token is missing in configuration."
           );
         }
-        return new FacebookMessengerChannel(
-          this.apiKeys.messenger.pageAccessToken
-        );
+        // Also pass the version from config if needed, or let channel handle it
+        // The channel constructor needs updating too
+        return new FacebookMessengerChannel(pageToken, this.httpService, this.configService);
 
       default:
         throw new Error(`Unsupported channel type: ${channelType}`);

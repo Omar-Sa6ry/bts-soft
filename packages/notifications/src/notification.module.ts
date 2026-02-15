@@ -5,9 +5,14 @@ import {
 import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
 import { NotificationProcessor } from "./notification.processor";
+import { HttpModule } from "@nestjs/axios";
+import { ConfigModule } from "@nestjs/config";
+import { NotificationConfigService } from "./core/config/notification.config";
 
 @Module({
   imports: [
+    HttpModule,
+    ConfigModule,
     BullModule.forRootAsync({
       useFactory: () => ({
         connection: {
@@ -21,7 +26,11 @@ import { NotificationProcessor } from "./notification.processor";
       name: NOTIFICATION_QUEUE_NAME,
     }),
   ],
-  providers: [NotificationService, NotificationProcessor],
+  providers: [
+    NotificationService,
+    NotificationProcessor,
+    NotificationConfigService,
+  ],
   exports: [NotificationService],
 })
 export class NotificationModule {}

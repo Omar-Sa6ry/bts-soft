@@ -1,6 +1,7 @@
-import axios from "axios";
 import { INotificationChannel } from "../telegram/channels/INotificationChannel.interface";
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
+import { HttpService } from "@nestjs/axios";
+import { firstValueFrom } from "rxjs";
 
 /**
  * TeamsChannel class implements the INotificationChannel interface
@@ -10,16 +11,15 @@ export class TeamsChannel implements INotificationChannel {
   // The name of this notification channel
   public name: string = "teams";
 
-  // The Microsoft Teams Webhook URL used to post messages
-  private webhookUrl: string;
-
   /**
    * Constructor initializes the Microsoft Teams webhook URL.
    * @param webhookUrl - The Microsoft Teams Webhook URL where messages will be sent
+   * @param httpService - NestJS HttpService for making requests
    */
-  constructor(webhookUrl: string) {
-    this.webhookUrl = webhookUrl;
-  }
+  constructor(
+    private webhookUrl: string,
+    private httpService: HttpService
+  ) {}
 
   /**
    * Sends a message to a Microsoft Teams channel via the configured webhook.
@@ -43,8 +43,8 @@ export class TeamsChannel implements INotificationChannel {
     console.log(`Sending Teams notification to Webhook.`);
 
     try {
-      // Send the message to Microsoft Teams using an HTTP POST request
-      await axios.post(this.webhookUrl, teamsPayload);
+      // Send the message to Microsoft Teams using HttpService
+      await firstValueFrom(this.httpService.post(this.webhookUrl, teamsPayload));
 
       // Log a success message when the notification is sent successfully
       console.log(`Teams message sent successfully.`);
