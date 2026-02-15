@@ -4,6 +4,7 @@ import { INotificationChannel } from "../../telegram/channels/INotificationChann
 
 export class WhatsAppChannel implements INotificationChannel {
   public name: string = "whatsapp";
+
   private twilioClient: Twilio.Twilio;
   private twilioWhatsAppNumber: string;
 
@@ -16,35 +17,56 @@ export class WhatsAppChannel implements INotificationChannel {
     this.twilioWhatsAppNumber = twilioWhatsAppNumber;
   }
 
+  /**
+   * Normalize any phone number to:
+   * whatsapp:+201XXXXXXXXX
+   */
+  private normalizeToWhatsApp(phone: string): string {
+    let normalized = phone.trim();
+
+    // remove whatsapp: if exists
+    if (normalized.startsWith("whatsapp:")) {
+      normalized = normalized.replace("whatsapp:", "");
+    }
+
+    // remove spaces & dashes
+    normalized = normalized.replace(/\s|-/g, "");
+
+    // Egyptian numbers
+    if (normalized.startsWith("0")) {
+      normalized = normalized.slice(1);
+    }
+
+    if (!normalized.startsWith("+")) {
+      normalized = `+20${normalized}`;
+    }
+
+    return `whatsapp:${normalized}`;
+  }
+
   public async send(message: NotificationMessage): Promise<void> {
     const { recipientId, body, channelOptions } = message;
 
-    if (!recipientId)
-      throw new Error("WhatsApp recipientId (phone number) is required.");
+    if (!recipientId) {
+      throw new Error("WhatsApp recipientId is required.");
+    }
 
-    const to = recipientId.startsWith("whatsapp:")
-      ? recipientId
-      : `whatsapp:${recipientId}`;
-    const from = this.twilioWhatsAppNumber.startsWith("whatsapp:")
-      ? this.twilioWhatsAppNumber
-      : `whatsapp:${this.twilioWhatsAppNumber}`;
+    const to = this.normalizeToWhatsApp(recipientId);
+    const from = this.normalizeToWhatsApp(this.twilioWhatsAppNumber);
 
-    console.log(`Sending WhatsApp message from ${from} to ${to}: "${body}"`);
+    console.log(`WhatsApp from ${from} to ${to}: ${body}`);
 
     try {
       await this.twilioClient.messages.create({
-        body: body,
-        from: from,
-        to: to,
+        body,
+        from,
+        to,
         ...channelOptions,
       });
 
-      console.log(`WhatsApp message sent successfully to ${recipientId}`);
+      console.log(`WhatsApp message sent to ${to}`);
     } catch (error) {
-      console.error(
-        `Failed to send WhatsApp message to ${recipientId}:`,
-        error
-      );
+      console.error(`WhatsApp send failed to ${to}`, error);
       throw new Error(
         `WhatsApp send error: ${
           error instanceof Error ? error.message : String(error)

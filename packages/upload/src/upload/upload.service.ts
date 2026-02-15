@@ -139,6 +139,7 @@ export class UploadService {
       };
     } catch (error) {
       this.notifyUploadError(error as Error);
+      console.log(error)
       throw new HttpException("Upload failed", HttpStatus.BAD_REQUEST);
     }
   }

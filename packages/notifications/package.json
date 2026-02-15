@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/notifications",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "author": "Omar Sabry",
   "description": "All bts-soft packages",
   "main": "dist/index.js",
