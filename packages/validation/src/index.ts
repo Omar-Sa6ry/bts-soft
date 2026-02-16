@@ -7,6 +7,13 @@ export * from './decorators/PasswordField.decorator';
 export * from './decorators/PhoneField.decorator';
 export * from './decorators/UrlField.decorator';
 export * from './decorators/nationalId.decorator';
+export * from './decorators/NameField.decorator';
+export * from './decorators/DescriptionField.decorator';
+export * from './decorators/NumberField.decorator';
+export * from './decorators/DateField.decorator';
+export * from './decorators/BooleanField.decorator';
+export * from './decorators/UsernameField.decorator';
+export * from './decorators/EnumField.decorator';
 
 // --- Utility Functions & Constants ---
 // Exporting the transformation functions for potential use outside DTOs

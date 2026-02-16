@@ -3,11 +3,12 @@
  * @param value The input string.
  * @returns The lowercase string.
  */
-export function LowwerWords(value: string): string {
+export function LowerWords(value: string): string {
   if (!value || typeof value !== 'string') return value;
 
   return value.toLowerCase();
 }
+
 
 /**
  * Capitalizes the first letter of every word in a string. Used internally by CapitalField.
