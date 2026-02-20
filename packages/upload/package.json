@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/upload",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "description": "Upload package for NestJS + GraphQL using Cloudinary with Strategy + Command + Observer patterns.",
   "author": "Omar Sabry",
   "license": "MIT",
@@ -16,18 +16,17 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "cloudinary": "^2.0.0",
-    "graphql-upload-minimal": "^1.6.0"
-  },
-  "peerDependencies": {
-    "@nestjs/common": "^10.0.0",
-    "@nestjs/config": "^3.0.0",
-    "@nestjs/core": "^10.0.0",
-    "@nestjs/graphql": "^12.0.0",
-    "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.0.0"
+    "graphql-upload-minimal": "^1.6.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/graphql": "^13.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "typescript": "^5.0.0"
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
   }
+
 }
