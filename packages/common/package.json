@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/common",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "Shared NestJS utilities (modules, guards, interceptors, decorators, DTOs, and entities) for all @bts-soft packages.",
   "author": "Omar Sabry",
   "license": "MIT",
@@ -26,27 +26,59 @@
     "typescript"
   ],
   "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "nestjs-i18n": "^10.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "typeorm": "^0.3.0",
+    "ulid": "^3.0.0"
+  },
+  "peerDependencies": {
+    "@apollo/server": ">=4.0.0",
+    "@nestjs/apollo": ">=13.0.0",
+    "@nestjs/common": ">=11.0.0",
+    "@nestjs/config": ">=4.0.0",
+    "@nestjs/core": ">=11.0.0",
+    "@nestjs/graphql": ">=13.0.0",
+    "@nestjs/throttler": ">=6.0.0",
+    "graphql": ">=16.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@apollo/server": {
+      "optional": true
+    },
+    "@nestjs/apollo": {
+      "optional": true
+    },
+    "@nestjs/graphql": {
+      "optional": true
+    },
+    "@nestjs/throttler": {
+      "optional": true
+    },
+    "graphql": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@nestjs/apollo": "^13.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/graphql": "^13.0.0",
-    "@nestjs/apollo": "^13.1.0",
     "@nestjs/throttler": "^6.0.0",
-    "graphql": "^16.0.0",
-    "nestjs-i18n": "^10.0.0",
-    "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.0",
-    "ulid": "^3.0.0",
-    "typeorm": "^0.3.0"
-  },
-  "devDependencies": {
     "@types/node": "^20.0.0",
-    "@types/source-map-support": "^0.5.10",
     "class-transformer": "^0.5.1",
+    "graphql": "^16.0.0",
     "rimraf": "^6.0.0",
     "typescript": "^5.5.0"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "engines": {
+    "node": ">=20.17.0",
+    "npm": ">=10.0.0"
   }
 }

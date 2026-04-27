@@ -1,12 +1,17 @@
 {
   "name": "@bts-soft/validation",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A robust toolkit of flexible NestJS decorators for DTO validation, transformation, and security checks, compatible with both REST and GraphQL APIs.",
+  "author": "Omar Sabry",
+  "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "license": "MIT",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "nestjs",
@@ -20,16 +25,31 @@
   "dependencies": {
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "libphonenumber-js": "^1.11.0",
+    "reflect-metadata": "^0.2.0"
+  },
+  "peerDependencies": {
+    "@nestjs/common": ">=11.0.0",
+    "@nestjs/core": ">=11.0.0",
+    "@nestjs/graphql": ">=13.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/graphql": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/graphql": "^13.0.0",
-    "libphonenumber-js": "^1.11.17",
-    "reflect-metadata": "^0.2.2"
-  },
-  "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/source-map-support": "^0.5.10",
     "typescript": "^5.7.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.17.0",
+    "npm": ">=10.0.0"
   }
 }
-

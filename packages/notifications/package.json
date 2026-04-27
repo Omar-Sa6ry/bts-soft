@@ -1,42 +1,61 @@
 {
   "name": "@bts-soft/notifications",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "author": "Omar Sabry",
-  "description": "All bts-soft packages",
+  "description": "NestJS notifications module supporting email (Nodemailer), SMS (Twilio), push (Firebase), Telegram bot, and BullMQ queue integration.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
-  "workspaces": [
-    "packages/*"
+  "files": [
+    "dist"
   ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
     "@nestjs/bullmq": "^11.0.4",
-    "@nestjs/common": "^10.4.20",
-    "@nestjs/config": "^4.0.2",
-    "@nestjs/core": "^10.0.0",
-    "@nestjs/graphql": "^13.2.0",
-    "axios": "^1.12.2",
-    "bullmq": "^5.61.0",
+    "axios": "^1.12.0",
+    "bullmq": "^5.0.0",
     "class-transformer": "^0.5.1",
-    "firebase-admin": "^13.5.0",
-    "nestjs-i18n": "^10.5.1",
+    "class-validator": "^0.14.1",
+    "dotenv": "^16.4.0",
+    "firebase-admin": "^13.0.0",
+    "nestjs-i18n": "^10.0.0",
     "node-telegram-bot-api": "^0.66.0",
-    "nodemailer": "^7.0.9",
-    "twilio": "^5.10.3",
+    "nodemailer": "^7.0.0",
+    "rxjs": "^7.8.0",
+    "twilio": "^5.0.0",
+    "typeorm": "^0.3.0",
     "typeorm-transactional": "^0.5.0"
   },
-  "scripts": {
-    "build": "tsc -p tsconfig.json"
+  "peerDependencies": {
+    "@nestjs/common": ">=11.0.0",
+    "@nestjs/config": ">=4.0.0",
+    "@nestjs/core": ">=11.0.0",
+    "@nestjs/graphql": ">=13.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/graphql": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "@types/axios": "^0.14.4",
-    "@types/node": "^24.7.1",
-    "@types/node-telegram-bot-api": "^0.64.11",
-    "@types/nodemailer": "^7.0.2",
-    "@types/source-map-support": "^0.5.10",
-    "@types/twilio": "^3.19.3",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/graphql": "^13.0.0",
+    "@types/node": "^24.0.0",
+    "@types/node-telegram-bot-api": "^0.64.0",
+    "@types/nodemailer": "^7.0.0",
+    "typescript": "^5.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.17.0",
+    "npm": ">=10.0.0"
   }
 }
