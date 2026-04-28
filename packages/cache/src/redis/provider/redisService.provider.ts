@@ -1,7 +1,5 @@
 import { Provider } from '@nestjs/common';
-import { RedisClientType } from 'redis';
 import { RedisService } from '../redis.service';
-import { IRedisInterface } from '../interface/redis.interface';
 
 /**
  * RedisServiceProvider
@@ -11,12 +9,5 @@ import { IRedisInterface } from '../interface/redis.interface';
  */
 export const RedisServiceProvider: Provider = {
   provide: 'IRedisService', // Token name used for injection
-  useFactory: (
-    redisClient: RedisClientType,
-    cacheManager: any,
-  ): IRedisInterface => {
-    // Creates a new RedisService instance with required dependencies
-    return new RedisService(cacheManager, redisClient);
-  },
-  inject: ['REDIS_CLIENT', 'CACHE_MANAGER'], // Dependencies to inject
+  useExisting: RedisService, // Delegate to the already instantiated RedisService
 };

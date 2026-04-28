@@ -219,7 +219,7 @@ The validation package also exports the underlying transformation functions for 
 
 ## Deep Dive: `@bts-soft/cache`
 
-The caching module provides an enterprise-ready wrapper around Redis, designed to handle high-throughput operations with type safety and automatic serialization.
+The caching module provides an enterprise-ready wrapper around Redis, designed to handle high-throughput operations with type safety and automatic serialization. It utilizes a **Modular Facade Pattern**, where the `RedisService` acts as a unified interface delegating to specialized internal services for different Redis data types (Hashes, Sets, Geospatial, etc.).
 
 ### The `IRedisInterface` Contract
 
@@ -640,7 +640,7 @@ This section provides an exhaustive reference for internal services. Every metho
 
 ### 1. `RedisService` (`@bts-soft/cache`)
 
-The `RedisService` is a high-level wrapper for `ioredis` and `cache-manager`.
+The `RedisService` is a high-level facade orchestrating multiple specialized services (Core, String, Hash, List, Set, Geo, PubSub, Lock, etc.) to provide a comprehensive API for Redis operations.
 
 #### Core Key-Value Operations
 

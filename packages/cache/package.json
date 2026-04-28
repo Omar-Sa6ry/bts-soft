@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/cache",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A NestJS Redis cache and utility module providing advanced Redis operations, configuration, and health checks with built-in support for CacheManager and Redis client.",
   "author": "Omar Sabry",
   "license": "MIT",
