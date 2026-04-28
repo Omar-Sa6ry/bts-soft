@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
 import { CacheModule } from "@nestjs/cache-manager";
 import { RedisConfigService } from "./config/redisConfig.service";
-import { RedisService } from "./redis.service";
+import { RedisService } from "./fascade/redis.service";
 import { RedisServiceProvider } from "./provider/redisService.provider";
 import { createRedisClient } from "./factory/redisClient.factory";
-import { RedisHealth } from "./redis.health";
+import { RedisHealth } from "./health/redis.health";
 import { CoreRedisService } from "./services/core.service";
 import { StringRedisService } from "./services/stringRedis.service";
 import { NumberRedisService } from "./services/numberRedis.service";

@@ -17,21 +17,21 @@
 
 import { Injectable, Inject } from "@nestjs/common";
 import { RedisClientType } from "redis";
-import { ListConstant } from "./constant/redis.constant";
-import { IRedisInterface } from "./interface/redis.interface";
-import { CoreRedisService } from "./services/core.service";
-import { StringRedisService } from "./services/stringRedis.service";
-import { NumberRedisService } from "./services/numberRedis.service";
-import { UtilityRedisService } from "./services/utilityRedis.service";
-import { HashRedisService } from "./services/hashRedis.service";
-import { OperationRedisService } from "./services/operationRedis.service";
-import { SortedORedisService } from "./services/sortedORedis.service";
-import { ListORedisService } from "./services/ListORedis.service";
-import { HyperLogLogRedisService } from "./services/hyperLogLogRedis.service";
-import { GeoRedisService } from "./services/geoRedis.service";
-import { TransactionRedisService } from "./services/transactionRedis.service";
-import { PubSubRedisService } from "./services/pubSubRedis.service";
-import { LockRedisService } from "./services/lockRedis.service";
+import { ListConstant } from "../constant/redis.constant";
+import { IRedisInterface } from "../interface/redis.interface";
+import { CoreRedisService } from "../services/core.service";
+import { StringRedisService } from "../services/stringRedis.service";
+import { NumberRedisService } from "../services/numberRedis.service";
+import { UtilityRedisService } from "../services/utilityRedis.service";
+import { HashRedisService } from "../services/hashRedis.service";
+import { OperationRedisService } from "../services/operationRedis.service";
+import { SortedORedisService } from "../services/sortedORedis.service";
+import { ListORedisService } from "../services/ListORedis.service";
+import { HyperLogLogRedisService } from "../services/hyperLogLogRedis.service";
+import { GeoRedisService } from "../services/geoRedis.service";
+import { TransactionRedisService } from "../services/transactionRedis.service";
+import { PubSubRedisService } from "../services/pubSubRedis.service";
+import { LockRedisService } from "../services/lockRedis.service";
 
 @Injectable()
 export class RedisService implements IRedisInterface {
