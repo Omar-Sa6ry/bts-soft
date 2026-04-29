@@ -28,3 +28,6 @@ Thumbs.db
 *.tsbuildinfo
 
 desktop.ini
+
+# coverage
+packages/upload/coverage

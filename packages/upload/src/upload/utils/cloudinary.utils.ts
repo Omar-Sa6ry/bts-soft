@@ -10,7 +10,7 @@ export const extractPublicId = (url: string, resourceType: 'image' | 'video' | '
   
   // For images and videos, the extension is the format, not part of the ID
   // Example: .../upload/v123/folder/sample.jpg -> folder/sample
-  const regex = /\/upload\/(?:v\d+\/)?(.+)\.[a-z]+$/i;
+  const regex = /\/upload\/(?:v\d+\/)?(.+)\.[a-z0-9]+$/i;
   const match = url.match(regex);
   
   if (match && match[1]) {
