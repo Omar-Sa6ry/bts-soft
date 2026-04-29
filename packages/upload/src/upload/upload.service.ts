@@ -13,7 +13,7 @@
  * successful or failed uploads/deletions without tight coupling.
  */
 
-import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
+import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { UploadApiResponse } from "cloudinary";
 import { UploadServiceFactory } from "./factories/upload.factory";
@@ -46,6 +46,7 @@ import { extractPublicId } from "./utils/cloudinary.utils";
 import { CreateAudioDto } from "./dtos/createAudio.dto";
 import { UploadAudioCommand } from "./commands/uploadAudio.command";
 import { DeleteAudioCommand } from "./commands/deleteAudio.command";
+import { DEFAULT_LIMITS, DEFAULT_IMAGE_MAX_DIMENSIONS } from "./utils/upload.constants";
 
 // NEW: Define a unified file structure for service methods (Stream + filename)
 export interface UploadFile {
@@ -57,11 +58,20 @@ export interface UploadFile {
 export class UploadService {
   // The initialized Cloudinary client instance
   private readonly cloudinary;
+  private readonly logger = new Logger(UploadService.name);
   // Strategy pattern members: can be replaced with different implementations (e.g., S3)
   private uploadStrategy: IUploadStrategy;
   private deleteStrategy: IDeleteStrategy;
   // Observer pattern member: list of objects that subscribe to upload/delete events
   private observers: IUploadObserver[] = [];
+
+  // Configurable limits
+  private limits = {
+    image: DEFAULT_LIMITS.IMAGE,
+    video: DEFAULT_LIMITS.VIDEO,
+    audio: DEFAULT_LIMITS.AUDIO,
+    file: DEFAULT_LIMITS.FILE,
+  };
 
   /**
    * Initializes the Cloudinary client, sets the default strategies,
@@ -76,6 +86,12 @@ export class UploadService {
     this.deleteStrategy = new CloudinaryDeleteStrategy(this.cloudinary);
     // Register the default observer
     this.observers.push(new LoggingObserver());
+
+    // Load limits from config if available
+    this.limits.image = this.configService.get<number>('UPLOAD_MAX_IMAGE_SIZE') ?? DEFAULT_LIMITS.IMAGE;
+    this.limits.video = this.configService.get<number>('UPLOAD_MAX_VIDEO_SIZE') ?? DEFAULT_LIMITS.VIDEO;
+    this.limits.audio = this.configService.get<number>('UPLOAD_MAX_AUDIO_SIZE') ?? DEFAULT_LIMITS.AUDIO;
+    this.limits.file = this.configService.get<number>('UPLOAD_MAX_FILE_SIZE') ?? DEFAULT_LIMITS.FILE;
   }
 
   // --- Observer Notification Methods (Omitted for brevity, assume original logic) ---
@@ -116,10 +132,13 @@ export class UploadService {
 
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.split(".")[0]}`,
+      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, '_')}`,
       resource_type: "auto",
       fetch_format: "auto",
       quality: "auto",
+      width: DEFAULT_IMAGE_MAX_DIMENSIONS.WIDTH,
+      height: DEFAULT_IMAGE_MAX_DIMENSIONS.HEIGHT,
+      crop: "limit", // Non-destructive resizing
     };
 
     const command = new UploadImageCommand(
@@ -145,10 +164,13 @@ export class UploadService {
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
         type: "image",
+        format: result.format,
+        width: result.width,
+        height: result.height,
       };
     } catch (error) {
       this.notifyUploadError(error as Error);
-      console.log(error)
+      this.logger.error(`Upload failed for file ${filename}: ${(error as Error).message}`, (error as Error).stack);
       throw new HttpException("Upload failed", HttpStatus.BAD_REQUEST);
     }
   }
@@ -161,36 +183,45 @@ export class UploadService {
    * @param size The file size in bytes (if available from stream, otherwise estimated)
    * @param type 'image' | 'video' | 'file' | 'audio'
    */
-  private validateFile(filename: string, type: 'image' | 'video' | 'file' | 'audio') {
+  private validateFile(filename: string, type: 'image' | 'video' | 'file' | 'audio', size?: number) {
     const ext = filename.split('.').pop()?.toLowerCase();
     
-    // Limits
-    const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-    const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
-    const MAX_AUDIO_SIZE = 50 * 1024 * 1024; // 50MB
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
     const ALLOWED_IMAGES = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
     const ALLOWED_VIDEOS = ['mp4', 'webm', 'avi', 'mov'];
     const ALLOWED_AUDIOS = ['mp3', 'wav', 'ogg', 'm4a'];
     const ALLOWED_FILES = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip'];
 
-    if (type === 'image') {
-      if (!ALLOWED_IMAGES.includes(ext || '')) {
-        throw new HttpException(`Invalid image type. Allowed: ${ALLOWED_IMAGES.join(', ')}`, HttpStatus.BAD_REQUEST);
-      }
-    } else if (type === 'video') {
-       if (!ALLOWED_VIDEOS.includes(ext || '')) {
-        throw new HttpException(`Invalid video type. Allowed: ${ALLOWED_VIDEOS.join(', ')}`, HttpStatus.BAD_REQUEST);
-      }
-    } else if (type === 'audio') {
-       if (!ALLOWED_AUDIOS.includes(ext || '')) {
-        throw new HttpException(`Invalid audio type. Allowed: ${ALLOWED_AUDIOS.join(', ')}`, HttpStatus.BAD_REQUEST);
-      }
-    } else if (type === 'file') {
-       if (!ALLOWED_FILES.includes(ext || '')) {
-        throw new HttpException(`Invalid file type. Allowed: ${ALLOWED_FILES.join(', ')}`, HttpStatus.BAD_REQUEST);
-      }
+    // 1. Validate Extension
+    let allowedExts: string[] = [];
+    let limit = 0;
+
+    switch (type) {
+      case 'image':
+        allowedExts = ALLOWED_IMAGES;
+        limit = this.limits.image;
+        break;
+      case 'video':
+        allowedExts = ALLOWED_VIDEOS;
+        limit = this.limits.video;
+        break;
+      case 'audio':
+        allowedExts = ALLOWED_AUDIOS;
+        limit = this.limits.audio;
+        break;
+      case 'file':
+        allowedExts = ALLOWED_FILES;
+        limit = this.limits.file;
+        break;
+    }
+
+    if (!allowedExts.includes(ext || '')) {
+      throw new HttpException(`Invalid ${type} type. Allowed: ${allowedExts.join(', ')}`, HttpStatus.BAD_REQUEST);
+    }
+
+    // 2. Validate Size (if provided)
+    if (size && size > limit) {
+      const limitMb = Math.round(limit / (1024 * 1024));
+      throw new HttpException(`${type} size exceeds limit of ${limitMb}MB`, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -211,11 +242,12 @@ export class UploadService {
 
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.split(".")[0]}`,
+      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, '_')}`,
       resource_type: "video",
       chunk_size: 6000000,
       fetch_format: "auto",
       quality: "auto",
+      eager: [{ width: 320, height: 180, crop: 'pad', format: 'jpg' }], // Thumbnail
     };
 
     const command = new UploadVideoCommand(
@@ -241,6 +273,9 @@ export class UploadService {
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
         type: "video",
+        format: result.format,
+        width: result.width,
+        height: result.height,
         duration: result.duration ?? 0, // ← هنا الإضافة الجديدة
       };
     } catch (error) {
@@ -265,7 +300,7 @@ export class UploadService {
 
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.split(".")[0]}`,
+      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, '_')}`,
       resource_type: "video", // Audio is treated as video in Cloudinary
       chunk_size: 6000000,
       resource_type_param: "video", // Explicitly set param if strategy checks it
@@ -294,6 +329,7 @@ export class UploadService {
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
         type: "audio",
+        format: result.format,
         duration: result.duration ?? 0,
       };
     } catch (error) {
@@ -312,7 +348,7 @@ export class UploadService {
 
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename}`,
+      public_id: `${Date.now()}-${filename.replace(/[^a-z0-9.]/gi, '_')}`,
       resource_type: "raw",
     };
 
@@ -335,6 +371,7 @@ export class UploadService {
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
         type: "file",
+        format: result.format,
       };
     } catch (error) {
       this.notifyUploadError(error as Error);

@@ -1,19 +1,22 @@
+import { Logger } from "@nestjs/common";
 import { IUploadObserver } from "../interfaces/IUploadObserver.interface";
 
 export class LoggingObserver implements IUploadObserver {
+  private readonly logger = new Logger('UploadModule');
+
   onUploadSuccess(result: any): void {
-    console.log('Upload successful:', result.public_id);
+    this.logger.log(`Upload successful: ${result.public_id || result.secure_url}`);
   }
 
   onUploadError(error: Error): void {
-    console.error('Upload failed:', error.message);
+    this.logger.error(`Upload failed: ${error.message}`, error.stack);
   }
 
   onDeleteSuccess(result: any): void {
-    console.log('Delete successful:', result.result);
+    this.logger.log(`Delete successful: ${result.result || result.public_id}`);
   }
 
   onDeleteError(error: Error): void {
-    console.error('Delete failed:', error.message);
+    this.logger.error(`Delete failed: ${error.message}`, error.stack);
   }
 }

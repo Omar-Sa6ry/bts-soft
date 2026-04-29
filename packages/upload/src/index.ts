@@ -120,3 +120,8 @@ export * from "./upload/strategies/upload.strategy";
 
 // Delete strategy implementation for removing media
 export * from "./upload/strategies/delete.strategy";
+
+/* ============================== */
+/*             UTILS              */
+/* ============================== */
+export * from "./upload/utils/upload.constants";
