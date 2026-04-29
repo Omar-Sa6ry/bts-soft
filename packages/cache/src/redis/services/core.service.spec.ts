@@ -51,7 +51,7 @@ describe("CoreRedisService", () => {
 
       expect(cacheManager.set).toHaveBeenCalledWith(
         key,
-        JSON.stringify(value),
+        value,
         3600,
       );
     });
@@ -76,19 +76,19 @@ describe("CoreRedisService", () => {
   });
 
   describe("get", () => {
-    it("should return parsed JSON when value exists", async () => {
+    it("should return value when it exists", async () => {
       const key = "test-key";
       const value = { data: "test" };
-      cacheManager.get.mockResolvedValue(JSON.stringify(value));
+      cacheManager.get.mockResolvedValue(value);
 
       const result = await service.get(key);
       expect(result).toEqual(value);
       expect(cacheManager.get).toHaveBeenCalledWith(key);
     });
 
-    it("should return raw string if JSON.parse fails", async () => {
+    it("should return raw value from cache manager", async () => {
       const key = "test-key";
-      const value = "not-json";
+      const value = "some-value";
       cacheManager.get.mockResolvedValue(value);
 
       const result = await service.get(key);

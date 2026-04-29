@@ -57,8 +57,8 @@ export class RedisService implements IRedisInterface {
     return await this.coreRedisService.set(key, value, ttl);
   }
 
-  async setForEever(key: string, value: any): Promise<void> {
-    return await this.coreRedisService.setForEever(key, value);
+  async setForever(key: string, value: any): Promise<void> {
+    return await this.coreRedisService.setForever(key, value);
   }
 
   async update(key: string, value: any, ttl: number = 3600): Promise<void> {

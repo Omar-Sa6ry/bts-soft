@@ -30,12 +30,10 @@ export class SortedORedisService {
     start: number,
     stop: number,
     withScores = false,
-  ): Promise<string[]> {
-    return this.redisClient.zRange(key, start, stop, {
-      BY: SCORE,
-      REV: true,
-      ...(withScores && { WITHSCORES: true }),
-    });
+  ): Promise<any[]> {
+    const options: any = {};
+    if (withScores) options.WITHSCORES = true;
+    return this.redisClient.zRange(key, start, stop, options);
   }
 
   /**
@@ -71,11 +69,10 @@ export class SortedORedisService {
     start: number,
     stop: number,
     withScores = false,
-  ): Promise<string[]> {
-    return this.redisClient.zRange(key, start, stop, {
-      REV: true,
-      ...(withScores && { WITHSCORES: true }),
-    });
+  ): Promise<any[]> {
+    const options: any = { REV: true };
+    if (withScores) options.WITHSCORES = true;
+    return this.redisClient.zRange(key, start, stop, options);
   }
 
   /**

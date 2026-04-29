@@ -21,10 +21,16 @@ describe("PubSubRedisService", () => {
 
     service = module.get<PubSubRedisService>(PubSubRedisService);
 
-    if (!redisClient.pSubscribe)
-      redisClient.pSubscribe = redisClient.psubscribe;
-    if (!redisClient.pUnsubscribe)
-      redisClient.pUnsubscribe = redisClient.punsubscribe;
+    const applyPolyfills = (client: any) => {
+      if (!client.pSubscribe) client.pSubscribe = client.psubscribe;
+      if (!client.pUnsubscribe) client.pUnsubscribe = client.punsubscribe;
+      if (!client.connect) client.connect = jest.fn().mockResolvedValue(undefined);
+    };
+
+    applyPolyfills(redisClient);
+    
+    jest.spyOn(redisClient, "duplicate").mockReturnValue(redisClient);
+
     redisClient.sendCommand = jest.fn();
   });
 

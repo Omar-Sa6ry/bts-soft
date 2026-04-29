@@ -27,7 +27,7 @@ The ecosystem is built on three core pillars:
 | Package | Purpose | Key technologies |
 | :--- | :--- | :--- |
 | `@bts-soft/validation` | Domain-driven validation and security | Class-Validator, Class-Transformer |
-| `@bts-soft/cache` | Enterprise-grade Redis abstraction | ioredis, cache-manager |
+| `@bts-soft/cache` | Enterprise-grade Redis abstraction | redis (v4), cache-manager |
 | `@bts-soft/notifications` | Reliable multi-channel delivery | BullMQ, Nodemailer, Twilio, FCM |
 | `@bts-soft/upload` | Media management and processing | Cloudinary, Strategy/Command Pattern |
 | `@bts-soft/common` | Infrastructure glue and standard bases | RXJS, TypeORM, Apollo |
@@ -219,149 +219,68 @@ The validation package also exports the underlying transformation functions for 
 
 ## Deep Dive: `@bts-soft/cache`
 
-The caching module provides an enterprise-ready wrapper around Redis, designed to handle high-throughput operations with type safety and automatic serialization. It utilizes a **Modular Facade Pattern**, where the `RedisService` acts as a unified interface delegating to specialized internal services for different Redis data types (Hashes, Sets, Geospatial, etc.).
-
-### The `IRedisInterface` Contract
-
-The `RedisService` implements the `IRedisInterface`, ensuring a consistent API surface across the entire application ecosystem.
+The `@bts-soft/cache` module is a high-performance Redis infrastructure layer designed for enterprise NestJS applications. It utilizes a **Modular Facade Pattern** where the `RedisService` orchestrates 13 specialized internal services, providing a unified API for everything from simple caching to complex distributed coordination.
 
 ---
 
-### Core Key-Value Operations
+### Key Capabilities
 
-These are the most commonly used methods for simple state management.
+1.  **Atomic Distributed Locking**: Prevents race conditions in distributed environments using `acquireLock` and `waitForLock`.
+2.  **Reliable Pub/Sub**: High-speed, multi-channel event distribution with dedicated subscriber connections to ensure non-blocking operations.
+3.  **Complex Data Structures**: Native support for Hashes, Sets, Sorted Sets (Rankings), and Lists.
+4.  **Advanced Analytics**: Geospatial indexing for "nearby" features and HyperLogLog for memory-efficient unique counting.
+5.  **100% Verified Infrastructure**: Every operation is backed by comprehensive E2E tests running on real Redis instances.
 
-#### `set(key: string, value: any, ttl?: number): Promise<void>`
-Stores a value in Redis with automatic JSON stringification.
-- **TTL**: Default is 3600 seconds (1 hour).
-- **Example**:
+---
+
+### Core Operations API
+
+#### 1. Standard Caching
+- `set(key, value, ttl?)`: Stores values with automatic JSON serialization (Default TTL: 1 hour).
+- `setForever(key, value)`: Bypasses default TTLs for permanent configuration or state storage.
+- `get<T>(key)`: Retrieves and automatically parses JSON into typed objects.
+- `del(key)`: Removes keys from the database.
+
+#### 2. Atomic Numeric Operations
+- `incr(key)` / `decr(key)`: Atomically increments or decrements integers.
+- `incrByFloat(key, n)`: Handles precise floating-point increments.
+
+#### 3. Distributed Locking Example
 ```typescript
-await redisService.set('user:session:123', { id: 123, role: 'admin' }, 600);
-```
+const lockValue = crypto.randomUUID();
+const acquired = await redisService.acquireLock('order:process:123', lockValue, 5000);
 
-#### `get<T = any>(key: string): Promise<T | null>`
-Retrieves and parses a value from Redis.
-- **Generic Type Support**: Automatically casts the result to your interface.
-- **Example**:
-```typescript
-const session = await redisService.get<UserSession>('user:session:123');
-```
-
-#### `del(key: string): Promise<void>`
-Removes a key from the database.
-
-#### `mSet(data: Record<string, any>): Promise<void>`
-Sets multiple key-value pairs atomically using a Redis pipeline.
-- **Example**:
-```typescript
-await redisService.mSet({
-  'config:theme': 'dark',
-  'config:lang': 'ar'
-});
-```
-
----
-
-### String & Atomic Operations
-
-Perfect for building counters, distributed sequences, and atomic flags.
-
-#### `incr(key: string): Promise<number>`
-Increments the numeric value of a key by 1.
-- **Use Case**: Page view counters, attempt limiters.
-
-#### `incrBy(key: string, increment: number): Promise<number>`
-Increments a value by a specific integer amount.
-
-#### `decr(key: string): Promise<number>`
-Decrements the value by 1.
-
-#### `getSet(key: string, value: any): Promise<string | null>`
-Atomically sets a new value and returns the old value.
-- **Use Case**: Atomic state transitions.
-
-#### `strlen(key: string): Promise<number>`
-Returns the byte length of the stored string.
-
----
-
-### Complex Data Structures
-
-#### 1. Hashes (Object-like Storage)
-Ideal for storing entities without serializing the entire object every time.
-
-- `hSet(key, field, value)`: Set a field in a hash.
-- `hGet(key, field)`: Get a specific field.
-- `hGetAll(key)`: Retrieve the entire object.
-- `hIncrBy(key, field, amount)`: Atomic increment of a field.
-- `hSetNX(key, field, value)`: Set only if field doesn't exist.
-
-#### 2. Sets (Unique Collections)
-Manage unique lists of IDs, tags, or permissions.
-
-- `sAdd(key, ...members)`: Add unique items.
-- `sMembers(key)`: Get all unique items.
-- `sIsMember(key, member)`: Check membership.
-- `sInter(key1, key2)`: Find common items between sets.
-- `sUnion(key1, key2)`: Merge sets uniquely.
-
-#### 3. Sorted Sets (Scored Rankings)
-The ultimate tool for leaderboards, activity feeds, and priority queues.
-
-- `zAdd(key, score, member)`: Add item with a specific numeric score.
-- `zRange(key, start, stop)`: Get members by index (Sorted by score).
-- `zRank(key, member)`: Get the position of a member in the list.
-- `zRemRangeByScore(key, min, max)`: Cleanup old or low-score data.
-
-#### 4. Lists (Linear Order)
-- `lPush(key, value)`: Prepend to list.
-- `rPop(key)`: Remove and return the last item (Queue logic).
-- `lTrim(key, start, stop)`: Maintain a fixed-size history (Capping).
-
----
-
-### Advanced Data Types
-
-#### Geospatial Indexing
-Build "Nearby" features (Find stores, users, or assets).
-- `geoAdd(key, long, lat, member)`: Index a coordinate.
-- `geoDist(member1, member2, unit)`: Calculate distance between two points.
-- `geoPos(key, member)`: Get coordinates for a member.
-
-#### HyperLogLog (Probabilistic Counting)
-Count unique items across millions of entries with minimal memory (approx 12KB).
-- `pfAdd(key, ...elements)`: Observe an element.
-- `pfCount(key)`: Get approximate unique count.
-
----
-
-### Distributed Locking & Messaging
-
-#### Distributed Locking
-The `RedisService` includes a high-level lock implementation to prevent race conditions in distributed systems.
-
-```typescript
-const lockValue = await redisService.acquireLock('process:order:789', 'worker-1', 5000);
-if (lockValue) {
+if (acquired) {
   try {
-    // Perform sensitive operation
+    // Critical section logic
   } finally {
-    await redisService.releaseLock('process:order:789', lockValue);
+    await redisService.releaseLock('order:process:123', lockValue);
   }
 }
 ```
 
-#### Pub/Sub Messaging
-Enable real-time communication between microservices.
+#### 4. Real-time Pub/Sub Example
 ```typescript
-// Subscriber
-await redisService.subscribe('events:new-user', (msg) => {
-  console.log('New user joined:', JSON.parse(msg));
+// Subscriber (Dedicated connection handled automatically)
+await redisService.subscribe('system_updates', (msg) => {
+  console.log('Update received:', JSON.parse(msg));
 });
 
 // Publisher
-await redisService.publish('events:new-user', { id: 1, name: 'Omar' });
+await redisService.publish('system_updates', { status: 'OK', timestamp: Date.now() });
 ```
+
+---
+
+### Data Structure Reference
+
+| Structure | Common Methods | Best For |
+| :--- | :--- | :--- |
+| **Hashes** | `hSet`, `hGetAll`, `hIncrBy` | Object storage, User profiles |
+| **Sorted Sets** | `zAdd`, `zRange`, `zScore` | Leaderboards, Scored feeds |
+| **Sets** | `sAdd`, `sMembers`, `sIsMember` | Unique tags, Permissions |
+| **Lists** | `lPush`, `rPop`, `lTrim` | Queues, Activity history |
+| **Geo** | `geoAdd`, `geoDist`, `geoPos` | Nearby stores, Proximity search |
 
 ---
 
@@ -3154,7 +3073,7 @@ When deploying @bts-soft/core in the Middle East & North Africa (MENA), specific
   - **Reasoning**: Intra-GCC fiber is fast, but cross-cloud peering can be jittery.
 
 ### Network Profile 2: High-Durability SMTP (North Africa)
-- **Primary Host**: Cairo
+- **Primary Host**: Damietta
 - **Gateway**: SendGrid (Relay via London)
 - **Tuning Strategy**:
   - dns_lookup: Prefer IPv4 (Avoid IPv6 propagation lag).

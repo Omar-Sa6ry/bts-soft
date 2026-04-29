@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { RedisClientType } from 'redis';
 
 /**
@@ -9,7 +9,7 @@ import { RedisClientType } from 'redis';
  * If Redis is unreachable, it stops the application.
  */
 @Injectable()
-export class RedisHealth implements OnModuleInit {
+export class RedisHealth implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
   ) {}
@@ -21,6 +21,12 @@ export class RedisHealth implements OnModuleInit {
     } catch (err) {
       console.error('Redis health check failed:', err);
       process.exit(1); // Exit if Redis is not available
+    }
+  }
+
+  async onModuleDestroy() {
+    if (this.redisClient.isOpen) {
+      await this.redisClient.disconnect();
     }
   }
 }

@@ -54,8 +54,6 @@ describe('SortedORedisService', () => {
     it('should call zRange with correct options', async () => {
       await service.zRange('lb', 0, -1, true);
       expect(redisClient.zRange).toHaveBeenCalledWith('lb', 0, -1, {
-        BY: SCORE,
-        REV: true,
         WITHSCORES: true
       });
     });

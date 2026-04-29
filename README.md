@@ -3154,7 +3154,7 @@ When deploying @bts-soft/core in the Middle East & North Africa (MENA), specific
   - **Reasoning**: Intra-GCC fiber is fast, but cross-cloud peering can be jittery.
 
 ### Network Profile 2: High-Durability SMTP (North Africa)
-- **Primary Host**: Cairo
+- **Primary Host**: Damietta
 - **Gateway**: SendGrid (Relay via London)
 - **Tuning Strategy**:
   - dns_lookup: Prefer IPv4 (Avoid IPv6 propagation lag).

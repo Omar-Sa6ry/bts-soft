@@ -1,9 +1,32 @@
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable, Inject, OnModuleDestroy } from "@nestjs/common";
 import { RedisClientType } from "redis";
 
 @Injectable()
-export class PubSubRedisService {
+export class PubSubRedisService implements OnModuleDestroy {
+  private subscriberClient: RedisClientType | null = null;
+
   constructor(@Inject("REDIS_CLIENT") private redisClient: RedisClientType) {}
+
+  async onModuleDestroy() {
+    if (this.subscriberClient) {
+      await this.subscriberClient.disconnect();
+    }
+  }
+
+  private async getSubscriberClient(): Promise<RedisClientType> {
+    if (!this.subscriberClient) {
+      this.subscriberClient = this.redisClient.duplicate();
+      // Handle potential "already connected" errors, especially with mocks
+      try {
+        await this.subscriberClient.connect();
+      } catch (error) {
+        if (!error.message?.includes("already connecting") && !error.message?.includes("already connected")) {
+          throw error;
+        }
+      }
+    }
+    return this.subscriberClient;
+  }
 
   /**
    * Publish message to a channel with automatic JSON serialization
@@ -24,7 +47,8 @@ export class PubSubRedisService {
     channel: string,
     callback: (message: string, channel: string) => void,
   ): Promise<void> {
-    return this.redisClient.subscribe(channel, (message, channel) => {
+    const client = await this.getSubscriberClient();
+    return client.subscribe(channel, (message, channel) => {
       try {
         callback(JSON.parse(message), channel);
       } catch {
@@ -42,7 +66,8 @@ export class PubSubRedisService {
     pattern: string,
     callback: (message: string, channel: string) => void,
   ): Promise<void> {
-    return this.redisClient.pSubscribe(pattern, (message, channel) => {
+    const client = await this.getSubscriberClient();
+    return client.pSubscribe(pattern, (message, channel) => {
       try {
         callback(JSON.parse(message), channel);
       } catch {

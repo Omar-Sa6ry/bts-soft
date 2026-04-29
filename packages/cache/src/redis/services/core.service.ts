@@ -14,22 +14,16 @@ export class CoreRedisService {
 
   async set(key: string, value: any, ttl: number = 3600): Promise<void> {
     try {
-      const stringified =
-        typeof value === "string" ? value : JSON.stringify(value);
-
-      await this.cacheManager.set(key, stringified, ttl);
+      await this.cacheManager.set(key, value, ttl);
     } catch (error) {
       this.logger.error(`Error setting key ${key}`, error.stack);
       throw error;
     }
   }
 
-  async setForEever(key: string, value: any): Promise<void> {
+  async setForever(key: string, value: any): Promise<void> {
     try {
-      const stringified =
-        typeof value === "string" ? value : JSON.stringify(value);
-
-      await this.cacheManager.set(key, stringified);
+      await this.redisClient.set(key, JSON.stringify(value));
     } catch (error) {
       this.logger.error(`Error setting key ${key}`, error.stack);
       throw error;
@@ -43,13 +37,9 @@ export class CoreRedisService {
 
   async get<T = any>(key: string): Promise<T | null> {
     try {
-      const value = await this.cacheManager.get<string>(key);
+      const value = await this.cacheManager.get<T>(key);
       if (value === undefined || value === null) return null;
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value as unknown as T;
-      }
+      return value;
     } catch (error) {
       this.logger.error(`Error getting key ${key}`, error.stack);
       throw error;
