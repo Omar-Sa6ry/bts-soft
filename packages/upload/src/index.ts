@@ -63,6 +63,7 @@ export * from "./upload/dtos/uploadResult.type";
 
 // Cloudinary configuration and setup file
 export * from "./upload/config/cloudinary";
+export * from "./upload/config/config.schema";
 
 /* ============================== */
 /*           FACTORIES             */
@@ -120,6 +121,8 @@ export * from "./upload/strategies/upload.strategy";
 
 // Delete strategy implementation for removing media
 export * from "./upload/strategies/delete.strategy";
+export * from "./upload/strategies/local-upload.strategy";
+export * from "./upload/strategies/local-delete.strategy";
 
 /* ============================== */
 /*             UTILS              */

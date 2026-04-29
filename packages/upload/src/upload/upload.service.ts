@@ -33,6 +33,10 @@ import { DeleteVideoCommand } from "./commands/deleteVideo.command";
 import { UploadVideoCommand } from "./commands/uploadVideo.command";
 // Concrete Observer Implementation
 import { LoggingObserver } from "./observer/upload.observer";
+import { UploadProvider } from "./utils/upload.constants";
+import { LocalUploadStrategy } from "./strategies/local-upload.strategy";
+import { LocalDeleteStrategy } from "./strategies/local-delete.strategy";
+import { validateConfig } from "./config/config.schema";
 
 // DTOs and GraphQL types (needed for GraphQL methods)
 import { CreateImageDto } from "./dtos/createImage.dto";
@@ -79,11 +83,21 @@ export class UploadService {
    * @param configService NestJS configuration service
    */
   constructor(private configService: ConfigService) {
-    // Factory method to initialize the Cloudinary instance (decoupled from the client)
-    this.cloudinary = UploadServiceFactory.create(this.configService);
-    // Set default Cloudinary strategies
-    this.uploadStrategy = new CloudinaryUploadStrategy(this.cloudinary);
-    this.deleteStrategy = new CloudinaryDeleteStrategy(this.cloudinary);
+    // 1. Validate Configuration
+    validateConfig(this.configService['internalConfig'] || process.env);
+
+    const provider = this.configService.get<UploadProvider>('UPLOAD_PROVIDER') || UploadProvider.CLOUDINARY;
+
+    if (provider === UploadProvider.CLOUDINARY) {
+      this.cloudinary = UploadServiceFactory.create(this.configService);
+      this.uploadStrategy = new CloudinaryUploadStrategy(this.cloudinary);
+      this.deleteStrategy = new CloudinaryDeleteStrategy(this.cloudinary);
+    } else {
+      const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
+      this.uploadStrategy = new LocalUploadStrategy(localPath);
+      this.deleteStrategy = new LocalDeleteStrategy(localPath);
+    }
+
     // Register the default observer
     this.observers.push(new LoggingObserver());
 
@@ -92,6 +106,8 @@ export class UploadService {
     this.limits.video = this.configService.get<number>('UPLOAD_MAX_VIDEO_SIZE') ?? DEFAULT_LIMITS.VIDEO;
     this.limits.audio = this.configService.get<number>('UPLOAD_MAX_AUDIO_SIZE') ?? DEFAULT_LIMITS.AUDIO;
     this.limits.file = this.configService.get<number>('UPLOAD_MAX_FILE_SIZE') ?? DEFAULT_LIMITS.FILE;
+
+    this.logger.log(`UploadService initialized with provider: ${provider}`);
   }
 
   // --- Observer Notification Methods (Omitted for brevity, assume original logic) ---

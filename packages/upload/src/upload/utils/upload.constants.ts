@@ -15,3 +15,12 @@ export const DEFAULT_IMAGE_MAX_DIMENSIONS = {
   WIDTH: 1920,
   HEIGHT: 1080,
 };
+
+/**
+ * Supported upload providers.
+ */
+export enum UploadProvider {
+  CLOUDINARY = 'cloudinary',
+  LOCAL = 'local',
+}
+
