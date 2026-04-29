@@ -410,45 +410,50 @@ await notificationService.send(ChannelType.MESSENGER, {
 
 ## Deep Dive: `@bts-soft/upload`
 
-The upload module is a production-hardened media orchestration service. It is designed to handle the complexities of multi-part streams, file validation, and cloud storage management.
+The upload module is a production-hardened media orchestration service designed to handle the complexities of multi-part streams, file validation, and cross-provider storage management.
 
-### Architecture Patterns
+### Multi-Provider Architecture
 
-The service is built on three pillars of software engineering:
+The service leverages the **Strategy Pattern** to support multiple storage backends without changing the application logic:
 
-1.  **Strategy Pattern**: 
-    The `IUploadStrategy` interface allows you to define how files are stored. The default implementation is `CloudinaryUploadStrategy`, but you can easily plug in Amazon S3 or Google Cloud Storage.
-    
-2.  **Command Pattern**: 
-    Each upload type (Image, Video, Audio, Raw File) is encapsulated in a command. This allows the system to apply specific optimizations (like chunked video upload) without cluttering the main service.
+1.  **Cloudinary Strategy**: Default for production, providing on-the-fly optimization, transcoding, and CDN delivery.
+2.  **Local Disk Strategy**: Ideal for development or high-security environments where files must remain on the internal network.
 
-3.  **Observer Pattern**: 
-    Successful and failed uploads trigger events that `IUploadObserver` instances can listen to. This is used for global logging, analytics, and cleanup tasks.
+Switching providers is handled via the `UPLOAD_PROVIDER` environment variable.
 
----
+### Design Patterns
 
-### Media Type Specifications
+The module is built on three pillars of software engineering:
 
-| Media Type | File Extensions | Size Limit | Processing Logic |
+- **Strategy Pattern**: The `IUploadStrategy` and `IDeleteStrategy` interfaces decouple the service from the underlying storage technology.
+- **Command Pattern**: Each operation (Upload, Delete) is encapsulated in a command object, ensuring consistent execution and error handling.
+- **Observer Pattern**: Triggers events on success or failure, enabling centralized logging and auditing via `IUploadObserver`.
+
+### Media Specifications & Validation
+
+The system enforces strict validation for file extensions and sizes. Limits can be customized via environment variables.
+
+| Media Type | File Extensions | Default Limit | Storage Logic |
 | :--- | :--- | :--- | :--- |
-| **Images** | `jpg`, `png`, `webp`, `gif` | 5 MB | Format optimization, fetch_format: auto |
-| **Videos** | `mp4`, `webm`, `avi`, `mov` | 100 MB | Chunked upload (6MB chunks), Duration extraction |
-| **Audio** | `mp3`, `wav`, `ogg`, `m4a` | 50 MB | Treated as a "video" resource for waveform generation |
-| **Raw Files** | `pdf`, `doc`, `zip`, `txt` | 10 MB | Stored as 'raw' resources with original headers |
+| **Images** | `jpg`, `png`, `webp`, `gif` | 5 MB | Auto-optimization and non-destructive resizing. |
+| **Videos** | `mp4`, `webm`, `avi`, `mov` | 100 MB | Chunked upload support with duration extraction. |
+| **Audio** | `mp3`, `wav`, `ogg`, `m4a` | 50 MB | Optimized for playback and metadata extraction. |
+| **Raw Files** | `pdf`, `doc`, `zip`, `txt` | 10 MB | Stored as 'raw' binary with original headers. |
 
----
-
-### Provider Integration (Cloudinary)
-
-To initialize the upload system, ensure your environment is configured:
+### Configuration Reference
 
 ```env
+# Provider Selection
+UPLOAD_PROVIDER=cloudinary # or 'local'
+
+# Cloudinary Credentials (if provider=cloudinary)
 CLOUDINARY_CLOUD_NAME=your_name
 CLOUDINARY_API_KEY=your_key
 CLOUDINARY_API_SECRET=your_secret
-```
 
-The system automatically handles the creation of a Cloudinary client instance and injects it into the default strategies.
+# Local Settings (if provider=local)
+UPLOAD_LOCAL_PATH=./uploads
+```
 
 ---
 

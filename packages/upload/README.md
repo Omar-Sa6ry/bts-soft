@@ -1,108 +1,70 @@
 # @bts-soft/upload
 
-A modular, enterprise-grade NestJS package for handling file uploads (Images, Videos, Audio, Documents) using **Cloudinary**.
-It is designed with **Clean Architecture** principles and supports both **GraphQL** and **REST API** applications.
+An enterprise-grade media orchestration library for NestJS, designed to handle complex file lifecycles with modularity and security. It provides a unified API for managing images, videos, audio, and documents across multiple storage providers.
 
 ---
 
-## 🚀 Features
+## Features
 
-- **Multi-Format Support**:
-  - 🖼️ **Images**: `jpg, png, jpeg, webp, gif` (Auto-optimized to WebP/AVIF).
-  - 🎥 **Videos**: `mp4, webm, avi, mov` (Auto-transcoded).
-  - 🎵 **Audio**: `mp3, wav, ogg, m4a` (New!).
-  - 📄 **Files**: `pdf, doc, docx, xls, zip`, etc.
-- **Robust Validation**: Enforces file type and size limits before upload.
-- **Cloudinary Optimization**: Automatically applies `f_auto` and `q_auto` to images and videos for best performance.
-- **Dual API Support**: Ready-to-use methods for both **GraphQL** (`Promise<FileUpload>`) and **REST** (`Stream` based).
-- **Design Patterns**:
-  - **Strategy**: easily swap Cloudinary with S3 or Local storage.
-  - **Command**: Encapsulated upload/delete logic.
-  - **Observer**: Hook into upload events (logging, analytics).
+- **Multi-Provider Support**: Switch seamlessly between Cloudinary and Local Disk storage via configuration.
+- **Strict Validation**: Automatic enforcement of file extensions and size limits before processing.
+- **Design Patterns**: 
+    - **Strategy Pattern**: Decouples the service from storage providers.
+    - **Command Pattern**: Encapsulates upload/delete logic for reliability.
+    - **Observer Pattern**: Reactive hooks for logging and auditing.
+- **Protocol Agnostic**: Native support for both REST (Express/Multer) and GraphQL (graphql-upload).
+- **Enterprise Ready**: Full Unit and E2E test coverage with physical disk verification.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 npm install @bts-soft/upload
 ```
-*Note: Ensure you have `@nestjs/common`, `@nestjs/config` installed in your project.*
+
+Required peer dependencies: `@nestjs/common`, `@nestjs/config`, `class-validator`, `class-transformer`.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-Add your Cloudinary credentials to your `.env` file:
+The package uses a strict schema validation at startup. Ensure the following environment variables are defined.
 
-```env
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
+### Global Settings
+- `UPLOAD_PROVIDER`: Storage provider to use (`cloudinary` | `local`).
+- `UPLOAD_MAX_IMAGE_SIZE`: Max size for images in bytes (Default: 5MB).
+- `UPLOAD_MAX_VIDEO_SIZE`: Max size for videos in bytes (Default: 100MB).
+- `UPLOAD_MAX_AUDIO_SIZE`: Max size for audio in bytes (Default: 50MB).
+- `UPLOAD_MAX_FILE_SIZE`: Max size for raw files in bytes (Default: 10MB).
 
-Import the `UploadModule` into your root `AppModule`:
+### Cloudinary Provider
+Required if `UPLOAD_PROVIDER=cloudinary`:
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+### Local Disk Provider
+Required if `UPLOAD_PROVIDER=local`:
+- `UPLOAD_LOCAL_PATH`: Absolute or relative path to the storage directory (e.g., `./uploads`).
+
+---
+
+## Usage
+
+### 1. Module Registration
 
 ```typescript
 import { Module } from '@nestjs/common';
 import { UploadModule } from '@bts-soft/upload';
-import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }), // Required for env vars
-    UploadModule
-  ],
+  imports: [UploadModule],
 })
 export class AppModule {}
 ```
 
----
-
-## 📖 Usage Guide
-
-### 1️⃣ Using with GraphQL
-
-First, setup the middleware to handle multipart requests in `main.ts`:
-
-```typescript
-import { setupGraphqlUpload } from '@bts-soft/upload';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  
-  // Enable GraphQL uploads (Max 10MB file, 5 files max)
-  setupGraphqlUpload(app, 10_000_000, 5);
-  
-  await app.listen(3000);
-}
-bootstrap();
-```
-
-Then, use `UploadService` in your **Resolver**:
-
-```typescript
-import { Resolver, Mutation, Args } from '@nestjs/graphql';
-import { UploadService, CreateImageDto } from '@bts-soft/upload';
-
-@Resolver()
-export class UserResolver {
-  constructor(private readonly uploadService: UploadService) {}
-
-  @Mutation(() => String)
-  async updateAvatar(@Args('input') input: CreateImageDto) {
-    // input.image is a Promise<FileUpload>
-    const result = await this.uploadService.uploadImage(input);
-    return result.url;
-  }
-}
-```
-
-### 2️⃣ Using with REST API (Express/NestJS)
-
-For REST APIs, use the `*Core` methods (`uploadImageCore`, `uploadVideoCore`, etc.) which accept a standard stream.
-
-Example **Controller** using `FileInterceptor`:
+### 2. REST API Integration
 
 ```typescript
 import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
@@ -110,96 +72,75 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '@bts-soft/upload';
 import { Readable } from 'stream';
 
-@Controller('upload')
-export class UploadController {
+@Controller('media')
+export class MediaController {
   constructor(private readonly uploadService: UploadService) {}
 
-  @Post('image')
-  @UseInterceptors(FileInterceptor('file')) // Standard Express/Multer interceptor
-  async uploadImage(@UploadedFile() file: Express.Multer.File) {
-    
-    // Convert Buffer to Stream
-    const stream = Readable.from(file.buffer);
-
-    const result = await this.uploadService.uploadImageCore({
-      stream,
-      filename: file.originalname
-    });
-
-    return { url: result.url };
-  }
-  
-  @Post('audio')
+  @Post('avatar')
   @UseInterceptors(FileInterceptor('file'))
-  async uploadAudio(@UploadedFile() file: Express.Multer.File) {
-     const stream = Readable.from(file.buffer);
-     return this.uploadService.uploadAudioCore({
-        stream,
-        filename: file.originalname
-     });
+  async uploadAvatar(@UploadedFile() file: Express.Multer.File) {
+    const stream = Readable.from(file.buffer);
+    
+    return this.uploadService.uploadImageCore({
+      stream,
+      filename: file.originalname,
+      size: file.size
+    });
+  }
+}
+```
+
+### 3. GraphQL Integration
+
+```typescript
+import { Resolver, Mutation, Args } from '@nestjs/graphql';
+import { UploadService, CreateImageDto } from '@bts-soft/upload';
+
+@Resolver()
+export class MediaResolver {
+  constructor(private readonly uploadService: UploadService) {}
+
+  @Mutation(() => String)
+  async uploadProfilePicture(@Args('input') input: CreateImageDto) {
+    const result = await this.uploadService.uploadImage(input);
+    return result.url;
   }
 }
 ```
 
 ---
 
-## 🛡️ Validation Rules
+## API Reference
 
-The package enforces the following limits by default. Requests violating these rules will throw a `400 Bad Request`.
+### UploadService
 
-| Type | Max Size | Allowed Extensions |
-| :--- | :--- | :--- |
-| **Image** | 5 MB | `jpg, jpeg, png, webp, gif` |
-| **Video** | 100 MB | `mp4, webm, avi, mov` |
-| **Audio** | 50 MB | `mp3, wav, ogg, m4a` |
-| **File** | 10 MB | `pdf, doc, docx, xls, xlsx, ppt, pptx, txt, zip` |
-
----
-
-## 🏗️ Architecture & Design Patterns
-
-### Strategy Pattern
-Logic for **how** files are uploaded is abstracted behind `IUploadStrategy`.
-- **Current**: `CloudinaryUploadStrategy`.
-- **Future**: You can implement `S3UploadStrategy` and swap it in `UploadService` without changing any controller code.
-
-### Command Pattern
-Every action (`UploadImageCommand`, `DeleteVideoCommand`) is a self-contained class.
-- This ensures that validation, options, and execution logic are encapsulated.
-- Makes unit testing easier and code more readable.
-
-### Observer Pattern
-The service notifies registered observers on success or failure.
-- **Default**: `LoggingObserver` logs actions to console.
-- **Extensibility**: You can add a `NotificationObserver` to send Emails/Slack alerts on upload failure.
+| Method | Description |
+| :--- | :--- |
+| `uploadImageCore` | Handles image streams with auto-optimization. |
+| `uploadVideoCore` | Handles video streams with chunked upload support. |
+| `uploadAudioCore` | Handles audio streams. |
+| `uploadFileCore` | Handles raw document streams (PDF, Zip, etc). |
+| `deleteImage(url)` | Deletes image from provider. |
+| `deleteVideo(url)` | Deletes video from provider. |
+| `deleteAudio(url)` | Deletes audio from provider. |
+| `deleteFile(url)` | Deletes raw file from provider. |
 
 ---
 
-## 🔧 API Reference
+## Testing
 
-### `UploadService` Methods
+The library includes a robust testing suite:
+- **Unit Tests**: Test strategies and service logic in isolation.
+- **E2E Tests**: Test full HTTP/GraphQL flows with physical file system verification.
 
-- **`uploadImage(dto)`**: For GraphQL.
-- **`uploadVideo(dto)`**: For GraphQL.
-- **`uploadAudio(dto)`**: For GraphQL.
-- **`uploadFile(dto)`**: For GraphQL.
-
----
-
-- **`uploadImageCore({ stream, filename })`**: For REST/Service-to-Service.
-- **`uploadVideoCore({ stream, filename })`**: For REST/Service-to-Service.
-- **`uploadAudioCore({ stream, filename })`**: For REST/Service-to-Service.
-- **`uploadFileCore({ stream, filename })`**: For REST/Service-to-Service.
+To run tests:
+```bash
+npm run test      # Unit tests
+npm run test:e2e  # End-to-end tests
+```
 
 ---
 
-- **`deleteImage(url)`**: Extracts public ID and deletes.
-- **`deleteVideo(url)`**: Extracts public ID and deletes.
-- **`deleteAudio(url)`**: Extracts public ID and deletes.
-- **`deleteFile(url)`**: Extracts public ID and deletes.
+## License
 
----
-
-## 📄 License
-
-MIT © 2025 BTS Soft - Developed by **Omar Sabry**.
+MIT © 2025 BTS Soft - Developed by Omar Sabry.

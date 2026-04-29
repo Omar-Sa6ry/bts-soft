@@ -51,8 +51,8 @@ import { CreateAudioDto } from "./dtos/createAudio.dto";
 import { UploadAudioCommand } from "./commands/uploadAudio.command";
 import { DeleteAudioCommand } from "./commands/deleteAudio.command";
 import { DEFAULT_LIMITS, DEFAULT_IMAGE_MAX_DIMENSIONS } from "./utils/upload.constants";
+import * as path from "path";
 
-// NEW: Define a unified file structure for service methods (Stream + filename)
 export interface UploadFile {
   stream: Stream;
   filename: string;
@@ -139,12 +139,12 @@ export class UploadService {
    * @returns The secure URL of the uploaded image.
    */
   async uploadImageCore(
-    fileData: UploadFile,
+    fileData: UploadFile & { size?: number },
     dirUpload: string = "avatars"
   ): Promise<UploadResult> {
-    const { stream, filename } = fileData;
+    const { stream, filename, size } = fileData;
 
-    this.validateFile(filename, 'image');
+    this.validateFile(filename, 'image', size);
 
     const options = {
       folder: dirUpload,
@@ -249,12 +249,12 @@ export class UploadService {
    * @returns The secure URL of the uploaded video.
    */
   async uploadVideoCore(
-    fileData: UploadFile,
+    fileData: UploadFile & { size?: number },
     dirUpload: string = "videos"
   ): Promise<UploadResult> {
-    const { stream, filename } = fileData;
+    const { stream, filename, size } = fileData;
 
-    this.validateFile(filename, 'video');
+    this.validateFile(filename, 'video', size);
 
     const options = {
       folder: dirUpload,
@@ -307,12 +307,12 @@ export class UploadService {
    * @returns The secure URL of the uploaded audio.
    */
   async uploadAudioCore(
-    fileData: UploadFile,
+    fileData: UploadFile & { size?: number },
     dirUpload: string = "audios"
   ): Promise<UploadResult> {
-    const { stream, filename } = fileData;
+    const { stream, filename, size } = fileData;
 
-    this.validateFile(filename, 'audio');
+    this.validateFile(filename, 'audio', size);
 
     const options = {
       folder: dirUpload,
@@ -355,12 +355,12 @@ export class UploadService {
   }
 
   async uploadFileCore(
-    fileData: UploadFile,
+    fileData: UploadFile & { size?: number },
     dirUpload: string = "files"
   ): Promise<UploadResult> {
-    const { stream, filename } = fileData;
+    const { stream, filename, size } = fileData;
 
-    this.validateFile(filename, 'file');
+    this.validateFile(filename, 'file', size);
 
     const options = {
       folder: dirUpload,
@@ -462,10 +462,20 @@ export class UploadService {
    * Deletes an image file from the configured cloud service. (Unchanged)
    */
   async deleteImage(imageUrl: string): Promise<void> {
-    // ... (Original deleteImage logic remains here, as it doesn't depend on file upload method)
-    const publicId = extractPublicId(imageUrl, 'image');
+    // 1. Try to extract public ID assuming Cloudinary URL
+    let publicId = extractPublicId(imageUrl, 'image');
+    
+    // 2. Fallback: if it's a local path (or extraction failed), use the URL/path itself
     if (!publicId) {
-      throw new HttpException("Invalid image URL", HttpStatus.BAD_REQUEST);
+       // If it contains the local upload path, it's likely a local file
+       const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
+       if (imageUrl.includes(localPath)) {
+         publicId = imageUrl; // Use the full path for local storage
+       }
+    }
+
+    if (!publicId) {
+      throw new HttpException("Invalid image URL or path", HttpStatus.BAD_REQUEST);
     }
 
     const command = new DeleteImageCommand(this.deleteStrategy, publicId);
@@ -492,9 +502,15 @@ export class UploadService {
    */
   async deleteVideo(videoUrl: string): Promise<void> {
     // ... (Original deleteVideo logic remains here, as it doesn't depend on file upload method)
-    const publicId = extractPublicId(videoUrl, 'video');
+    let publicId = extractPublicId(videoUrl, 'video');
     if (!publicId) {
-      throw new HttpException("Invalid video URL", HttpStatus.BAD_REQUEST);
+       const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
+       if (videoUrl.includes(localPath)) {
+         publicId = videoUrl;
+       }
+    }
+    if (!publicId) {
+      throw new HttpException("Invalid video URL or path", HttpStatus.BAD_REQUEST);
     }
 
     const command = new DeleteVideoCommand(
@@ -524,9 +540,15 @@ export class UploadService {
    * Deletes an audio file from the configured cloud service.
    */
   async deleteAudio(audioUrl: string): Promise<void> {
-    const publicId = extractPublicId(audioUrl, 'audio'); // Audio handled as video/audio
+    let publicId = extractPublicId(audioUrl, 'audio'); // Audio handled as video/audio
     if (!publicId) {
-      throw new HttpException("Invalid audio URL", HttpStatus.BAD_REQUEST);
+       const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
+       if (audioUrl.includes(localPath)) {
+         publicId = audioUrl;
+       }
+    }
+    if (!publicId) {
+      throw new HttpException("Invalid audio URL or path", HttpStatus.BAD_REQUEST);
     }
 
     const command = new DeleteAudioCommand(
@@ -575,14 +597,21 @@ export class UploadService {
     if (!fileUrl) {
       throw new HttpException("File URL is required", HttpStatus.BAD_REQUEST);
     }
-
+ 
     // Extract public ID from URL
-    const publicId = extractPublicId(fileUrl, 'raw');
-
+    let publicId = extractPublicId(fileUrl, 'raw');
+ 
     if (!publicId) {
-      throw new HttpException("Invalid file URL", HttpStatus.BAD_REQUEST);
+       const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
+       if (fileUrl.includes(localPath)) {
+         publicId = fileUrl;
+       }
     }
-
+ 
+    if (!publicId) {
+      throw new HttpException("Invalid file URL or path", HttpStatus.BAD_REQUEST);
+    }
+ 
     const command = new DeleteFileCommand(this.deleteStrategy, publicId);
 
     try {

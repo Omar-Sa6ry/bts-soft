@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/upload",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Upload package for NestJS + GraphQL using Cloudinary with Strategy + Command + Observer patterns.",
   "author": "Omar Sabry",
   "license": "MIT",
@@ -14,7 +14,8 @@
     "prepublishOnly": "npm run build",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand --forceExit"
   },
   "dependencies": {
     "class-transformer": "^0.5.1",
@@ -36,15 +37,22 @@
     }
   },
   "devDependencies": {
+    "@apollo/server": "^5.5.0",
+    "@nestjs/apollo": "^13.3.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/graphql": "^13.0.0",
+    "@nestjs/platform-express": "^11.1.19",
     "@nestjs/testing": "^11.1.19",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.19.17",
+    "@types/supertest": "^7.2.0",
+    "apollo-server-express": "^3.13.0",
+    "graphql": "^16.13.2",
     "jest": "^30.3.0",
     "rimraf": "^6.1.3",
+    "supertest": "^7.2.2",
     "ts-jest": "^29.4.9",
     "typescript": "^5.7.0"
   },
