@@ -54,10 +54,10 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
 
     try {
       await clientToUse.messages.create({
+        ...channelOptions,
         from,
         to: formattedTo,
         body,
-        ...channelOptions,
       });
       this.logger.log(`SMS sent successfully to ${formattedTo}`);
     } catch (error: any) {

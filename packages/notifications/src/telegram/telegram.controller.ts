@@ -28,7 +28,7 @@ export class TelegramController {
   @Post()
   @HttpCode(HttpStatus.OK)
   async handleWebhook(@Body() update: TelegramWebhookDto) {
-    console.log(`Telegram account linked successfully for user .`);
+    // console.log(`Telegram account linked successfully for user .`);
     if (!update.message || !update.message.text) {
       return { ok: true };
     }
@@ -47,7 +47,7 @@ export class TelegramController {
         body: `welcome ${user.firstName}! your account is linked to Telegram.`,
       });
 
-      console.log(`Telegram account linked successfully for user ${user.id}.`);
+      // console.log(`Telegram account linked successfully for user ${user.id}.`);
     } else {
       await this.notificationService.send(ChannelType.TELEGRAM, {
         recipientId: telegramChatId,

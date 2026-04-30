@@ -51,10 +51,10 @@ export class NotificationProcessor extends WorkerHost {
     }
 
     try {
-      // Resolve I18n (Optional)
+      // Resolve I18n
       message = await this.applyI18n(message);
 
-      // Resolve Templates (Handlebars)
+      // Resolve Templates
       message = this.applyTemplates(message);
 
       const notificationChannel = this.channelFactory.getChannel(channel);

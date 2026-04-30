@@ -76,14 +76,15 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
 
     try {
       await transporterToUse.sendMail({
+        ...channelOptions,
         from: sender,
         to,
         subject,
         text: textContent,
         ...(htmlContent ? { html: htmlContent } : {}),
-        ...channelOptions,
       });
       this.logger.log(`Email sent successfully to ${to}`);
+
     } catch (error: any) {
       this.logger.error(`Failed to send email to ${to}:`, error);
       // Determine if error is client or provider side based on Nodemailer response

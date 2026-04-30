@@ -91,12 +91,13 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
 
     try {
       await clientToUse.messages.create({
+        ...channelOptions,
         from,
         to: formattedTo,
         body,
-        ...channelOptions,
       });
       this.logger.log(`WhatsApp message sent successfully to ${formattedTo}`);
+
     } catch (error: any) {
       this.logger.error(`Failed to send WhatsApp message to ${formattedTo}:`, error);
       if (error.status && error.status >= 400 && error.status < 500) {
