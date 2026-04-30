@@ -54,22 +54,28 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
 
   public async send(message: NotificationMessage): Promise<void> {
     const { recipientId: to, body, subject, channelOptions } = message;
-    const sender = this.configService.emailSender;
+    const sender = channelOptions?.from || this.configService.emailSender;
+
+    // Support dynamic SMTP configuration
+    let transporterToUse = this.transporter;
+    if (channelOptions?.smtpConfig) {
+      this.logger.debug(`Using dynamic SMTP configuration for email to ${to}`);
+      transporterToUse = createTransport(channelOptions.smtpConfig);
+    }
 
     if (!to) throw new NotificationClientError("Email recipientId (email address) is required.");
     if (!subject) throw new NotificationClientError("Email subject is required in the NotificationMessage.");
-    if (!this.transporter) throw new NotificationProviderError("Email transporter is not initialized. Check credentials.");
+    if (!transporterToUse) throw new NotificationProviderError("Email transporter is not initialized and no dynamic config provided.");
 
     this.logger.log(`Sending email from ${sender} to ${to} | Subject: "${subject}"`);
 
     // Use body as HTML if it contains tags, otherwise fallback to plain text.
-    // Also support legacy htmlTemplate from channelOptions if passed directly.
     const isHtml = /<[a-z][\s\S]*>/i.test(body);
     const htmlContent = channelOptions?.htmlTemplate || (isHtml ? body : undefined);
     const textContent = isHtml ? body.replace(/<[^>]*>?/gm, '') : body;
 
     try {
-      await this.transporter.sendMail({
+      await transporterToUse.sendMail({
         from: sender,
         to,
         subject,
@@ -88,4 +94,5 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
     }
   }
 }
+
 

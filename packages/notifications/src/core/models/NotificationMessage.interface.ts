@@ -14,5 +14,14 @@ export interface NotificationMessage {
   /** Language for I18n translation */
   lang?: string;
 
+  /** 
+   * Extra parameters for specific channels.
+   * Supports dynamic overrides for:
+   * - Discord/Teams: { webhookUrl: string }
+   * - Telegram: { botToken: string }
+   * - SMS/WhatsApp: { accountSid: string, authToken: string, from: string }
+   * - Email: { smtpConfig: any, from: string }
+   */
   channelOptions?: Record<string, any>;
 }
+

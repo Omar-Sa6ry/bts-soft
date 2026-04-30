@@ -32,17 +32,25 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    if (!this.bot) throw new NotificationProviderError("Telegram bot is not initialized.");
+    const { recipientId: chatId, body, channelOptions } = message;
+    const dynamicToken = channelOptions?.botToken;
+    
+    // Use dynamic bot instance if token is provided, otherwise fall back to initialized bot
+    let botToUse = this.bot;
+    if (dynamicToken) {
+      this.logger.debug(`Using dynamic bot token for Telegram message.`);
+      botToUse = new TelegramBot(dynamicToken, { polling: false });
+    }
 
-    const { recipientId: chatId, body } = message;
+    if (!botToUse) throw new NotificationProviderError("Telegram bot is not initialized and no dynamic token provided.");
     if (!chatId) throw new NotificationClientError("Telegram recipientId (chatId) is required.");
 
     this.logger.log(`Sending Telegram message to chatId: ${chatId}`);
 
     try {
-      await this.bot.sendMessage(chatId, body, {
+      await botToUse.sendMessage(chatId, body, {
         parse_mode: "Markdown",
-        ...message.channelOptions,
+        ...channelOptions,
       });
       this.logger.log(`Telegram message sent successfully.`);
     } catch (error: any) {
@@ -57,4 +65,5 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
     }
   }
 }
+
 

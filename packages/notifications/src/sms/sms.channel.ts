@@ -34,11 +34,18 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    if (!this.client) throw new NotificationProviderError("Twilio client is not initialized.");
+    const { recipientId: to, body, channelOptions } = message;
+    
+    // Support dynamic Twilio credentials
+    let clientToUse = this.client;
+    let from = channelOptions?.from || this.configService.twilioSmsNumber;
 
-    const from = this.configService.twilioSmsNumber;
-    const { recipientId: to, body } = message;
+    if (channelOptions?.accountSid && channelOptions?.authToken) {
+      this.logger.debug(`Using dynamic Twilio credentials for SMS.`);
+      clientToUse = new Twilio(channelOptions.accountSid, channelOptions.authToken);
+    }
 
+    if (!clientToUse) throw new NotificationProviderError("Twilio client is not initialized and no dynamic credentials provided.");
     if (!to) throw new NotificationClientError("SMS recipientId (phone number) is required.");
 
     const formattedTo = to.startsWith("+") ? to : `+${to}`;
@@ -46,11 +53,11 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
     this.logger.log(`Sending SMS from ${from} to ${formattedTo}`);
 
     try {
-      await this.client.messages.create({
+      await clientToUse.messages.create({
         from,
         to: formattedTo,
         body,
-        ...message.channelOptions,
+        ...channelOptions,
       });
       this.logger.log(`SMS sent successfully to ${formattedTo}`);
     } catch (error: any) {
@@ -62,4 +69,5 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
     }
   }
 }
+
 

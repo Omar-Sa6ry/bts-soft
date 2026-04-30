@@ -23,12 +23,12 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    const webhookUrl = this.configService.discordWebhookUrl;
+    const { body, channelOptions } = message;
+    const webhookUrl = channelOptions?.webhookUrl || this.configService.discordWebhookUrl;
+
     if (!webhookUrl) throw new NotificationProviderError("Discord Webhook URL is not configured.");
 
-    const { body, channelOptions } = message;
-
-    this.logger.log(`Sending Discord notification via webhook.`);
+    this.logger.log(`Sending Discord notification via ${channelOptions?.webhookUrl ? 'dynamic' : 'default'} webhook.`);
 
     try {
       await lastValueFrom(
@@ -49,4 +49,5 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
     }
   }
 }
+
 

@@ -67,13 +67,21 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    if (!this.client) throw new NotificationProviderError("Twilio client is not initialized.");
+    const { recipientId: to, body, channelOptions } = message;
 
-    const twilioNumber = this.configService.twilioWhatsappNumber;
-    if (!twilioNumber) throw new NotificationProviderError("Twilio WhatsApp number is not configured.");
+    // Support dynamic Twilio credentials
+    let clientToUse = this.client;
+    let fromRaw = channelOptions?.from || this.configService.twilioWhatsappNumber;
 
-    const from = this.normalizeToWhatsApp(twilioNumber);
-    const { recipientId: to, body } = message;
+    if (channelOptions?.accountSid && channelOptions?.authToken) {
+      this.logger.debug(`Using dynamic Twilio credentials for WhatsApp.`);
+      clientToUse = new Twilio(channelOptions.accountSid, channelOptions.authToken);
+    }
+
+    if (!clientToUse) throw new NotificationProviderError("Twilio client is not initialized and no dynamic credentials provided.");
+    if (!fromRaw) throw new NotificationProviderError("Twilio WhatsApp number is not configured.");
+
+    const from = this.normalizeToWhatsApp(fromRaw);
 
     if (!to) throw new NotificationClientError("WhatsApp recipientId (phone number) is required.");
     
@@ -82,11 +90,11 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
     this.logger.log(`Sending WhatsApp from ${from} to ${formattedTo}`);
 
     try {
-      await this.client.messages.create({
+      await clientToUse.messages.create({
         from,
         to: formattedTo,
         body,
-        ...message.channelOptions,
+        ...channelOptions,
       });
       this.logger.log(`WhatsApp message sent successfully to ${formattedTo}`);
     } catch (error: any) {
@@ -98,4 +106,5 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
     }
   }
 }
+
 
