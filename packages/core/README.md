@@ -36,177 +36,60 @@ The ecosystem is built on three core pillars:
 
 ## Deep Dive: `@bts-soft/validation`
 
-The validation module is the first line of defense for any BTS Soft application. It moves beyond simple "type checking" and implements complex domain rules and security sanitization.
+The validation module is the primary security layer for BTS Soft applications. It implements a "Validation-at-the-Edge" philosophy, where data is validated, sanitized, and transformed before it reaches the service layer.
 
-### Philosophy: Security-First Validation
+### Key Features
 
-Every text-based decorator in this package includes a hidden security layer. By default, it applies the `SQL_INJECTION_REGEX` to prevent malicious payloads from reaching the database layer. Additionally, it leverages `class-transformer` to normalize data (e.g., trimming whitespace and converting to lowercase) before the business logic ever sees it.
+1.  **Declarative Security**: Every text-based decorator integrates the `SQL_INJECTION_REGEX` to filter malicious patterns.
+2.  **Smart Transformations**: Leverages `class-transformer` for automatic data normalization (e.g., auto-capitalization of names, lowercase emails, and digit-only national IDs).
+3.  **Protocol Agnostic**: Native support for both REST (Express) and GraphQL (Apollo), allowing a single DTO to serve both architectures via the `isGraphql` flag.
+4.  **Policy-Driven Passwords**: Comprehensive password validation with three configurable complexity levels.
 
 ---
 
-### Decorator Reference (Exhaustive)
+### Core Decorators
 
-#### 1. `@EmailField(nullable?: boolean, isGraphql?: boolean)`
-Validates an email address and normalizes it to lowercase.
-- **Validators**: `IsEmail`, `IsOptional`, `Matches` (SQLi).
-- **Transform**: `toLower`.
-- **Usage (REST)**:
+#### 1. Identity & Security
+- **`@PasswordField`**: Supports `ALPHANUMERIC`, `SYMBOLIC`, and `COMPREHENSIVE` complexity scenarios.
+- **`@NationalIdField`**: Specialized for Egyptian National IDs (14 digits) with auto-stripping of non-digits.
+- **`@IdField`**: Flexible validation for generic IDs (ULID, UUID, etc) with length enforcement.
+
+#### 2. Text & Content
+- **`@NameField`**: Validates names and automatically applies title-case (e.g., "omar sabry" → "Omar Sabry").
+- **`@CapitalTextField`**: Generic text field with auto-capitalization for proper nouns like cities.
+- **`@TextField`**: Standard input field with length limits and strict SQL injection checks.
+- **`@DescriptionField`**: Designed for long-form content with support for newlines and special punctuation.
+- **`@UsernameField`**: Enforces system-level handle rules (3-30 chars, starts with a letter).
+
+#### 3. Contact & Primitives
+- **`@EmailField`**: Validates email format and normalizes input to lowercase.
+- **`@PhoneField`**: Validates international phone numbers using `libphonenumber-js` with regional support.
+- **`@UrlField`**: Validates web addresses and ensures lowercase normalization.
+- **`@NumberField`**: Supports integers and floats with flexible min/max constraints.
+- **`@BooleanField`**: Strict boolean checking for logic flags.
+- **`@DateField`**: Handles date strings and Date objects with automatic type conversion.
+
+---
+
+### Implementation Example
+
 ```typescript
-class LoginDto {
+import { NameField, EmailField, PasswordField, PasswordComplexity } from '@bts-soft/validation';
+
+export class RegisterUserDto {
+  @NameField('Full Name')
+  name: string;
+
   @EmailField()
   email: string;
+
+  @PasswordField(12, 32, PasswordComplexity.COMPREHENSIVE)
+  password: string;
 }
 ```
-- **Usage (GraphQL)**:
-```typescript
-@InputType()
-class RegisterInput {
-  @EmailField(false, true)
-  email: string;
-}
-```
-
-#### 2. `@PasswordField(min?: number, max?: number, nullable?: boolean, isGraphql?: boolean)`
-Enforces a high-security password policy.
-- **Rules**: Must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.
-- **Default Constraints**: Min: 8, Max: 16.
-- **Usage**:
-```typescript
-class ChangePasswordDto {
-  @PasswordField(12, 32)
-  newPassword: string;
-}
-```
-
-#### 3. `@PhoneField(format?: CountryCode, nullable?: boolean, isGraphql?: boolean)`
-Validates and cleans international phone numbers.
-- **Logic**: Automatically removes non-digit characters (except `+`) before validation.
-- **Default Format**: `EG` (Egypt).
-- **Usage**:
-```typescript
-class ProfileDto {
-  @PhoneField('SA')
-  whatsappNumber: string;
-}
-```
-
-#### 4. `@NationalIdField(nullable?: boolean, isGraphql?: boolean)`
-Strict validation for Egyptian National IDs.
-- **Rules**: Exactly 14 digits, must start with 2 or 3.
-- **Cleaning**: Removes any non-digit input automatically.
-- **Usage**:
-```typescript
-class IdentityDto {
-  @NationalIdField()
-  nationalId: string;
-}
-```
-
-#### 5. `@NameField(nullable?: boolean, isGraphql?: boolean)`
-Validates personal names with automatic title-case capitalization.
-- **Logic**: Capitalizes the first letter of every name segment.
-- **Constraints**: 2-100 characters.
-- **Usage**:
-```typescript
-class UpdateUserDto {
-  @NameField()
-  fullName: string; // "omar sabry" -> "Omar Sabry"
-}
-```
-
-#### 6. `@DescriptionField(nullable?: boolean, isGraphql?: boolean)`
-Designed for long-form text content like biographies or comments.
-- **Constraints**: 10-2000 characters.
-- **Logic**: Allows more characters than `TextField` (includes newlines and specialized punctuation).
-- **Usage**:
-```typescript
-class UpdateBioDto {
-  @DescriptionField()
-  biography: string;
-}
-```
-
-#### 7. `@NumberField(isInteger?: boolean, min?: number, max?: number, nullable?: boolean, isGraphql?: boolean)`
-Versatile numeric validation.
-- **Options**: Toggle between integer and float.
-- **Usage**:
-```typescript
-class ProductDto {
-  @NumberField(true, 1, 1000)
-  stockCount: number;
-
-  @NumberField(false, 0.01)
-  price: number;
-}
-```
-
-#### 8. `@UsernameField(nullable?: boolean, isGraphql?: boolean)`
-Validates standard system usernames.
-- **Rules**: 3-30 characters, Alphanumeric + Underscore, must start with a letter.
-- **Usage**:
-```typescript
-class SetUsernameDto {
-  @UsernameField()
-  username: string;
-}
-```
-
-#### 9. `@TextField(text: string, min?: number, max?: number, nullable?: boolean, isGraphql?: boolean)`
-The "Swiss Army Knife" for general text inputs.
-- **Features**: Customizable error messages, length limits, and SQLi protection.
-- **Default**: Min 1, Max 255.
-- **Usage**:
-```typescript
-class SearchDto {
-  @TextField('Search Query', 3, 50)
-  q: string;
-}
-```
-
-#### 10. `@CapitalField(text: string, min?: number, max?: number, nullable?: boolean, isGraphql?: boolean)`
-Similar to `TextField` but enforces capitalization on every word.
-- **Usage**: Useful for City names, Country names, or Titles.
-
-#### 11. `@DateField(nullable?: boolean, isGraphql?: boolean)`
-Validates and converts input into a JavaScript `Date` object.
-- **Usage**:
-```typescript
-class EventDto {
-  @DateField()
-  startDate: Date;
-}
-```
-
-#### 12. `@BooleanField(nullable?: boolean, isGraphql?: boolean)`
-Strict boolean validation.
-- **Usage**:
-```typescript
-class PreferencesDto {
-  @BooleanField()
-  isPublic: boolean;
-}
-```
-
-#### 13. `@EnumField(entity: object, nullable?: boolean, isGraphql?: boolean)`
-Synchronizes validation with TypeScript Enums.
-- **Usage**:
-```typescript
-enum UserRole { ADMIN = 'admin', USER = 'user' }
-
-class UpdateRoleDto {
-  @EnumField(UserRole)
-  role: UserRole;
-}
-```
-
-#### 14. `@UrlField(nullable?: boolean, isGraphql?: boolean)`
-Validates complete web URLs.
-- **Logic**: Enforces protocol and converts host to lowercase.
-
-#### 15. `@IdField(length?: number, nullable?: boolean, isGraphql?: boolean)`
-Generic length-based ID validation (useful for ULID/UUID patterns).
 
 ---
+
 
 ### Utility Exports
 
