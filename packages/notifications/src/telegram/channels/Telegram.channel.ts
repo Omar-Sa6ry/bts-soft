@@ -4,6 +4,7 @@ import { INotificationChannel } from "./INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
+import { NotificationClientError, NotificationProviderError } from "../../core/errors/NotificationError";
 
 @Injectable()
 export class TelegramChannel implements INotificationChannel, OnModuleInit {
@@ -31,10 +32,10 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    if (!this.bot) throw new Error("Telegram bot is not initialized.");
+    if (!this.bot) throw new NotificationProviderError("Telegram bot is not initialized.");
 
     const { recipientId: chatId, body } = message;
-    if (!chatId) throw new Error("Telegram recipientId (chatId) is required.");
+    if (!chatId) throw new NotificationClientError("Telegram recipientId (chatId) is required.");
 
     this.logger.log(`Sending Telegram message to chatId: ${chatId}`);
 
@@ -44,9 +45,16 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
         ...message.channelOptions,
       });
       this.logger.log(`Telegram message sent successfully.`);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to send Telegram message to ${chatId}:`, error);
-      throw new Error(`Telegram send error: ${error.message}`);
+      
+      // Handle Telegram-specific error codes
+      if (error.response && error.response.statusCode >= 400 && error.response.statusCode < 500) {
+        throw new NotificationClientError(`Telegram client error: ${error.message}`);
+      }
+      
+      throw new NotificationProviderError(`Telegram provider error: ${error.message}`);
     }
   }
 }
+

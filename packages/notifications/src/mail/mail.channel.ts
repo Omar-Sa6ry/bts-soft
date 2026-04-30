@@ -4,28 +4,13 @@ import { INotificationChannel } from "../telegram/channels/INotificationChannel.
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
-import { TemplateService } from "../core/templates/template.service";
+import { NotificationClientError, NotificationProviderError } from "../core/errors/NotificationError";
 
 /**
  * EmailChannel
  * -------------
  * Sends email notifications via Nodemailer.
- * Supports both plain text and Handlebars-templated HTML bodies.
- *
- * To send a templated email, set `message.channelOptions.htmlTemplate` and
- * `message.channelOptions.templateContext` in the NotificationMessage:
- *
- * ```ts
- * await notificationService.send(ChannelType.EMAIL, {
- *   recipientId: 'user@example.com',
- *   subject: 'Welcome!',
- *   body: 'Fallback plain text',
- *   channelOptions: {
- *     htmlTemplate: '<h1>Hello {{name}}</h1>',
- *     templateContext: { name: 'Omar' },
- *   },
- * });
- * ```
+ * Now relies on universal templating from NotificationProcessor.
  */
 @Injectable()
 export class EmailChannel implements INotificationChannel, OnModuleInit {
@@ -36,7 +21,6 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
   constructor(
     private configService: NotificationConfigService,
     private registry: ChannelRegistry,
-    private templateService: TemplateService,
   ) {}
 
   onModuleInit() {
@@ -69,38 +53,39 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    const { recipientId: to, body: text, subject, channelOptions } = message;
+    const { recipientId: to, body, subject, channelOptions } = message;
     const sender = this.configService.emailSender;
 
-    if (!to) throw new Error("Email recipientId (email address) is required.");
-    if (!subject) throw new Error("Email subject is required in the NotificationMessage.");
-    if (!this.transporter) throw new Error("Email transporter is not initialized. Check credentials.");
+    if (!to) throw new NotificationClientError("Email recipientId (email address) is required.");
+    if (!subject) throw new NotificationClientError("Email subject is required in the NotificationMessage.");
+    if (!this.transporter) throw new NotificationProviderError("Email transporter is not initialized. Check credentials.");
 
     this.logger.log(`Sending email from ${sender} to ${to} | Subject: "${subject}"`);
 
-    // Resolve HTML body: use template if provided, otherwise fall back to plain text
-    let html: string | undefined;
-    if (channelOptions?.htmlTemplate) {
-      html = this.templateService.render({
-        template: channelOptions.htmlTemplate,
-        context: channelOptions.templateContext ?? {},
-      });
-      this.logger.debug(`Rendered Handlebars template for email to ${to}`);
-    }
+    // Use body as HTML if it contains tags, otherwise fallback to plain text.
+    // Also support legacy htmlTemplate from channelOptions if passed directly.
+    const isHtml = /<[a-z][\s\S]*>/i.test(body);
+    const htmlContent = channelOptions?.htmlTemplate || (isHtml ? body : undefined);
+    const textContent = isHtml ? body.replace(/<[^>]*>?/gm, '') : body;
 
     try {
       await this.transporter.sendMail({
         from: sender,
         to,
         subject,
-        text,
-        ...(html ? { html } : {}),
+        text: textContent,
+        ...(htmlContent ? { html: htmlContent } : {}),
         ...channelOptions,
       });
       this.logger.log(`Email sent successfully to ${to}`);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to send email to ${to}:`, error);
-      throw new Error(`Email send error: ${error instanceof Error ? error.message : String(error)}`);
+      // Determine if error is client or provider side based on Nodemailer response
+      if (error.responseCode && error.responseCode >= 400 && error.responseCode < 500) {
+        throw new NotificationClientError(`Email send rejected: ${error.message}`);
+      }
+      throw new NotificationProviderError(`Email provider error: ${error.message}`);
     }
   }
 }
+

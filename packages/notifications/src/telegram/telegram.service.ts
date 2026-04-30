@@ -1,17 +1,21 @@
-import { Injectable } from "@nestjs/common";
-import { Repository } from "typeorm";
-import { Transactional } from "typeorm-transactional";
+import { Injectable, Inject, Optional } from "@nestjs/common";
 import { I18nService } from "nestjs-i18n";
 import * as crypto from "crypto";
+import { ITelegramUserRepository, TELEGRAM_USER_REPOSITORY } from "./interfaces/telegram-user-repository.interface";
 
 @Injectable()
 export class TelegramService<UserEntity = any, UserResponseDto = any> {
-  private userRepo: Repository<UserEntity>;
   private UserResponseClass: new (...args: any[]) => UserResponseDto;
 
-  constructor(private readonly i18n: I18nService) {}
+  constructor(
+    private readonly i18n: I18nService,
+    @Optional() @Inject(TELEGRAM_USER_REPOSITORY) private userRepo: ITelegramUserRepository<UserEntity>
+  ) {}
 
-  setUserRepository(userRepo: Repository<UserEntity>) {
+  /**
+   * Manually set the repository if not injected via DI.
+   */
+  setUserRepository(userRepo: ITelegramUserRepository<UserEntity>) {
     this.userRepo = userRepo;
   }
 
@@ -21,21 +25,19 @@ export class TelegramService<UserEntity = any, UserResponseDto = any> {
     this.UserResponseClass = UserResponseClass;
   }
 
-  @Transactional()
   async saveTelegramLinkToken(
     userId: string,
     token: string
   ): Promise<UserResponseDto> {
     if (!this.userRepo) {
       throw new Error(
-        "User repository not set. Please call setUserRepository() first."
+        "User repository not set. Please provide an implementation of ITelegramUserRepository."
       );
     }
 
-    await this.userRepo.update(
-      userId as any,
-      { telegramLinkToken: token } as any
-    );
+    await this.userRepo.update(userId, { 
+      telegramLinkToken: token 
+    } as any);
 
     console.log(`DB: Saved link token '${token}' for user ID ${userId}`);
 
@@ -49,31 +51,25 @@ export class TelegramService<UserEntity = any, UserResponseDto = any> {
       throw new Error("User repository not set.");
     }
 
-    return this.userRepo.findOne({
-      where: { telegramLinkToken: token } as any,
-    });
+    return this.userRepo.findByLinkToken(token);
   }
 
-  @Transactional()
   async updateTelegramChatId(userId: string, chatId: string): Promise<void> {
     if (!this.userRepo) {
       throw new Error("User repository not set.");
     }
 
-    await this.userRepo.update(
-      userId as any,
-      {
-        telegram_chat_id: chatId,
-        telegramLinkToken: null,
-      } as any
-    );
+    await this.userRepo.update(userId, {
+      telegram_chat_id: chatId,
+      telegramLinkToken: null,
+    } as any);
 
     console.log(
       `DB: Successfully linked user ${userId} with Chat ID: ${chatId}`
     );
   }
 
-  async generateTelegramLinkToken(user) {
+  async generateTelegramLinkToken(user: any) {
     const token = crypto.randomBytes(4).toString("hex").toUpperCase();
     await this.saveTelegramLinkToken(user.id, token);
     return token;

@@ -4,6 +4,7 @@ import { INotificationChannel } from "../telegram/channels/INotificationChannel.
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
+import { NotificationClientError, NotificationProviderError } from "../core/errors/NotificationError";
 
 @Injectable()
 export class SmsChannel implements INotificationChannel, OnModuleInit {
@@ -33,12 +34,12 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    if (!this.client) throw new Error("Twilio client is not initialized.");
+    if (!this.client) throw new NotificationProviderError("Twilio client is not initialized.");
 
     const from = this.configService.twilioSmsNumber;
     const { recipientId: to, body } = message;
 
-    if (!to) throw new Error("SMS recipientId (phone number) is required.");
+    if (!to) throw new NotificationClientError("SMS recipientId (phone number) is required.");
 
     const formattedTo = to.startsWith("+") ? to : `+${to}`;
 
@@ -52,9 +53,13 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
         ...message.channelOptions,
       });
       this.logger.log(`SMS sent successfully to ${formattedTo}`);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to send SMS to ${formattedTo}:`, error);
-      throw new Error(`SMS send error: ${error.message}`);
+      if (error.status && error.status >= 400 && error.status < 500) {
+        throw new NotificationClientError(`SMS client error: ${error.message}`);
+      }
+      throw new NotificationProviderError(`SMS send error: ${error.message}`);
     }
   }
 }
+

@@ -4,6 +4,7 @@ import { INotificationChannel } from "../telegram/channels/INotificationChannel.
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
+import { NotificationClientError, NotificationProviderError } from "../core/errors/NotificationError";
 
 @Injectable()
 export class FirebaseChannel implements INotificationChannel, OnModuleInit {
@@ -43,12 +44,12 @@ export class FirebaseChannel implements INotificationChannel, OnModuleInit {
 
   public async send(message: NotificationMessage): Promise<void> {
     if (!this.initialized) {
-      throw new Error("Firebase Admin SDK is not initialized.");
+      throw new NotificationProviderError("Firebase Admin SDK is not initialized.");
     }
 
     const { recipientId: token, title, body, channelOptions } = message;
 
-    if (!token) throw new Error("FCM token (recipientId) is required.");
+    if (!token) throw new NotificationClientError("FCM token (recipientId) is required.");
 
     this.logger.log(`Sending FCM notification to token: ${token.substring(0, 10)}...`);
 
@@ -61,7 +62,20 @@ export class FirebaseChannel implements INotificationChannel, OnModuleInit {
       this.logger.log("FCM notification sent successfully.");
     } catch (error: any) {
       this.logger.error("Failed to send FCM notification:", error);
-      throw new Error(`Firebase send error: ${error.message}`);
+      
+      // Categorize Firebase errors
+      const code = error.code;
+      if (
+        code === 'messaging/invalid-registration-token' ||
+        code === 'messaging/registration-token-not-registered' ||
+        code === 'messaging/invalid-argument' ||
+        code === 'messaging/invalid-payload'
+      ) {
+        throw new NotificationClientError(`Firebase client error: ${error.message}`);
+      }
+      
+      throw new NotificationProviderError(`Firebase provider error: ${error.message}`);
     }
   }
 }
+

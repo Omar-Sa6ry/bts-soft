@@ -5,6 +5,7 @@ import { NotificationMessage } from "../core/models/NotificationMessage.interfac
 import { INotificationChannel } from "../telegram/channels/INotificationChannel.interface";
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
+import { NotificationClientError, NotificationProviderError } from "../core/errors/NotificationError";
 
 /**
  * FacebookMessengerChannel implements the INotificationChannel interface
@@ -30,7 +31,7 @@ export class FacebookMessengerChannel implements INotificationChannel, OnModuleI
     const pageToken = this.configService.facebookPageAccessToken;
     const version = this.configService.facebookGraphApiVersion;
 
-    if (!pageToken) throw new Error("Facebook Page Access Token is missing.");
+    if (!pageToken) throw new NotificationProviderError("Facebook Page Access Token is missing.");
 
     const url = `https://graph.facebook.com/${version}/me/messages?access_token=${pageToken}`;
 
@@ -47,7 +48,13 @@ export class FacebookMessengerChannel implements INotificationChannel, OnModuleI
       this.logger.log("Facebook Messenger notification sent successfully.");
     } catch (error: any) {
       this.logger.error("Failed to send Facebook Messenger notification:", error.response?.data || error.message);
-      throw new Error(`Messenger send error: ${error.message}`);
+      
+      if (error.response && error.response.status >= 400 && error.response.status < 500) {
+        throw new NotificationClientError(`Messenger client error: ${error.message}`);
+      }
+      
+      throw new NotificationProviderError(`Messenger provider error: ${error.message}`);
     }
   }
 }
+

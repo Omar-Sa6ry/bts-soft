@@ -1,6 +1,7 @@
-import { Processor, WorkerHost, OnWorkerEvent } from "@nestjs/bullmq";
-import { Job } from "bullmq";
+import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { Job, UnrecoverableError } from "bullmq";
 import { Injectable, Logger, Inject, Optional } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import { NotificationChannelFactory } from "./core/factories/NotificationChannel.factory";
 import {
   INotificationLogRepository,
@@ -8,6 +9,9 @@ import {
   NotificationStatus,
 } from "./core/models/NotificationLog.interface";
 import { InMemoryNotificationLogRepository } from "./core/repositories/InMemoryNotificationLog.repository";
+import { NotificationClientError } from "./core/errors/NotificationError";
+import { TemplateService } from "./core/templates/template.service";
+import { NotificationMessage } from "./core/models/NotificationMessage.interface";
 
 /**
  * NotificationProcessor
@@ -22,6 +26,8 @@ export class NotificationProcessor extends WorkerHost {
 
   constructor(
     private channelFactory: NotificationChannelFactory,
+    private moduleRef: ModuleRef,
+    private templateService: TemplateService,
     @Optional() @Inject(NOTIFICATION_LOG_REPOSITORY) private logRepository: INotificationLogRepository,
     @Optional() private inMemoryLogRepository: InMemoryNotificationLogRepository,
   ) {
@@ -33,7 +39,7 @@ export class NotificationProcessor extends WorkerHost {
   }
 
   async process(job: Job): Promise<void> {
-    const { channel, message } = job.data;
+    let { channel, message } = job.data as { channel: string, message: NotificationMessage };
     this.logger.log(`Processing job ${job.id} | Channel: ${channel} | Attempt: ${job.attemptsMade + 1}`);
 
     // Mark as RETRYING if this is not the first attempt
@@ -45,6 +51,12 @@ export class NotificationProcessor extends WorkerHost {
     }
 
     try {
+      // Resolve I18n (Optional)
+      message = await this.applyI18n(message);
+
+      // Resolve Templates (Handlebars)
+      message = this.applyTemplates(message);
+
       const notificationChannel = this.channelFactory.getChannel(channel);
       await notificationChannel.send(message);
 
@@ -57,7 +69,7 @@ export class NotificationProcessor extends WorkerHost {
           attemptsMade: job.attemptsMade + 1,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         `Job ${job.id} (Channel: ${channel}) failed on attempt ${job.attemptsMade + 1}:`,
         error.message,
@@ -72,7 +84,61 @@ export class NotificationProcessor extends WorkerHost {
         });
       }
 
-      throw error;
+      // If it's a client error (e.g., bad format, missing contact), do not retry
+      if (error instanceof NotificationClientError) {
+        throw new UnrecoverableError(error.message);
+      }
+
+      throw error; // Let BullMQ handle retries for provider/unknown errors
     }
+  }
+
+  /**
+   * Translates the body, title, and subject if `nestjs-i18n` is available
+   * and `message.lang` is provided.
+   */
+  private async applyI18n(message: NotificationMessage): Promise<NotificationMessage> {
+    if (!message.lang) return message;
+
+    let i18nService: any;
+    try {
+      i18nService = this.moduleRef.get('I18nService', { strict: false });
+    } catch (e) {
+      // I18nService not found, gracefully skip translation
+      this.logger.warn(`Language '${message.lang}' specified, but I18nService is not available.`);
+      return message;
+    }
+
+    if (i18nService) {
+      const args = message.context ?? {};
+      const lang = message.lang;
+
+      if (message.body) message.body = await i18nService.t(message.body, { lang, args });
+      if (message.title) message.title = await i18nService.t(message.title, { lang, args });
+      if (message.subject) message.subject = await i18nService.t(message.subject, { lang, args });
+    }
+
+    return message;
+  }
+
+  /**
+   * Renders the body, title, and subject using Handlebars if they contain
+   * template syntax and `context` is provided.
+   */
+  private applyTemplates(message: NotificationMessage): NotificationMessage {
+    if (!message.context) return message;
+
+    const renderIfTemplate = (text?: string) => {
+      if (text && text.includes('{{')) {
+        return this.templateService.render({ template: text, context: message.context! });
+      }
+      return text;
+    };
+
+    message.body = renderIfTemplate(message.body)!;
+    message.title = renderIfTemplate(message.title);
+    message.subject = renderIfTemplate(message.subject);
+
+    return message;
   }
 }

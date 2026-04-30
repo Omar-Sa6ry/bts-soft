@@ -5,6 +5,7 @@ import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { lastValueFrom } from "rxjs";
 import { ChannelRegistry } from "../core/registry/channel.registry";
 import { NotificationConfigService } from "../core/config/notification.config";
+import { NotificationClientError, NotificationProviderError } from "../core/errors/NotificationError";
 
 @Injectable()
 export class DiscordChannel implements INotificationChannel, OnModuleInit {
@@ -23,7 +24,7 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
 
   public async send(message: NotificationMessage): Promise<void> {
     const webhookUrl = this.configService.discordWebhookUrl;
-    if (!webhookUrl) throw new Error("Discord Webhook URL is not configured.");
+    if (!webhookUrl) throw new NotificationProviderError("Discord Webhook URL is not configured.");
 
     const { body, channelOptions } = message;
 
@@ -39,7 +40,13 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
       this.logger.log(`Discord notification sent successfully.`);
     } catch (error: any) {
       this.logger.error(`Failed to send Discord notification:`, error.response?.data || error.message);
-      throw new Error(`Discord send error: ${error.message}`);
+      
+      if (error.response && error.response.status >= 400 && error.response.status < 500) {
+        throw new NotificationClientError(`Discord client error: ${error.message}`);
+      }
+      
+      throw new NotificationProviderError(`Discord provider error: ${error.message}`);
     }
   }
 }
+

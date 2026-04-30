@@ -61,10 +61,11 @@ export class NotificationService {
       },
       removeOnComplete: policy.removeOnComplete,
       removeOnFail: policy.removeOnFail,
+      priority: message.priority, // Pass priority to BullMQ
     });
 
     this.logger.log(
-      `Notification queued: [${channel}] Job ID: ${job.id} | Attempts: ${policy.attempts} | Backoff: ${policy.backoffType}`,
+      `Notification queued: [${channel}] Job ID: ${job.id} | Priority: ${message.priority ?? 'default'} | Attempts: ${policy.attempts} | Backoff: ${policy.backoffType}`,
     );
 
     // Log notification to repository (if available)

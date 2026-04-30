@@ -5,6 +5,7 @@ import { NotificationMessage } from "../core/models/NotificationMessage.interfac
 import { INotificationChannel } from "../telegram/channels/INotificationChannel.interface";
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
+import { NotificationClientError, NotificationProviderError } from "../core/errors/NotificationError";
 
 @Injectable()
 export class TeamsChannel implements INotificationChannel, OnModuleInit {
@@ -23,7 +24,7 @@ export class TeamsChannel implements INotificationChannel, OnModuleInit {
 
   public async send(message: NotificationMessage): Promise<void> {
     const webhookUrl = this.configService.teamsWebhookUrl;
-    if (!webhookUrl) throw new Error("Teams Webhook URL is required.");
+    if (!webhookUrl) throw new NotificationProviderError("Teams Webhook URL is not configured.");
 
     const { body, channelOptions } = message;
 
@@ -39,7 +40,13 @@ export class TeamsChannel implements INotificationChannel, OnModuleInit {
       this.logger.log(`Teams message sent successfully.`);
     } catch (error: any) {
       this.logger.error(`Failed to send Teams message:`, error.response?.data || error.message);
-      throw new Error(`Teams send error: ${error.message}`);
+      
+      if (error.response && error.response.status >= 400 && error.response.status < 500) {
+        throw new NotificationClientError(`Teams client error: ${error.message}`);
+      }
+      
+      throw new NotificationProviderError(`Teams provider error: ${error.message}`);
     }
   }
 }
+

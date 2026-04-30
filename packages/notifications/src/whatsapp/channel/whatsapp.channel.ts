@@ -4,6 +4,7 @@ import { INotificationChannel } from "../../telegram/channels/INotificationChann
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
+import { NotificationClientError, NotificationProviderError } from "../../core/errors/NotificationError";
 
 @Injectable()
 export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
@@ -66,15 +67,15 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    if (!this.client) throw new Error("Twilio client is not initialized.");
+    if (!this.client) throw new NotificationProviderError("Twilio client is not initialized.");
 
     const twilioNumber = this.configService.twilioWhatsappNumber;
-    if (!twilioNumber) throw new Error("Twilio WhatsApp number is not configured.");
+    if (!twilioNumber) throw new NotificationProviderError("Twilio WhatsApp number is not configured.");
 
     const from = this.normalizeToWhatsApp(twilioNumber);
     const { recipientId: to, body } = message;
 
-    if (!to) throw new Error("WhatsApp recipientId (phone number) is required.");
+    if (!to) throw new NotificationClientError("WhatsApp recipientId (phone number) is required.");
     
     const formattedTo = this.normalizeToWhatsApp(to);
 
@@ -88,9 +89,13 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
         ...message.channelOptions,
       });
       this.logger.log(`WhatsApp message sent successfully to ${formattedTo}`);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to send WhatsApp message to ${formattedTo}:`, error);
-      throw new Error(`WhatsApp send error: ${error.message}`);
+      if (error.status && error.status >= 400 && error.status < 500) {
+        throw new NotificationClientError(`WhatsApp client error: ${error.message}`);
+      }
+      throw new NotificationProviderError(`WhatsApp send error: ${error.message}`);
     }
   }
 }
+

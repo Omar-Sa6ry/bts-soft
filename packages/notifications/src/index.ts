@@ -3,9 +3,11 @@ export * from "./core/models/NotificationMessage.interface";
 export * from "./core/models/ChannelType.const";
 export * from "./core/models/NotificationLog.interface";
 export * from "./core/models/RetryPolicy.interface";
+export * from "./core/errors/NotificationError";
 
 // ========== Interfaces ==========
 export * from "./telegram/channels/INotificationChannel.interface";
+export * from "./telegram/interfaces/telegram-user-repository.interface";
 
 // ========== Channels ==========
 export * from "./telegram/channels/Telegram.channel";
