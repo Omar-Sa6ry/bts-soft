@@ -31,3 +31,4 @@ desktop.ini
 
 # coverage
 packages/upload/coverage
+packages/validation/coverage
