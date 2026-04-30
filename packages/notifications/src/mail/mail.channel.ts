@@ -4,12 +4,28 @@ import { INotificationChannel } from "../telegram/channels/INotificationChannel.
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
+import { TemplateService } from "../core/templates/template.service";
 
 /**
  * EmailChannel
  * -------------
- * Implements the INotificationChannel interface to send email notifications
- * through an SMTP or service-based email configuration using Nodemailer.
+ * Sends email notifications via Nodemailer.
+ * Supports both plain text and Handlebars-templated HTML bodies.
+ *
+ * To send a templated email, set `message.channelOptions.htmlTemplate` and
+ * `message.channelOptions.templateContext` in the NotificationMessage:
+ *
+ * ```ts
+ * await notificationService.send(ChannelType.EMAIL, {
+ *   recipientId: 'user@example.com',
+ *   subject: 'Welcome!',
+ *   body: 'Fallback plain text',
+ *   channelOptions: {
+ *     htmlTemplate: '<h1>Hello {{name}}</h1>',
+ *     templateContext: { name: 'Omar' },
+ *   },
+ * });
+ * ```
  */
 @Injectable()
 export class EmailChannel implements INotificationChannel, OnModuleInit {
@@ -19,7 +35,8 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
 
   constructor(
     private configService: NotificationConfigService,
-    private registry: ChannelRegistry
+    private registry: ChannelRegistry,
+    private templateService: TemplateService,
   ) {}
 
   onModuleInit() {
@@ -35,8 +52,8 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
     const port = this.configService.emailPort;
 
     if (!user || !pass) {
-        this.logger.warn("Email credentials missing, EmailChannel will not function correctly.");
-        return;
+      this.logger.warn("Email credentials missing, EmailChannel will not function correctly.");
+      return;
     }
 
     this.transporter = createTransport({
@@ -57,23 +74,32 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
 
     if (!to) throw new Error("Email recipientId (email address) is required.");
     if (!subject) throw new Error("Email subject is required in the NotificationMessage.");
+    if (!this.transporter) throw new Error("Email transporter is not initialized. Check credentials.");
 
-    this.logger.log(`Sending email from ${sender} to ${to} with subject: "${subject}"`);
+    this.logger.log(`Sending email from ${sender} to ${to} | Subject: "${subject}"`);
+
+    // Resolve HTML body: use template if provided, otherwise fall back to plain text
+    let html: string | undefined;
+    if (channelOptions?.htmlTemplate) {
+      html = this.templateService.render({
+        template: channelOptions.htmlTemplate,
+        context: channelOptions.templateContext ?? {},
+      });
+      this.logger.debug(`Rendered Handlebars template for email to ${to}`);
+    }
 
     try {
-      if (!this.transporter) throw new Error("Email transporter not initialized.");
-      
       await this.transporter.sendMail({
         from: sender,
-        to: to,
-        subject: subject,
-        text: text,
+        to,
+        subject,
+        text,
+        ...(html ? { html } : {}),
         ...channelOptions,
       });
-
       this.logger.log(`Email sent successfully to ${to}`);
     } catch (error) {
-      this.logger.error(`Failed to send email message to ${to}:`, error);
+      this.logger.error(`Failed to send email to ${to}:`, error);
       throw new Error(`Email send error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }

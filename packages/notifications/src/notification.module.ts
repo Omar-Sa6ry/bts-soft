@@ -6,6 +6,8 @@ import { NotificationProcessor } from './notification.processor';
 import { NotificationConfigService } from './core/config/notification.config';
 import { NotificationChannelFactory } from './core/factories/NotificationChannel.factory';
 import { ChannelRegistry } from './core/registry/channel.registry';
+import { TemplateService } from './core/templates/template.service';
+import { InMemoryNotificationLogRepository } from './core/repositories/InMemoryNotificationLog.repository';
 
 // Channels
 import { EmailChannel } from './mail/mail.channel';
@@ -31,6 +33,8 @@ import { FacebookMessengerChannel } from './messenger/messenger.channel';
     NotificationProcessor,
     NotificationChannelFactory,
     ChannelRegistry,
+    TemplateService,
+    InMemoryNotificationLogRepository,
     // Register all channels as providers
     EmailChannel,
     SmsChannel,
@@ -41,7 +45,14 @@ import { FacebookMessengerChannel } from './messenger/messenger.channel';
     TeamsChannel,
     FacebookMessengerChannel,
   ],
-  exports: [NotificationService, NotificationConfigService, NotificationChannelFactory, ChannelRegistry],
+  exports: [
+    NotificationService,
+    NotificationConfigService,
+    NotificationChannelFactory,
+    ChannelRegistry,
+    TemplateService,
+    InMemoryNotificationLogRepository,
+  ],
 })
 export class NotificationModule {}
 
