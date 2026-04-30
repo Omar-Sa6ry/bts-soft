@@ -1,73 +1,53 @@
+import { HttpService } from "@nestjs/axios";
+import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
+import { lastValueFrom } from "rxjs";
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
 import { INotificationChannel } from "../telegram/channels/INotificationChannel.interface";
-import { HttpService } from "@nestjs/axios";
-import { firstValueFrom } from "rxjs";
 import { NotificationConfigService } from "../core/config/notification.config";
+import { ChannelRegistry } from "../core/registry/channel.registry";
 
 /**
  * FacebookMessengerChannel implements the INotificationChannel interface
  * and provides functionality to send messages through Facebook Messenger
  * using the Graph API.
  */
-export class FacebookMessengerChannel implements INotificationChannel {
-  // The name identifier for this notification channel
-  public readonly name: string = "FACEBOOK_MESSENGER";
+@Injectable()
+export class FacebookMessengerChannel implements INotificationChannel, OnModuleInit {
+  public name: string = "facebook_messenger";
+  private readonly logger = new Logger(FacebookMessengerChannel.name);
 
-  // The base URL for sending messages through the Facebook Graph API
-  private readonly apiUrl: string;
-
-  /**
-   * @param pageAccessToken - The Facebook Page Access Token used for authentication
-   * @param httpService - NestJS HttpService
-   * @param configService - Configuration service to get API version
-   */
   constructor(
-    private readonly pageAccessToken: string,
     private readonly httpService: HttpService,
-    private readonly configService: NotificationConfigService
-  ) {
-    const version = this.configService.facebookGraphApiVersion;
-    this.apiUrl = `https://graph.facebook.com/${version}/me/messages`;
+    private readonly configService: NotificationConfigService,
+    private readonly registry: ChannelRegistry
+  ) {}
+
+  onModuleInit() {
+    this.registry.register(this);
   }
 
-  /**
-   * Sends a text message to a Facebook Messenger user.
-   * 
-   * @param message - The message object containing recipient ID and message body
-   */
-  async send(message: NotificationMessage): Promise<void> {
-    const recipientId = message.recipientId;
-    const body = message.body;
+  public async send(message: NotificationMessage): Promise<void> {
+    const pageToken = this.configService.facebookPageAccessToken;
+    const version = this.configService.facebookGraphApiVersion;
 
-    // Construct the payload for the Facebook Messenger API
-    const payload = {
-      recipient: {
-        id: recipientId,
-      },
-      message: {
-        text: body,
-      },
-    };
+    if (!pageToken) throw new Error("Facebook Page Access Token is missing.");
+
+    const url = `https://graph.facebook.com/${version}/me/messages?access_token=${pageToken}`;
+
+    this.logger.log(`Sending Facebook Messenger notification to PSID: ${message.recipientId}`);
 
     try {
-      // Send the POST request to the Facebook Graph API using HttpService
-      await firstValueFrom(this.httpService.post(this.apiUrl, payload, {
-        params: {
-          access_token: this.pageAccessToken,
-        },
-      }));
-
-      // Log success message for debugging or monitoring
-      console.log(`[${this.name}] Message sent to ${recipientId}`);
-    } catch (error) {
-      // Log error details if the API request fails
-      console.error(
-        `[${this.name}] Failed to send message:`,
-        error.response?.data || error.message
+      await lastValueFrom(
+        this.httpService.post(url, {
+          recipient: { id: message.recipientId },
+          message: { text: message.body },
+          ...message.channelOptions,
+        })
       );
-
-      // Throw an error to indicate message delivery failure
-      throw new Error(`Failed to send message via ${this.name}.`);
+      this.logger.log("Facebook Messenger notification sent successfully.");
+    } catch (error: any) {
+      this.logger.error("Failed to send Facebook Messenger notification:", error.response?.data || error.message);
+      throw new Error(`Messenger send error: ${error.message}`);
     }
   }
 }

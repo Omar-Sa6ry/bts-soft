@@ -13,50 +13,24 @@ import { HttpService } from "@nestjs/axios";
 @Processor("send-notification")
 @Injectable()
 export class NotificationProcessor extends WorkerHost {
-  // Logger instance for tracking job execution details
   private readonly logger = new Logger(NotificationProcessor.name);
 
-  // Factory used to dynamically create notification channel instances
-  private channelFactory: NotificationChannelFactory;
-
-  /**
-   * Constructor initializes the channel factory with services.
-   */
   constructor(
-    private configService: NotificationConfigService,
-    private httpService: HttpService
+    private channelFactory: NotificationChannelFactory
   ) {
     super();
-
-    // Initialize the notification channel factory with the injected services
-    this.channelFactory = new NotificationChannelFactory(
-      this.configService,
-      this.httpService
-    );
   }
 
-  /**
-   * Processes a single notification job from the queue.
-   */
   async process(job: Job): Promise<void> {
     const { channel, message } = job.data;
-
-    // Log job start for debugging and tracking
     this.logger.log(`Processing job ${job.id} for channel: ${channel}`);
 
     try {
-      // Retrieve the appropriate channel handler from the factory
       const notificationChannel = this.channelFactory.getChannel(channel);
-
-      // Send the message through the selected channel
       await notificationChannel.send(message);
 
-      // Log successful job completion
-      this.logger.log(
-        `Job ${job.id} (Channel: ${channel}) completed successfully.`
-      );
+      this.logger.log(`Job ${job.id} (Channel: ${channel}) completed successfully.`);
     } catch (error) {
-      // Log and rethrow any error encountered during processing
       this.logger.error(
         `Job ${job.id} (Channel: ${channel}) failed:`,
         `Error: Send error: ${error.errorInfo?.message || error.message}`

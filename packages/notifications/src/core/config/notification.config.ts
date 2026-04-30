@@ -1,9 +1,63 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { IsString, IsNotEmpty, IsOptional, IsNumber, validateSync, IsEnum } from "class-validator";
+import { plainToInstance } from "class-transformer";
+
+class NotificationConfigDto {
+  @IsString() @IsOptional() TELEGRAM_BOT_TOKEN?: string;
+  @IsString() @IsOptional() DISCORD_WEBHOOK_URL?: string;
+  @IsString() @IsOptional() TEAMS_WEBHOOK_URL?: string;
+  @IsString() @IsOptional() FB_PAGE_ACCESS_TOKEN?: string;
+  @IsString() @IsOptional() FB_GRAPH_API_VERSION: string = "v18.0";
+  @IsString() @IsOptional() TWILIO_ACCOUNT_SID?: string;
+  @IsString() @IsOptional() TWILIO_AUTH_TOKEN?: string;
+  @IsString() @IsOptional() TWILIO_WHATSAPP_NUMBER?: string;
+  @IsString() @IsOptional() TWILIO_SMS_NUMBER?: string;
+  @IsString() @IsOptional() FIREBASE_SERVICE_ACCOUNT_PATH?: string;
+  @IsString() @IsOptional() EMAIL_USER?: string;
+  @IsString() @IsOptional() EMAIL_PASS?: string;
+  @IsString() @IsOptional() EMAIL_HOST?: string;
+  @IsNumber() @IsOptional() EMAIL_PORT?: number;
+  @IsString() @IsOptional() EMAIL_SERVICE?: string;
+  @IsString() @IsOptional() EMAIL_SENDER?: string;
+}
 
 @Injectable()
-export class NotificationConfigService {
+export class NotificationConfigService implements OnModuleInit {
+  private readonly logger = new Logger(NotificationConfigService.name);
+
   constructor(private configService: ConfigService) {}
+
+  onModuleInit() {
+    this.validateConfig();
+  }
+
+  private validateConfig() {
+    const config = plainToInstance(NotificationConfigDto, {
+        TELEGRAM_BOT_TOKEN: this.telegramToken,
+        DISCORD_WEBHOOK_URL: this.discordWebhookUrl,
+        TEAMS_WEBHOOK_URL: this.teamsWebhookUrl,
+        FB_PAGE_ACCESS_TOKEN: this.facebookPageAccessToken,
+        FB_GRAPH_API_VERSION: this.facebookGraphApiVersion,
+        TWILIO_ACCOUNT_SID: this.twilioAccountSid,
+        TWILIO_AUTH_TOKEN: this.twilioAuthToken,
+        TWILIO_WHATSAPP_NUMBER: this.twilioWhatsappNumber,
+        TWILIO_SMS_NUMBER: this.twilioSmsNumber,
+        FIREBASE_SERVICE_ACCOUNT_PATH: this.firebaseServiceAccountPath,
+        EMAIL_USER: this.emailUser,
+        EMAIL_PASS: this.emailPass,
+        EMAIL_HOST: this.emailHost,
+        EMAIL_PORT: this.emailPort,
+        EMAIL_SERVICE: this.emailService,
+        EMAIL_SENDER: this.emailSender,
+    });
+
+    const errors = validateSync(config);
+    if (errors.length > 0) {
+      this.logger.warn("Notification configuration validation warnings:");
+      errors.forEach(err => this.logger.warn(JSON.stringify(err.constraints)));
+    }
+  }
 
   get telegramToken(): string | undefined {
     return this.configService.get<string>("TELEGRAM_BOT_TOKEN");

@@ -1,37 +1,47 @@
-import {
-  NOTIFICATION_QUEUE_NAME,
-  NotificationService,
-} from "./notification.service";
-import { Module } from "@nestjs/common";
-import { BullModule } from "@nestjs/bullmq";
-import { NotificationProcessor } from "./notification.processor";
-import { HttpModule } from "@nestjs/axios";
-import { ConfigModule } from "@nestjs/config";
-import { NotificationConfigService } from "./core/config/notification.config";
+import { Module, Global } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
+import { BullModule } from '@nestjs/bullmq';
+import { NotificationService, NOTIFICATION_QUEUE_NAME } from './notification.service';
+import { NotificationProcessor } from './notification.processor';
+import { NotificationConfigService } from './core/config/notification.config';
+import { NotificationChannelFactory } from './core/factories/NotificationChannel.factory';
+import { ChannelRegistry } from './core/registry/channel.registry';
 
+// Channels
+import { EmailChannel } from './mail/mail.channel';
+import { SmsChannel } from './sms/sms.channel';
+import { WhatsAppChannel } from './whatsapp/channel/whatsapp.channel';
+import { TelegramChannel } from './telegram/channels/Telegram.channel';
+import { FirebaseChannel } from './firebase/firebase.channel';
+import { DiscordChannel } from './discord/discord.channel';
+import { TeamsChannel } from './teams/teams.channel';
+import { FacebookMessengerChannel } from './messenger/messenger.channel';
+
+@Global()
 @Module({
   imports: [
     HttpModule,
-    ConfigModule,
-    BullModule.forRootAsync({
-      useFactory: () => ({
-        connection: {
-          host: process.env.REDIS_HOST,
-          port: +process.env.REDIS_PORT,
-        },
-      }),
-    }),
-
     BullModule.registerQueue({
       name: NOTIFICATION_QUEUE_NAME,
     }),
   ],
   providers: [
+    NotificationConfigService,
     NotificationService,
     NotificationProcessor,
-    NotificationConfigService,
+    NotificationChannelFactory,
+    ChannelRegistry,
+    // Register all channels as providers
+    EmailChannel,
+    SmsChannel,
+    WhatsAppChannel,
+    TelegramChannel,
+    FirebaseChannel,
+    DiscordChannel,
+    TeamsChannel,
+    FacebookMessengerChannel,
   ],
-  exports: [NotificationService],
+  exports: [NotificationService, NotificationConfigService, NotificationChannelFactory, ChannelRegistry],
 })
 export class NotificationModule {}
 
