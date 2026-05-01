@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  # Postgres for TypeORM, Sequelize, and Prisma testing
+  common-postgres-test:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: common_test_db
+    ports:
+      - "5433:5432" # Use 5433 to avoid conflict
+
+  # MongoDB for Mongoose testing
+  common-mongodb-test:
+    image: mongo:6.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: test_user
+      MONGO_INITDB_ROOT_PASSWORD: test_password
+    ports:
+      - "27018:27017" # Use 27018 to avoid conflict

@@ -17,11 +17,12 @@ export abstract class BaseEntity {
 
   /** Date when the record was created. */
   @Expose()
-  createdAt: Date;
+  createdAt: Date = new Date();
 
   /** Date when the record was last updated. */
   @Expose()
-  updatedAt: Date;
+  updatedAt: Date = new Date();
+
 
   /** Returns the current entity name for logging purposes. */
   protected get entityName(): string {

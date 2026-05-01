@@ -17,12 +17,20 @@ export class SqlInjectionInterceptor implements NestInterceptor {
   ];
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const gqlContext = GqlExecutionContext.create(context);
-    const args = gqlContext.getArgs();
+    let data: any;
 
-    this.sanitizeInput(args);
+    if (context.getType<string>() === 'graphql') {
+      const gqlContext = GqlExecutionContext.create(context);
+      data = gqlContext.getArgs();
+    } else {
+      const request = context.switchToHttp().getRequest();
+      data = { ...request.body, ...request.query, ...request.params };
+    }
+
+    this.sanitizeInput(data);
     return next.handle();
   }
+
 
   private sanitizeInput(data: unknown): void {
     if (!data || typeof data === 'boolean' || typeof data === 'number') return;

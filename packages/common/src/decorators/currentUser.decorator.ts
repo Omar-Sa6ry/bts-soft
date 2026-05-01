@@ -15,10 +15,11 @@ export const CurrentUser = createParamDecorator(
 
     if (isGraphQL) {
       const ctx = GqlExecutionContext.create(context);
-      return ctx.getContext().req?.user || ctx.getContext().user;
+      return ctx.getContext().req?.user || ctx.getContext().user || null;
     }
 
     const request = context.switchToHttp().getRequest();
-    return request.user;
+    return request.user || null;
+
   },
 );

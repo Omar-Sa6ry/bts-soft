@@ -1,32 +1,22 @@
-// src/utils/disable-console.ts
-
 /**
  * disableConsoleInProduction
- * --------------------------
- * This utility function disables all console output methods
- * (log, error, warn, info, debug) when the application runs
- * in a production environment.
- *
- * Purpose:
- * - Prevents sensitive logs from being printed in production.
- * - Keeps the console clean and secure in deployed environments.
- *
- * Usage:
- * Import and call this function at the start of your main.ts file:
- *   import { disableConsoleInProduction } from './utils/disable-console';
- *   disableConsoleInProduction();
+ * Disables console methods in production environment.
  */
-export function disableConsoleInProduction(): void {
-  // Only disable console in production mode
+export const disableConsoleInProduction = (): void => {
   if (process.env.NODE_ENV === 'production') {
-    // Define a no-operation function to replace console methods
     const noop = () => {};
-
-    // Override console methods to disable logging
     console.log = noop;
     console.error = noop;
     console.warn = noop;
     console.info = noop;
     console.debug = noop;
   }
-}
+};
+
+/**
+ * displayAppBanner
+ * Displays a professional banner when the application starts.
+ */
+export const displayAppBanner = (appName: string, port: number | string): void => {
+  console.log(`\n\x1b[36m[BTS-SOFT]\x1b[0m ${appName} is running on: \x1b[33mhttp://localhost:${port}\x1b[0m\n`);
+};

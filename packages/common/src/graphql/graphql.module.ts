@@ -32,7 +32,6 @@ export class GraphqlModule {
       }),
       playground: options?.playground !== undefined ? options.playground : true,
       debug: options?.debug !== undefined ? options.debug : false,
-      uploads: false,
       csrfPrevention: false,
       installSubscriptionHandlers: options?.installSubscriptionHandlers !== undefined 
         ? options.installSubscriptionHandlers 

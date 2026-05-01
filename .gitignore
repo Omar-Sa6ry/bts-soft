@@ -30,6 +30,7 @@ Thumbs.db
 desktop.ini
 
 # coverage
+packages/common/coverage
 packages/upload/coverage
 packages/validation/coverage
 packages/notifications/coverage

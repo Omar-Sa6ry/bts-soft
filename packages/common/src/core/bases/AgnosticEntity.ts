@@ -11,10 +11,11 @@ export abstract class AgnosticEntity {
   id: string = ulid();
 
   /** Date when the record was created. */
-  createdAt: Date;
+  createdAt: Date = new Date();
 
   /** Date when the record was last updated. */
-  updatedAt: Date;
+  updatedAt: Date = new Date();
+
 
   /** Returns the current entity name for logging purposes. */
   protected get entityName(): string {

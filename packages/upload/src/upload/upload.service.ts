@@ -265,6 +265,10 @@ export class UploadService {
         allowedExts = ALLOWED_FILES;
         limit = this.limits.file;
         break;
+      case "model3d":
+        allowedExts = ALLOWED_MODELS;
+        limit = this.limits.model3d;
+        break;
     }
 
     if (!allowedExts.includes(ext || "")) {
@@ -435,6 +439,51 @@ export class UploadService {
     } catch (error) {
       this.notifyUploadError(error as Error);
       throw new HttpException("File upload failed", HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  async uploadModel3dCore(
+    fileData: UploadFile & { size?: number },
+    dirUpload: string = "models",
+  ): Promise<UploadResult> {
+    const { stream, filename, size } = fileData;
+
+    this.validateFile(filename, "model3d", size);
+
+    const options = {
+      folder: dirUpload,
+      public_id: `${Date.now()}-${filename.replace(/[^a-z0-9.]/gi, "_")}`,
+      resource_type: "raw", // 3D models are treated as raw in Cloudinary
+    };
+
+    const command = new UploadModel3dCommand(
+      this.uploadStrategy,
+      stream,
+      options,
+    );
+
+    try {
+      const result = await command.execute();
+
+      if (!result?.secure_url) {
+        throw new HttpException(
+          "Cloudinary response invalid",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      this.notifyUploadSuccess(result);
+
+      return {
+        url: result.secure_url,
+        size: result.bytes ?? 0,
+        filename: result.original_filename ?? filename,
+        type: "model3d",
+        format: result.format,
+      };
+    } catch (error) {
+      this.notifyUploadError(error as Error);
+      throw new HttpException("3D model upload failed", HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -688,6 +737,69 @@ export class UploadService {
       this.notifyDeleteError(error as Error);
 
       throw new HttpException("File delete failed", HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  async uploadModel3d(
+    createModel3dInput: CreateModel3dDto,
+    dirUpload: string = "models",
+  ): Promise<UploadResult> {
+    if (!createModel3dInput.file) {
+      throw new HttpException("3D model is required", HttpStatus.BAD_REQUEST);
+    }
+
+    const uploadedFile = await createModel3dInput.file;
+    if (!uploadedFile || !uploadedFile.createReadStream) {
+      throw new HttpException("Invalid 3D model", HttpStatus.BAD_REQUEST);
+    }
+
+    const { createReadStream, filename } = uploadedFile;
+    const stream = createReadStream();
+
+    return this.uploadModel3dCore({ stream, filename }, dirUpload);
+  }
+
+  async deleteModel3d(modelUrl: string): Promise<void> {
+    if (!modelUrl) {
+      throw new HttpException(
+        "3D model URL is required",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    let publicId = extractPublicId(modelUrl, "raw");
+
+    if (!publicId) {
+      const localPath =
+        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
+      if (modelUrl.includes(localPath)) {
+        publicId = modelUrl;
+      }
+    }
+
+    if (!publicId) {
+      throw new HttpException(
+        "Invalid 3D model URL or path",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const command = new DeleteModel3dCommand(this.deleteStrategy, publicId);
+
+    try {
+      const result = await command.execute();
+
+      if (result.result !== "ok" && result.result !== "not found") {
+        throw new HttpException(
+          `Failed to delete 3D model. Reason: ${result.result}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      this.notifyDeleteSuccess(result);
+    } catch (error) {
+      this.notifyDeleteError(error as Error);
+      throw new HttpException("3D model delete failed", HttpStatus.BAD_REQUEST);
     }
   }
 }

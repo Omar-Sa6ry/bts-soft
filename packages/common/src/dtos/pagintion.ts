@@ -31,3 +31,16 @@ export class PaginationInfo {
   @Expose()
   totalItems: number;
 }
+
+/**
+ * PaginationDto
+ * Input data for paginated requests.
+ */
+export class PaginationDto {
+  @Expose()
+  page: number;
+
+  @Expose()
+  limit: number;
+}
+

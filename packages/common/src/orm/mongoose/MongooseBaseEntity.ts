@@ -15,7 +15,7 @@ import { ulid } from 'ulid';
 export abstract class MongooseBaseEntity {
   // @ts-ignore
   @Prop({ type: String, default: () => ulid() })
-  _id: string;
+  _id: string = ulid();
 
   // @ts-ignore
   @Prop()
