@@ -49,6 +49,15 @@ class TestController {
     return this.uploadService.uploadFileCore({ stream, filename: file.originalname, size: file.size });
   }
 
+  @Post('model3d')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadModel3d(@UploadedFile() file: any) {
+    const stream = new Readable();
+    stream.push(file.buffer);
+    stream.push(null);
+    return this.uploadService.uploadModel3dCore({ stream, filename: file.originalname, size: file.size });
+  }
+
   @Delete('image')
   async deleteImage(@Body('url') url: string) {
     return this.uploadService.deleteImage(url);
@@ -68,6 +77,15 @@ class TestController {
   async deleteFile(@Body('url') url: string) {
     return this.uploadService.deleteFile(url);
   }
+
+  @Delete('model3d')
+
+  async deleteModel3d(@Body('url') url: string) {
+    // Note: We use deleteImage as a generic delete if specialized delete isn't implemented for raw files in this spec class
+    // but the service now has uploadModel3dCore. For deletion, it follows the same logic as images/files.
+    return this.uploadService.deleteImage(url); 
+  }
+
 }
 
 describe('UploadModule (e2e) - 100% Comprehensive Suite', () => {
@@ -90,7 +108,9 @@ describe('UploadModule (e2e) - 100% Comprehensive Suite', () => {
             UPLOAD_MAX_VIDEO_SIZE: 10 * 1024 * 1024,
             UPLOAD_MAX_AUDIO_SIZE: 5 * 1024 * 1024,
             UPLOAD_MAX_FILE_SIZE: 2 * 1024 * 1024,
+            UPLOAD_MAX_MODEL_3D_SIZE: 20 * 1024 * 1024,
           })],
+
         }),
       ],
       controllers: [TestController],
@@ -164,7 +184,22 @@ describe('UploadModule (e2e) - 100% Comprehensive Suite', () => {
       expect(fs.existsSync(url)).toBe(false);
       fs.unlinkSync(filePath);
     });
+
+    it('should upload and delete a 3D Model (GLB)', async () => {
+      const filePath = path.join(__dirname, 'test.glb');
+      fs.writeFileSync(filePath, 'glb-binary-content');
+      const res = await request(app.getHttpServer()).post('/upload-test/model3d').attach('file', filePath);
+      expect(res.status).toBe(201);
+      const url = res.body.url;
+      expect(fs.existsSync(url)).toBe(true);
+      
+      const delRes = await request(app.getHttpServer()).delete('/upload-test/model3d').send({ url });
+      expect(delRes.status).toBe(200);
+      expect(fs.existsSync(url)).toBe(false);
+      fs.unlinkSync(filePath);
+    });
   });
+
 
   describe('REST API - Negative Scenarios', () => {
     it('should fail when uploading an invalid extension (e.g. .exe to image)', async () => {
@@ -185,6 +220,17 @@ describe('UploadModule (e2e) - 100% Comprehensive Suite', () => {
       expect(res.body.message).toContain('image size exceeds limit');
       fs.unlinkSync(filePath);
     });
+
+    it('should fail when uploading an invalid 3D model extension', async () => {
+
+      const filePath = path.join(__dirname, 'test.txt');
+      fs.writeFileSync(filePath, 'not-a-3d-model');
+      const res = await request(app.getHttpServer()).post('/upload-test/model3d').attach('file', filePath);
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('Invalid model3d type');
+      fs.unlinkSync(filePath);
+    });
+
 
     it('should fail when deleting with an invalid URL/Path', async () => {
       const res = await request(app.getHttpServer()).delete('/upload-test/image').send({ url: 'http://invalid-path.com/unknown.jpg' });

@@ -265,8 +265,10 @@ The system enforces strict validation for file extensions and sizes. Limits can 
 | **Videos** | `mp4`, `webm`, `avi`, `mov` | 100 MB | Chunked upload support with duration extraction. |
 | **Audio** | `mp3`, `wav`, `ogg`, `m4a` | 50 MB | Optimized for playback and metadata extraction. |
 | **Raw Files** | `pdf`, `doc`, `zip`, `txt` | 10 MB | Stored as 'raw' binary with original headers. |
+| **3D Models** | `glb`, `gltf`, `fbx`, `obj`, `stl` | 100 MB | Stored as binary models with high-capacity limits. |
 
 ### Configuration Reference
+
 
 ```env
 # Provider Selection

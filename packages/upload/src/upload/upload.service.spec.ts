@@ -60,6 +60,10 @@ describe('UploadService', () => {
   it('should validate file extension correctly', () => {
     expect(() => (service as any).validateFile('test.jpg', 'image')).not.toThrow();
     expect(() => (service as any).validateFile('test.exe', 'image')).toThrow();
+    expect(() => (service as any).validateFile('test.glb', 'model3d')).not.toThrow();
+    expect(() => (service as any).validateFile('test.fbx', 'model3d')).not.toThrow();
+    expect(() => (service as any).validateFile('test.exe', 'model3d')).toThrow();
+
   });
 
   it('should validate file size correctly', () => {
@@ -111,6 +115,17 @@ describe('UploadService', () => {
       const result = await service.uploadFileCore({ ...mockFile, filename: 'test.pdf' });
       expect(result.type).toBe('file');
     });
+
+    it('should upload 3D model core successfully', async () => {
+      mockCloudinary.uploader.upload_stream.mockImplementation((opts, cb) => {
+        cb(null, { secure_url: 'http://test.com/model.glb', bytes: 5000, public_id: 'model' });
+      });
+
+      const result = await service.uploadModel3dCore({ ...mockFile, filename: 'test.glb' });
+      expect(result.type).toBe('model3d');
+      expect(result.url).toContain('model.glb');
+    });
+
   });
 
   describe('Delete Methods', () => {

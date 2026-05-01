@@ -40,6 +40,11 @@ export * from "./upload/commands/uploadVideo.command";
 // Command for uploading new audio
 export * from "./upload/commands/uploadAudio.command";
 
+// Commands for 3D models
+export * from "./upload/commands/uploadModel3d.command";
+export * from "./upload/commands/deleteModel3d.command";
+
+
 /* ============================== */
 /*             DTOS               */
 /* ============================== */
@@ -55,7 +60,12 @@ export * from "./upload/dtos/createAudio.dto";
 
 // DTO for handling file upload requests
 export * from "./upload/dtos/createFile.dto";
+
+// DTO for handling 3D model upload requests
+export * from "./upload/dtos/createModel3d.dto";
+
 export * from "./upload/dtos/uploadResult.type";
+
 
 /* ============================== */
 /*         CONFIGURATION           */

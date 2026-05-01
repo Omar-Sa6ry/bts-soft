@@ -50,7 +50,13 @@ import { extractPublicId } from "./utils/cloudinary.utils";
 import { CreateAudioDto } from "./dtos/createAudio.dto";
 import { UploadAudioCommand } from "./commands/uploadAudio.command";
 import { DeleteAudioCommand } from "./commands/deleteAudio.command";
-import { DEFAULT_LIMITS, DEFAULT_IMAGE_MAX_DIMENSIONS } from "./utils/upload.constants";
+import { CreateModel3dDto } from "./dtos/createModel3d.dto";
+import { UploadModel3dCommand } from "./commands/uploadModel3d.command";
+import { DeleteModel3dCommand } from "./commands/deleteModel3d.command";
+import {
+  DEFAULT_LIMITS,
+  DEFAULT_IMAGE_MAX_DIMENSIONS,
+} from "./utils/upload.constants";
 import * as path from "path";
 
 export interface UploadFile {
@@ -75,6 +81,7 @@ export class UploadService {
     video: DEFAULT_LIMITS.VIDEO,
     audio: DEFAULT_LIMITS.AUDIO,
     file: DEFAULT_LIMITS.FILE,
+    model3d: DEFAULT_LIMITS.MODEL_3D,
   };
 
   /**
@@ -84,16 +91,19 @@ export class UploadService {
    */
   constructor(private configService: ConfigService) {
     // 1. Validate Configuration
-    validateConfig(this.configService['internalConfig'] || process.env);
+    validateConfig(this.configService["internalConfig"] || process.env);
 
-    const provider = this.configService.get<UploadProvider>('UPLOAD_PROVIDER') || UploadProvider.CLOUDINARY;
+    const provider =
+      this.configService.get<UploadProvider>("UPLOAD_PROVIDER") ||
+      UploadProvider.CLOUDINARY;
 
     if (provider === UploadProvider.CLOUDINARY) {
       this.cloudinary = UploadServiceFactory.create(this.configService);
       this.uploadStrategy = new CloudinaryUploadStrategy(this.cloudinary);
       this.deleteStrategy = new CloudinaryDeleteStrategy(this.cloudinary);
     } else {
-      const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
+      const localPath =
+        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
       this.uploadStrategy = new LocalUploadStrategy(localPath);
       this.deleteStrategy = new LocalDeleteStrategy(localPath);
     }
@@ -102,10 +112,21 @@ export class UploadService {
     this.observers.push(new LoggingObserver());
 
     // Load limits from config if available
-    this.limits.image = this.configService.get<number>('UPLOAD_MAX_IMAGE_SIZE') ?? DEFAULT_LIMITS.IMAGE;
-    this.limits.video = this.configService.get<number>('UPLOAD_MAX_VIDEO_SIZE') ?? DEFAULT_LIMITS.VIDEO;
-    this.limits.audio = this.configService.get<number>('UPLOAD_MAX_AUDIO_SIZE') ?? DEFAULT_LIMITS.AUDIO;
-    this.limits.file = this.configService.get<number>('UPLOAD_MAX_FILE_SIZE') ?? DEFAULT_LIMITS.FILE;
+    this.limits.image =
+      this.configService.get<number>("UPLOAD_MAX_IMAGE_SIZE") ??
+      DEFAULT_LIMITS.IMAGE;
+    this.limits.video =
+      this.configService.get<number>("UPLOAD_MAX_VIDEO_SIZE") ??
+      DEFAULT_LIMITS.VIDEO;
+    this.limits.audio =
+      this.configService.get<number>("UPLOAD_MAX_AUDIO_SIZE") ??
+      DEFAULT_LIMITS.AUDIO;
+    this.limits.file =
+      this.configService.get<number>("UPLOAD_MAX_FILE_SIZE") ??
+      DEFAULT_LIMITS.FILE;
+    this.limits.model3d =
+      this.configService.get<number>("UPLOAD_MAX_MODEL_3D_SIZE") ??
+      DEFAULT_LIMITS.MODEL_3D;
 
     this.logger.log(`UploadService initialized with provider: ${provider}`);
   }
@@ -140,15 +161,15 @@ export class UploadService {
    */
   async uploadImageCore(
     fileData: UploadFile & { size?: number },
-    dirUpload: string = "avatars"
+    dirUpload: string = "avatars",
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
 
-    this.validateFile(filename, 'image', size);
+    this.validateFile(filename, "image", size);
 
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, '_')}`,
+      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, "_")}`,
       resource_type: "auto",
       fetch_format: "auto",
       quality: "auto",
@@ -160,7 +181,7 @@ export class UploadService {
     const command = new UploadImageCommand(
       this.uploadStrategy,
       stream,
-      options
+      options,
     );
 
     try {
@@ -169,7 +190,7 @@ export class UploadService {
       if (!result?.secure_url) {
         throw new HttpException(
           "Cloudinary response invalid",
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -186,12 +207,13 @@ export class UploadService {
       };
     } catch (error) {
       this.notifyUploadError(error as Error);
-      this.logger.error(`Upload failed for file ${filename}: ${(error as Error).message}`, (error as Error).stack);
+      this.logger.error(
+        `Upload failed for file ${filename}: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
       throw new HttpException("Upload failed", HttpStatus.BAD_REQUEST);
     }
   }
-
-
 
   /**
    * Validates file size and type based on the upload category.
@@ -199,45 +221,66 @@ export class UploadService {
    * @param size The file size in bytes (if available from stream, otherwise estimated)
    * @param type 'image' | 'video' | 'file' | 'audio'
    */
-  private validateFile(filename: string, type: 'image' | 'video' | 'file' | 'audio', size?: number) {
-    const ext = filename.split('.').pop()?.toLowerCase();
-    
-    const ALLOWED_IMAGES = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
-    const ALLOWED_VIDEOS = ['mp4', 'webm', 'avi', 'mov'];
-    const ALLOWED_AUDIOS = ['mp3', 'wav', 'ogg', 'm4a'];
-    const ALLOWED_FILES = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip'];
+  private validateFile(
+    filename: string,
+    type: "image" | "video" | "file" | "audio" | "model3d",
+    size?: number,
+  ) {
+    const ext = filename.split(".").pop()?.toLowerCase();
 
-    // 1. Validate Extension
+    const ALLOWED_IMAGES = ["jpg", "jpeg", "png", "webp", "gif"];
+    const ALLOWED_VIDEOS = ["mp4", "webm", "avi", "mov"];
+    const ALLOWED_AUDIOS = ["mp3", "wav", "ogg", "m4a"];
+    const ALLOWED_FILES = [
+      "pdf",
+      "doc",
+      "docx",
+      "xls",
+      "xlsx",
+      "ppt",
+      "pptx",
+      "txt",
+      "zip",
+    ];
+    const ALLOWED_MODELS = ["glb", "gltf", "fbx", "obj", "stl", "dae"];
+
+    // Validate Extension
     let allowedExts: string[] = [];
     let limit = 0;
 
     switch (type) {
-      case 'image':
+      case "image":
         allowedExts = ALLOWED_IMAGES;
         limit = this.limits.image;
         break;
-      case 'video':
+      case "video":
         allowedExts = ALLOWED_VIDEOS;
         limit = this.limits.video;
         break;
-      case 'audio':
+      case "audio":
         allowedExts = ALLOWED_AUDIOS;
         limit = this.limits.audio;
         break;
-      case 'file':
+      case "file":
         allowedExts = ALLOWED_FILES;
         limit = this.limits.file;
         break;
     }
 
-    if (!allowedExts.includes(ext || '')) {
-      throw new HttpException(`Invalid ${type} type. Allowed: ${allowedExts.join(', ')}`, HttpStatus.BAD_REQUEST);
+    if (!allowedExts.includes(ext || "")) {
+      throw new HttpException(
+        `Invalid ${type} type. Allowed: ${allowedExts.join(", ")}`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     // 2. Validate Size (if provided)
     if (size && size > limit) {
       const limitMb = Math.round(limit / (1024 * 1024));
-      throw new HttpException(`${type} size exceeds limit of ${limitMb}MB`, HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        `${type} size exceeds limit of ${limitMb}MB`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
@@ -250,26 +293,26 @@ export class UploadService {
    */
   async uploadVideoCore(
     fileData: UploadFile & { size?: number },
-    dirUpload: string = "videos"
+    dirUpload: string = "videos",
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
 
-    this.validateFile(filename, 'video', size);
+    this.validateFile(filename, "video", size);
 
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, '_')}`,
+      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, "_")}`,
       resource_type: "video",
       chunk_size: 6000000,
       fetch_format: "auto",
       quality: "auto",
-      eager: [{ width: 320, height: 180, crop: 'pad', format: 'jpg' }], // Thumbnail
+      eager: [{ width: 320, height: 180, crop: "pad", format: "jpg" }], // Thumbnail
     };
 
     const command = new UploadVideoCommand(
       this.uploadStrategy,
       stream,
-      options
+      options,
     );
 
     try {
@@ -278,7 +321,7 @@ export class UploadService {
       if (!result?.secure_url) {
         throw new HttpException(
           "Cloudinary response invalid",
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -292,7 +335,7 @@ export class UploadService {
         format: result.format,
         width: result.width,
         height: result.height,
-        duration: result.duration ?? 0, // ← هنا الإضافة الجديدة
+        duration: result.duration ?? 0,
       };
     } catch (error) {
       this.notifyUploadError(error as Error);
@@ -308,15 +351,15 @@ export class UploadService {
    */
   async uploadAudioCore(
     fileData: UploadFile & { size?: number },
-    dirUpload: string = "audios"
+    dirUpload: string = "audios",
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
 
-    this.validateFile(filename, 'audio', size);
+    this.validateFile(filename, "audio", size);
 
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, '_')}`,
+      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, "_")}`,
       resource_type: "video", // Audio is treated as video in Cloudinary
       chunk_size: 6000000,
       resource_type_param: "video", // Explicitly set param if strategy checks it
@@ -325,7 +368,7 @@ export class UploadService {
     const command = new UploadAudioCommand(
       this.uploadStrategy,
       stream,
-      options
+      options,
     );
 
     try {
@@ -334,7 +377,7 @@ export class UploadService {
       if (!result?.secure_url) {
         throw new HttpException(
           "Cloudinary response invalid",
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -356,15 +399,15 @@ export class UploadService {
 
   async uploadFileCore(
     fileData: UploadFile & { size?: number },
-    dirUpload: string = "files"
+    dirUpload: string = "files",
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
 
-    this.validateFile(filename, 'file', size);
+    this.validateFile(filename, "file", size);
 
     const options = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.replace(/[^a-z0-9.]/gi, '_')}`,
+      public_id: `${Date.now()}-${filename.replace(/[^a-z0-9.]/gi, "_")}`,
       resource_type: "raw",
     };
 
@@ -376,7 +419,7 @@ export class UploadService {
       if (!result?.secure_url) {
         throw new HttpException(
           "Cloudinary response invalid",
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -409,7 +452,7 @@ export class UploadService {
 
     return this.uploadImageCore(
       { stream, filename: uploaded.filename },
-      dirUpload
+      dirUpload,
     );
   }
 
@@ -419,7 +462,7 @@ export class UploadService {
    */
   async uploadVideo(
     createVideoInput: CreateVideoDto,
-    dirUpload: string = "videos"
+    dirUpload: string = "videos",
   ): Promise<UploadResult> {
     if (!createVideoInput.video) {
       throw new HttpException("Video file is required", HttpStatus.BAD_REQUEST);
@@ -441,7 +484,7 @@ export class UploadService {
    */
   async uploadAudio(
     createAudioInput: CreateAudioDto,
-    dirUpload: string = "audios"
+    dirUpload: string = "audios",
   ): Promise<UploadResult> {
     if (!createAudioInput.audio) {
       throw new HttpException("Audio file is required", HttpStatus.BAD_REQUEST);
@@ -463,19 +506,23 @@ export class UploadService {
    */
   async deleteImage(imageUrl: string): Promise<void> {
     // 1. Try to extract public ID assuming Cloudinary URL
-    let publicId = extractPublicId(imageUrl, 'image');
-    
+    let publicId = extractPublicId(imageUrl, "image");
+
     // 2. Fallback: if it's a local path (or extraction failed), use the URL/path itself
     if (!publicId) {
-       // If it contains the local upload path, it's likely a local file
-       const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
-       if (imageUrl.includes(localPath)) {
-         publicId = imageUrl; // Use the full path for local storage
-       }
+      // If it contains the local upload path, it's likely a local file
+      const localPath =
+        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
+      if (imageUrl.includes(localPath)) {
+        publicId = imageUrl; // Use the full path for local storage
+      }
     }
 
     if (!publicId) {
-      throw new HttpException("Invalid image URL or path", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "Invalid image URL or path",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const command = new DeleteImageCommand(this.deleteStrategy, publicId);
@@ -486,7 +533,7 @@ export class UploadService {
       if (result.result !== "ok" && result.result !== "not found") {
         throw new HttpException(
           `Failed to delete image. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -502,21 +549,25 @@ export class UploadService {
    */
   async deleteVideo(videoUrl: string): Promise<void> {
     // ... (Original deleteVideo logic remains here, as it doesn't depend on file upload method)
-    let publicId = extractPublicId(videoUrl, 'video');
+    let publicId = extractPublicId(videoUrl, "video");
     if (!publicId) {
-       const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
-       if (videoUrl.includes(localPath)) {
-         publicId = videoUrl;
-       }
+      const localPath =
+        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
+      if (videoUrl.includes(localPath)) {
+        publicId = videoUrl;
+      }
     }
     if (!publicId) {
-      throw new HttpException("Invalid video URL or path", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "Invalid video URL or path",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const command = new DeleteVideoCommand(
       this.deleteStrategy,
       publicId,
-      "video"
+      "video",
     );
 
     try {
@@ -525,7 +576,7 @@ export class UploadService {
       if (result.result !== "ok" && result.result !== "not found") {
         throw new HttpException(
           `Failed to delete video. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -540,21 +591,25 @@ export class UploadService {
    * Deletes an audio file from the configured cloud service.
    */
   async deleteAudio(audioUrl: string): Promise<void> {
-    let publicId = extractPublicId(audioUrl, 'audio'); // Audio handled as video/audio
+    let publicId = extractPublicId(audioUrl, "audio"); // Audio handled as video/audio
     if (!publicId) {
-       const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
-       if (audioUrl.includes(localPath)) {
-         publicId = audioUrl;
-       }
+      const localPath =
+        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
+      if (audioUrl.includes(localPath)) {
+        publicId = audioUrl;
+      }
     }
     if (!publicId) {
-      throw new HttpException("Invalid audio URL or path", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "Invalid audio URL or path",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const command = new DeleteAudioCommand(
       this.deleteStrategy,
       publicId,
-      "video" // Cloudinary resource type for audio is video
+      "video", // Cloudinary resource type for audio is video
     );
 
     try {
@@ -563,7 +618,7 @@ export class UploadService {
       if (result.result !== "ok" && result.result !== "not found") {
         throw new HttpException(
           `Failed to delete audio. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -576,7 +631,7 @@ export class UploadService {
 
   async uploadFile(
     createFileInput: CreateFileDto,
-    dirUpload: string = "files"
+    dirUpload: string = "files",
   ): Promise<UploadResult> {
     if (!createFileInput.file) {
       throw new HttpException("File is required", HttpStatus.BAD_REQUEST);
@@ -597,21 +652,25 @@ export class UploadService {
     if (!fileUrl) {
       throw new HttpException("File URL is required", HttpStatus.BAD_REQUEST);
     }
- 
+
     // Extract public ID from URL
-    let publicId = extractPublicId(fileUrl, 'raw');
- 
+    let publicId = extractPublicId(fileUrl, "raw");
+
     if (!publicId) {
-       const localPath = this.configService.get<string>('UPLOAD_LOCAL_PATH') || 'uploads';
-       if (fileUrl.includes(localPath)) {
-         publicId = fileUrl;
-       }
+      const localPath =
+        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
+      if (fileUrl.includes(localPath)) {
+        publicId = fileUrl;
+      }
     }
- 
+
     if (!publicId) {
-      throw new HttpException("Invalid file URL or path", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "Invalid file URL or path",
+        HttpStatus.BAD_REQUEST,
+      );
     }
- 
+
     const command = new DeleteFileCommand(this.deleteStrategy, publicId);
 
     try {
@@ -620,7 +679,7 @@ export class UploadService {
       if (result.result !== "ok" && result.result !== "not found") {
         throw new HttpException(
           `Failed to delete file. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 

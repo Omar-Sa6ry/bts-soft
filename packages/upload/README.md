@@ -37,6 +37,8 @@ The package uses a strict schema validation at startup. Ensure the following env
 - `UPLOAD_MAX_VIDEO_SIZE`: Max size for videos in bytes (Default: 100MB).
 - `UPLOAD_MAX_AUDIO_SIZE`: Max size for audio in bytes (Default: 50MB).
 - `UPLOAD_MAX_FILE_SIZE`: Max size for raw files in bytes (Default: 10MB).
+- `UPLOAD_MAX_MODEL_3D_SIZE`: Max size for 3D models in bytes (Default: 100MB).
+
 
 ### Cloudinary Provider
 Required if `UPLOAD_PROVIDER=cloudinary`:
@@ -105,7 +107,14 @@ export class MediaResolver {
     const result = await this.uploadService.uploadImage(input);
     return result.url;
   }
+
+  @Mutation(() => String)
+  async uploadModel3d(@Args('input') input: CreateModel3dDto) {
+    const result = await this.uploadService.uploadModel3d(input);
+    return result.url;
+  }
 }
+
 ```
 
 ---
@@ -120,6 +129,8 @@ export class MediaResolver {
 | `uploadVideoCore` | Handles video streams with chunked upload support. |
 | `uploadAudioCore` | Handles audio streams. |
 | `uploadFileCore` | Handles raw document streams (PDF, Zip, etc). |
+| `uploadModel3dCore` | Handles 3D model streams (GLB, FBX, OBJ, etc). |
+
 | `deleteImage(url)` | Deletes image from provider. |
 | `deleteVideo(url)` | Deletes video from provider. |
 | `deleteAudio(url)` | Deletes audio from provider. |

@@ -6,7 +6,9 @@ export const DEFAULT_LIMITS = {
   VIDEO: 100 * 1024 * 1024, // 100MB
   AUDIO: 50 * 1024 * 1024,  // 50MB
   FILE: 10 * 1024 * 1024,   // 10MB
+  MODEL_3D: 100 * 1024 * 1024, // 100MB
 };
+
 
 /**
  * Default maximum dimensions for non-destructive image resizing.

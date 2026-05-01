@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/upload",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Upload package for NestJS + GraphQL using Cloudinary with Strategy + Command + Observer patterns.",
   "author": "Omar Sabry",
   "license": "MIT",
