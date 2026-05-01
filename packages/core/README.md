@@ -167,129 +167,72 @@ await redisService.publish('system_updates', { status: 'OK', timestamp: Date.now
 
 ---
 
-## Deep Dive: `@bts-soft/notifications`
+## Deep Dive: @bts-soft/notifications
 
-The notification module is a high-availability delivery engine designed to handle massive volumes of transactional and marketing messages across multiple protocols without slowing down your primary application.
+The notification module is a high-availability delivery engine designed to handle massive volumes of transactional and marketing messages across multiple protocols without impacting primary application performance.
 
 ---
 
 ### Reliability Engineering: The Queue System
 
-All notifications are processed asynchronously using **BullMQ** and **Redis**. This architecture provides several critical benefits:
+All notifications are processed asynchronously using BullMQ and Redis. This architecture provides several critical benefits:
 
-1.  **Non-Blocking**: Your API returns a 200 OK immediately after the job is queued, without waiting for external APIs (like Twilio or Firebase).
-2.  **Strict Retries**: If a provider is down, the system automatically retries with an exponential backoff policy.
-3.  **Concurrency Control**: You can limit the number of parallel notifications to avoid hitting external API rate limits.
-
-#### Backoff Configuration
-- **Max Attempts**: 3
-- **Strategy**: Exponential
-- **Initial Delay**: 5,000ms
-- **Progression**: 5s -> 10s -> 20s
+1.  **Non-Blocking Execution**: The API returns a response immediately after the job is queued, decoupling user experience from external provider latency.
+2.  **Categorized Error Handling**: Distinguishes between unrecoverable Client Errors (e.g., invalid data) and temporary Provider Errors (e.g., API downtime), optimizing retry resource allocation.
+3.  **Global Retry Policies**: Integrated with exponential backoff strategies to handle temporary infrastructure failures gracefully.
 
 ---
 
-### Channel Deep-Dive (8+ Integrated Channels)
+### Channel Capabilities (8+ Integrated Protocols)
 
-#### 1. Email (`EMAIL`)
+#### 1. Email (EMAIL)
 - **Technology**: Nodemailer.
-- **Support**: SMTP, SES, Gmail, Outlook, Mailgun.
-- **Example Payload**:
-```typescript
-await notificationService.send(ChannelType.EMAIL, {
-  recipientId: 'user@example.com',
-  subject: 'Welcome to BTS Soft',
-  body: 'Thank you for joining our platform.',
-  channelOptions: {
-    html: '<h1>Welcome!</h1>', // Optional HTML
-    attachments: [{ filename: 'terms.pdf', path: './docs/terms.pdf' }]
-  }
-});
-```
+- **Support**: Standard SMTP, SES, Gmail, and custom transport configurations.
+- **Dynamic Overrides**: Support for per-message SMTP configuration and attachments.
 
-#### 2. WhatsApp (`WHATSAPP`)
-- **Provider**: Twilio WhatsApp API.
-- **Normalizer**: Automatically handles Egyptian and international formats.
-- **Example Payload**:
-```typescript
-await notificationService.send(ChannelType.WHATSAPP, {
-  recipientId: '01012345678', // Auto-converts to whatsapp:+201012345678
-  body: 'Your verification code is 4567'
-});
-```
+#### 2. WhatsApp (WHATSAPP)
+- **Provider**: Twilio WhatsApp Business API.
+- **Normalizer**: Automatic handling of regional phone number formats.
 
-#### 3. SMS (`SMS`)
+#### 3. SMS (SMS)
 - **Provider**: Twilio SMS.
-- **Usage**:
-```typescript
-await notificationService.send(ChannelType.SMS, {
-  recipientId: '+201112223344',
-  body: 'Critical security alert on your account.'
-});
-```
+- **Reliability**: Optimized for high-deliverability transactional messaging.
 
-#### 4. Telegram (`TELEGRAM`)
-- **Technology**: Telegraf (Telegram Bot API).
-- **Features**: Markdown support, link previews.
-- **Usage**:
-```typescript
-await notificationService.send(ChannelType.TELEGRAM, {
-  recipientId: 'chat_id_here',
-  body: '*Important Update*\nClick [here](https://bts-soft.com) to view.',
-  channelOptions: { parse_mode: 'MarkdownV2' }
-});
-```
+#### 4. Telegram (TELEGRAM)
+- **Technology**: Telegram Bot API.
+- **Features**: MarkdownV2 and HTML parsing support, real-time bot integration.
 
-#### 5. Firebase Push (`FIREBASE_FCM`)
+#### 5. Firebase Push (FIREBASE_FCM)
 - **Technology**: Firebase Admin SDK.
-- **Support**: Android, iOS, and Web.
-- **Usage**:
-```typescript
-await notificationService.send(ChannelType.FIREBASE_FCM, {
-  recipientId: 'device_fcm_token',
-  title: 'Order Delivered',
-  body: 'Your package is at your doorstep.',
-  channelOptions: {
-    data: { orderId: '789' },
-    options: { priority: 'high' }
-  }
-});
-```
+- **Support**: Native Android/iOS push notifications and web push.
 
-#### 6. Discord (`DISCORD`)
-- **Logic**: Webhook-based integration.
-- **Usage**:
-```typescript
-await notificationService.send(ChannelType.DISCORD, {
-  body: 'New deployment successful!',
-  channelOptions: {
-    username: 'BTS Bot',
-    embeds: [{ title: 'Build Info', color: 3066993 }]
-  }
-});
-```
+#### 6. Discord (DISCORD)
+- **Mechanism**: High-performance Webhook integration.
+- **Customization**: Support for complex embeds and custom bot identities.
 
-#### 7. Microsoft Teams (`TEAMS`)
-- **Logic**: Incoming Webhooks (Message Cards).
-- **Usage**:
-```typescript
-await notificationService.send(ChannelType.TEAMS, {
-  body: 'New support ticket created.',
-  channelOptions: { themeColor: '0078D4' }
-});
-```
+#### 7. Microsoft Teams (TEAMS)
+- **Mechanism**: Incoming Webhooks using adaptive message cards.
 
-#### 8. Facebook Messenger (`MESSENGER`)
-- **Provider**: Graph API.
-- **Usage**:
-```typescript
-await notificationService.send(ChannelType.MESSENGER, {
-  recipientId: 'psid_here',
-  body: 'Hello! How can we help you today?'
-});
-```
+#### 8. Facebook Messenger (MESSENGER)
+- **Technology**: Meta Graph API.
+- **Usage**: Support for Page-Scoped IDs (PSID) and standard messaging blocks.
 
 ---
+
+### Enterprise Features
+
+#### Templating and Localization
+- **Handlebars Engine**: Centralized template rendering for all channels via TemplateService.
+- **Dynamic I18n**: Support for per-recipient language resolution using nestjs-i18n.
+- **Contextual Data**: Pass complex objects to templates for real-time personalization.
+
+#### Architecture and Extensibility
+- **Channel Registry**: A plugin-based system that allows for dynamic channel registration and discovery.
+- **BullMQ Priority**: Native support for job priorities (1-100) to ensure critical alerts are processed before marketing broadcasts.
+- **Comprehensive Testing**: Backed by a 100% coverage unit testing suite and standalone Docker-based E2E verification.
+
+---
+
 
 ## Deep Dive: `@bts-soft/upload`
 

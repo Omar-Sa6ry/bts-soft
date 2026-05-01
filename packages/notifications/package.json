@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/notifications",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "author": "Omar Sabry",
   "description": "NestJS notifications module supporting email (Nodemailer), SMS (Twilio), push (Firebase), Telegram bot, and BullMQ queue integration.",
   "main": "dist/index.js",
@@ -14,7 +14,12 @@
     "prepublishOnly": "npm run build",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "test:e2e": "docker-compose -f docker-compose.e2e.yml up -d && node -e \"setTimeout(() => {}, 2000)\" && jest --config ./jest-e2e.json --runInBand --all --forceExit & docker-compose -f docker-compose.e2e.yml down"
+
+
+
+
   },
   "jest": {
     "moduleFileExtensions": [
