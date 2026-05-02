@@ -22,13 +22,11 @@ export class GeneralResponseInterceptor<T> implements NestInterceptor<T, any> {
     const isGraphQL = (context.getType() as string) === "graphql";
 
     return next.handle().pipe(
-      map((data: any) => ResponseFormatter.formatSuccess(data)),
+      map((data: any) => isGraphQL ? data : ResponseFormatter.formatSuccess(data)),
       catchError((error) => {
         const errorResponse = ResponseFormatter.formatError(error);
 
         if (isGraphQL) {
-          // If we are in GQL context but using this interceptor, 
-          // we throw it so the GqlExceptionFilter can catch it.
           throw error; 
         }
 

@@ -299,10 +299,10 @@ By calling `setupInterceptors(app)` in your `main.ts`, you enable a powerful sui
     Uses `class-transformer` to filter out sensitive fields (marked with `@Exclude()`) and include computed properties (marked with `@Expose()`).
     
 2.  **`SqlInjectionInterceptor`**: 
-    A global scanner that intercepts all incoming request payloads (Body, Query, Params) and checks every string against the `SQL_INJECTION_REGEX`. If a violation is caught, it automatically throws a `400 Bad Request` before the controller logic is executed.
+    A global scanner that intercepts all incoming request payloads (Body, Query, Params) and checks every string against a predefined regex. If a violation is caught, it automatically throws a `400 Bad Request` before the controller logic is executed.
 
 3.  **`GeneralResponseInterceptor`**: 
-    The most visible part of the common module. It ensures that every response, whether it's a single entity, a list, or an error, follows the exact same JSON structure.
+    Ensures that every REST response follows the exact same JSON structure. For GraphQL, it automatically skips formatting to preserve schema integrity while still allowing for global error handling.
 
 #### The Standard Response Envelope
 ```json
@@ -326,25 +326,28 @@ By calling `setupInterceptors(app)` in your `main.ts`, you enable a powerful sui
 ### Shared Base Classes
 
 #### 1. `BaseEntity` (The Persistence Foundation)
-All database entities in the system should extend `BaseEntity`. 
+All database entities in the system should extend a specialized base class. 
 
-- **ULID Integration**: Instead of predictable numeric IDs, it uses **ULIDs** (Universally Unique Lexicographically Sortable Identifiers). These are 26-character strings that are both unique and sortable by creation time.
+- **ULID Integration**: Instead of predictable numeric IDs, it uses ULIDs (Universally Unique Lexicographically Sortable Identifiers) which are both unique and sortable.
 - **Audit Trails**: Automatically generates `createdAt` and `updatedAt` timestamps.
-- **Lifecycle Hooks**: Includes pre-configured `AfterInsert`, `AfterUpdate`, and `BeforeRemove` logging to help with debugging database interactions in production.
+- **Multi-ORM Support**: Includes dedicated bases for TypeORM, Sequelize, Mongoose, Prisma, and GraphQL.
 
 #### 2. `BaseResponse` (The API Contract)
-Used as a base class for DTOs and GraphQL Object Types to ensure consistency in manual response construction.
+Used as a base class for DTOs and GraphQL Object Types to ensure consistency in response construction.
 
 ---
 
 ### Infrastructure Modules
 
-The common package also provides pre-configured NestJS modules:
+The common package provides pre-configured NestJS modules:
 
 - **`ConfigModule`**: A wrapper around `@nestjs/config` with built-in validation.
-- **`ThrottlingModule`**: Pre-configured rate limiting to prevent Brute-Force and DDoS attacks.
+- **`ThrottlingModule`**: Robust rate limiting that automatically handles both HTTP and GraphQL contexts.
 - **`TranslationModule`**: Integrated `nestjs-i18n` support for multi-language applications (Arabic/English).
-- **`GraphqlModule`**: The standard Apollo Server setup with custom error filters that bridge the gap between GraphQL and HTTP status codes.
+- **`GraphqlModule`**: Standard Apollo Server setup with custom error filters and a context that includes both request and response objects.
+
+---
+
 
 ---
 

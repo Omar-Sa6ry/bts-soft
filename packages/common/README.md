@@ -1,17 +1,18 @@
 # @bts-soft/common
 
-The foundational "Standard Library" for the BTS Soft ecosystem. A technology-agnostic, production-hardened collection of utilities, base classes, and infrastructure modules for NestJS applications.
+The foundational Standard Library for the BTS Soft ecosystem. A technology-agnostic, production-hardened collection of utilities, base classes, and infrastructure modules for NestJS applications.
 
 ---
 
 ## Key Features
 
 - **Technology Agnostic**: Core logic is decoupled from specific ORMs or API protocols.
-- **Multi-ORM Ready**: Pre-configured bases for TypeORM and agnostic foundations for Prisma/Mongoose.
+- **Multi-ORM Support**: Pre-configured bases for TypeORM, Sequelize, Mongoose, Prisma, and Agnostic foundations.
 - **Standardized Communication**: Unified response structure and exception handling for both REST and GraphQL.
-- **Professional Decorators**: Streamlined context access with `@CurrentUser` and `@Public`.
-- **Enterprise Logging**: A centralized `CommonLoggerService` for consistent observability.
-- **Tree-Shaking Support**: Modern sub-path exports for optimized bundle sizes.
+- **Robust Rate Limiting**: Global throttling support with automatic handling for REST and GraphQL contexts.
+- **Security by Default**: Integrated SQL Injection protection and sensitive data filtering.
+- **Enterprise Internationalization**: Built-in support for multi-language applications (Arabic/English).
+- **Centralized Logging**: Consistent observability with specialized logger services.
 
 ---
 
@@ -23,79 +24,92 @@ npm install @bts-soft/common
 
 ---
 
-## Core Architecture
+## Core Infrastructure Modules
 
-### 1. Base Entities (The Foundational Layer)
-
-Choose the base class that fits your technology stack:
-
-- **Agnostic (Default)**: `BaseEntity` - Pure logic with ID (ULID) and timestamps.
-- **TypeORM**: `TypeOrmBaseEntity` - Includes decorators and Active Record support.
-- **GraphQL**: `GraphqlBaseEntity` - Includes `@ObjectType` and `@Field` metadata.
+### 1. Throttling Module
+Provides global rate limiting with a robust guard that automatically detects and handles both HTTP and GraphQL requests.
 
 ```typescript
-// Example: Using Agnostic Base (REST/Prisma)
-import { BaseEntity } from '@bts-soft/common';
+import { ThrottlingModule } from '@bts-soft/common';
 
-export class User extends BaseEntity {
-  name: string;
-}
+@Module({
+  imports: [
+    ThrottlingModule.forRoot([
+      { name: 'short', ttl: 1000, limit: 3 },
+      { name: 'medium', ttl: 10000, limit: 20 }
+    ]),
+  ],
+})
+export class AppModule {}
 ```
 
-### 2. Standardized Responses
+### 2. Translation Module
+Integrated internationalization using `nestjs-i18n` with support for header-based and accept-language based language resolution.
 
-Ensure every API response follows the same contract:
-
-```typescript
-{
-  "success": true,
-  "statusCode": 200,
-  "message": "Request successful",
-  "timeStamp": "2024-05-01T10:00:00.000Z",
-  "data": { ... }
-}
-```
-
-Implement it by extending `BaseResponse` or using the global `RestExceptionFilter` and `GeneralResponseInterceptor`.
+### 3. GraphQL Module
+A standardized Apollo Server configuration with custom error filters that bridge the gap between GraphQL errors and standard HTTP status codes.
 
 ---
 
-## API Reference
+## Security & Interceptors
 
-### Decorators
+Activate the global security and response formatting suite in your `main.ts`:
+
+```typescript
+import { setupInterceptors } from '@bts-soft/common';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  setupInterceptors(app);
+  await app.listen(3000);
+}
+```
+
+### Included Interceptors:
+- **SqlInjectionInterceptor**: Scans all incoming payloads (Body, Query, Params) for malicious patterns.
+- **GeneralResponseInterceptor**: Wraps all REST responses in a standardized success/error envelope.
+- **ClassSerializerInterceptor**: Filters sensitive fields marked with `@Exclude()`.
+
+---
+
+## Base Entities
+
+Choose the persistence foundation that matches your stack:
+
+- **Agnostic**: `BaseEntity` (ULID based)
+- **TypeORM**: `TypeOrmBaseEntity`
+- **Mongoose**: `MongooseBaseEntity`
+- **Sequelize**: `SequelizeBaseEntity`
+- **Prisma**: `PrismaBase`
+- **GraphQL**: `GraphqlBaseEntity`
+
+---
+
+## API Reference: Decorators
 
 | Decorator | Description | Context |
 | :--- | :--- | :--- |
-| `@CurrentUser()` | Safely extracts user object from request. | REST & GraphQL |
-| `@Public()` | Bypasses global authentication guards. | REST & GraphQL |
-
-### Filters & Interceptors
-
-- **`GeneralResponseInterceptor`**: Automatically wraps successful responses in the standard envelope.
-- **`RestExceptionFilter`**: Catches all REST exceptions and formats them into a standard error JSON.
-- **`HttpExceptionFilter`**: Standardized error formatting for GraphQL (via `@bts-soft/common/graphql`).
-
-### Logging
-
-Use the `CommonLoggerService` for consistent output:
-
-```typescript
-constructor(private readonly logger: CommonLoggerService) {
-  this.logger.setContext('AuthService');
-}
-
-this.logger.log('User signed in successfully');
-```
+| `@CurrentUser()` | Safely extracts the authenticated user from the request. | REST & GraphQL |
+| `@Public()` | Bypasses global authentication guards for specific endpoints. | REST & GraphQL |
 
 ---
 
-## Sub-path Exports
+## Testing
 
-For better performance, import only what you need:
+The package includes a comprehensive test suite with 100% pass rate for both Unit and End-to-End (E2E) tests.
 
-```typescript
-import { AgnosticEntity } from '@bts-soft/common/core';
-import { TypeOrmBaseEntity } from '@bts-soft/common/typeorm';
+### Running Tests
+Ensure you have Docker installed for database-dependent tests:
+
+```bash
+# Run all tests (Unit + E2E)
+npm run test:all
+
+# Run unit tests with coverage
+npm run test:cov
+
+# Run E2E tests
+npm run test:e2e
 ```
 
 ---

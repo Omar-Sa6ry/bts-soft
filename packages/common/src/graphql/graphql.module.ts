@@ -25,7 +25,9 @@ export class GraphqlModule {
       autoSchemaFile: options?.autoSchemaFile === undefined 
         ? join(process.cwd(), "src/schema.gql") 
         : options.autoSchemaFile as any,
-      context: ({ req }) => ({
+      context: ({ req, res }) => ({
+        req,
+        res,
         request: req,
         user: req.user,
         language: req.headers["accept-language"] || "en",

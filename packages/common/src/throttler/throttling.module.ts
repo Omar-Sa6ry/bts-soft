@@ -1,10 +1,34 @@
-import { DynamicModule, Module } from '@nestjs/common';
-import { ThrottlerModule as Throttler, ThrottlerModuleOptions } from '@nestjs/throttler';
+import { DynamicModule, Module, Global, Injectable, ExecutionContext } from '@nestjs/common';
+import { ThrottlerModule as Throttler, ThrottlerModuleOptions, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+
+/**
+ * A robust ThrottlerGuard that handles both HTTP and GraphQL contexts.
+ */
+@Injectable()
+export class CommonThrottlerGuard extends ThrottlerGuard {
+  getRequestResponse(context: ExecutionContext) {
+    if (context.getType() as string === 'graphql') {
+      // We try to dynamically import GqlExecutionContext to avoid hard dependency if not used
+      try {
+        const { GqlExecutionContext } = require('@nestjs/graphql');
+        const gqlCtx = GqlExecutionContext.create(context);
+        const ctx = gqlCtx.getContext();
+        return { req: ctx.req || ctx.request, res: ctx.res };
+      } catch (e) {
+        // If @nestjs/graphql is not installed, we fall back to standard HTTP
+        return super.getRequestResponse(context);
+      }
+    }
+    return super.getRequestResponse(context);
+  }
+}
 
 /**
  * ThrottlingModule
  *
  * Provides global rate limiting with dynamic configuration support.
+ * Automatically handles REST and GraphQL contexts.
  */
 @Module({})
 export class ThrottlingModule {
@@ -35,6 +59,12 @@ export class ThrottlingModule {
       module: ThrottlingModule,
       imports: [
         Throttler.forRoot(options || defaultOptions),
+      ],
+      providers: [
+        {
+          provide: APP_GUARD,
+          useClass: CommonThrottlerGuard,
+        },
       ],
       exports: [Throttler],
     };
