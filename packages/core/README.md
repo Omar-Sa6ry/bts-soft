@@ -1,10 +1,91 @@
 # @bts-soft/core
 
+![NestJS](https://img.shields.io/badge/NestJS-%3E%3D11.0.0-E0234E?style=flat-square&logo=nestjs)
+![Node](https://img.shields.io/badge/Node-%3E%3D20.17.0-339933?style=flat-square&logo=node.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=flat-square&logo=typescript)
+![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
+
 ## The Definitive Enterprise Meta-Framework for NestJS
 
 `@bts-soft/core` is not just a package; it is the architectural backbone of the BTS Soft enterprise ecosystem. It streamlines the development of high-performance, secure, and scalable NestJS applications by consolidating five specialized packages into a unified, high-level API.
 
 This documentation serves as the comprehensive technical manual for the entire core infrastructure, covering everything from low-level Redis atomic operations to high-level multi-channel notification strategies.
+
+---
+
+## Table of Contents
+- [Installation \& Quick Start](#installation--quick-start)
+- [Core Vision \& Architecture](#core-vision--architecture)
+- [Module Index](#module-index)
+- [Deep Dive: @bts-soft/validation](#deep-dive-bts-softvalidation)
+- [Deep Dive: @bts-soft/cache](#deep-dive-bts-softcache)
+- [Deep Dive: @bts-soft/notifications](#deep-dive-bts-softnotifications)
+- [Deep Dive: @bts-soft/upload](#deep-dive-bts-softupload)
+- [Deep Dive: @bts-soft/common](#deep-dive-bts-softcommon)
+- [Security Audit \& Hardening Guide](#security-audit--hardening-guide)
+- [Deployment, CI/CD, and Operations](#deployment-cicd-and-operations)
+- [The Giant Book of Usage Examples](#the-giant-book-of-usage-examples)
+- [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
+- [Exhaustive Redis API Guide](#exhaustive-redis-api-guide)
+
+---
+
+## Installation & Quick Start
+
+### 1. Install the Package
+
+```bash
+npm install @bts-soft/core
+```
+
+*Note: `@bts-soft/core` requires `Node.js >= 20.17.0` and has peer dependencies on `@nestjs/common` and `@nestjs/core` (v11+).*
+
+### 2. Basic Integration
+
+Import the individual modules provided by `@bts-soft/core` into your `AppModule` or use them as needed:
+
+```typescript
+import { Module } from '@nestjs/common';
+import { 
+  ConfigModule, 
+  GraphqlModule, 
+  ThrottlingModule 
+} from '@bts-soft/core';
+
+@Module({
+  imports: [
+    ConfigModule,
+    ThrottlingModule,
+    GraphqlModule,
+    // Add other core modules like RedisModule, UploadModule, etc. as needed
+  ],
+})
+export class AppModule {}
+```
+
+### 3. Bootstrap Utilities
+
+In your `main.ts`, utilize the core infrastructure to set up global interceptors and launch banners:
+
+```typescript
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { setupInterceptors, displayAppBanner } from '@bts-soft/core';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  
+  // Apply standard BTS-Soft global interceptors (Serialization, SQLi Protection, Formatting)
+  setupInterceptors(app);
+  
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  
+  // Display the professional terminal banner
+  displayAppBanner('My Service', port);
+}
+bootstrap();
+```
 
 ---
 
@@ -348,6 +429,15 @@ The common package provides pre-configured NestJS modules:
 
 ---
 
+### Production & CLI Utilities
+
+The common package exposes tools to manage environment-specific behaviors:
+
+- **`disableConsoleInProduction()`**: A safety utility to mute all `console` outputs when running in production.
+- **`displayAppBanner(appName, port)`**: Displays a clean, professional banner in the terminal when the server starts.
+
+---
+
 
 ---
 
@@ -505,6 +595,12 @@ The Upload module provides:
 - Extension white-listing to prevent uploading executable files (like `.exe`, `.sh`).
 - Size caps to prevent Disk Exhaustion attacks.
 - Strategy-level validation to ensure the cloud provider is reputable and secure.
+
+### 5. Production Optimization & Information Leakage Prevention
+
+To prevent sensitive data from leaking into server logs (such as tokens, passwords, or PII mistakenly logged during development), the `@bts-soft/core` meta-package **automatically disables all `console.*` methods** (e.g., `console.log`, `console.error`) the moment it is imported, provided that `process.env.NODE_ENV === "production"`.
+
+If your production environment requires structured logging, you should use the NestJS `Logger` class or a dedicated logging transport instead of native `console` methods.
 
 ---
 

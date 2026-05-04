@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/core",
-  "version": "2.4.7",
+  "version": "2.4.8",
   "author": "Omar Sabry",
   "description": "All bts-soft packages - meta-package bundling common, cache, validation, upload, and notifications for NestJS.",
   "main": "dist/index.js",
