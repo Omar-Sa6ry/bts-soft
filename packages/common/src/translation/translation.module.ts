@@ -4,7 +4,6 @@ import {
   AcceptLanguageResolver,
   HeaderResolver,
   I18nModule,
-  I18nService,
 } from "nestjs-i18n";
 
 export interface TranslationModuleOptions {
