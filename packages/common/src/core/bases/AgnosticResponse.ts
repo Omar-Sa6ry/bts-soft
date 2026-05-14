@@ -9,11 +9,11 @@ export class AgnosticResponse {
   message?: string;
 
   /** Indicates whether the operation succeeded or failed. */
-  success?: boolean;
+  success?: boolean = true;
 
   /** ISO timestamp representing when the response was generated. */
-  timeStamp?: string;
+  timeStamp?: string = new Date().toISOString();
 
   /** HTTP status code or equivalent numeric result. */
-  statusCode?: number;
+  statusCode?: number = 200;
 }

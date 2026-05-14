@@ -487,67 +487,158 @@ export class UploadService {
     }
   }
 
+  /**
+   * Processes various input types (GraphQL DTO, FileUpload, Base64, Buffer, Multer File) into a stream.
+   * This makes the service extremely flexible and easy to use.
+   */
+  private async processInput(
+    input: any,
+    type: string,
+  ): Promise<UploadFile & { size?: number }> {
+    if (!input) return null;
+
+    let processedInput = input;
+
+    // 1. Handle GraphQL DTOs (e.g., CreateImageDto { image: Promise<FileUpload> })
+    // We check for common field names used in our DTOs
+    const possibleFields = ["image", "video", "audio", "file"];
+    if (typeof input === "object" && !input.createReadStream && !input.buffer) {
+      for (const field of possibleFields) {
+        if (input[field]) {
+          processedInput = input[field];
+          break;
+        }
+      }
+    }
+
+    // 2. Handle Promise (GraphQL Uploads often come as promises)
+    if (
+      processedInput instanceof Promise ||
+      (typeof processedInput === "object" &&
+        typeof processedInput.then === "function")
+    ) {
+      processedInput = await processedInput;
+    }
+
+    // 3. Handle GraphQL FileUpload Object
+    if (processedInput && typeof processedInput.createReadStream === "function") {
+      return {
+        stream: processedInput.createReadStream(),
+        filename: processedInput.filename,
+      };
+    }
+
+    // 4. Handle Base64 String
+    if (typeof processedInput === "string") {
+      let base64Data = processedInput;
+      let extension = "png";
+
+      if (processedInput.startsWith("data:")) {
+        const parts = processedInput.split(",");
+        base64Data = parts[parts.length - 1];
+        const mimeMatch = processedInput.match(/data:(.*?);/);
+        if (mimeMatch) {
+          extension = mimeMatch[1].split("/")[1] || extension;
+        }
+      }
+
+      const buffer = Buffer.from(base64Data, "base64");
+      return {
+        stream: Stream.Readable.from(buffer),
+        filename: `upload-${Date.now()}.${extension}`,
+        size: buffer.length,
+      };
+    }
+
+    // 5. Handle Buffer
+    if (Buffer.isBuffer(processedInput)) {
+      return {
+        stream: Stream.Readable.from(processedInput),
+        filename: `upload-${Date.now()}.bin`,
+        size: processedInput.length,
+      };
+    }
+
+    // 6. Handle Multer File (REST API)
+    if (processedInput && processedInput.buffer && processedInput.originalname) {
+      return {
+        stream: Stream.Readable.from(processedInput.buffer),
+        filename: processedInput.originalname,
+        size: processedInput.size,
+      };
+    }
+
+    // 7. Handle Already processed stream (UploadFile interface)
+    if (processedInput && processedInput.stream && processedInput.filename) {
+      return processedInput;
+    }
+
+    return null;
+  }
+
+  /**
+   * Generic upload method that handles any file type.
+   * Detects input format automatically.
+   */
+  async upload(
+    input: any,
+    dirUpload?: string,
+    type: "image" | "video" | "file" | "audio" | "model3d" = "image",
+  ): Promise<UploadResult> {
+    const fileData = await this.processInput(input, type);
+    if (!fileData) {
+      throw new HttpException("Invalid upload input", HttpStatus.BAD_REQUEST);
+    }
+
+    switch (type) {
+      case "image":
+        return this.uploadImageCore(fileData, dirUpload || "avatars");
+      case "video":
+        return this.uploadVideoCore(fileData, dirUpload || "videos");
+      case "audio":
+        return this.uploadAudioCore(fileData, dirUpload || "audios");
+      case "file":
+        return this.uploadFileCore(fileData, dirUpload || "files");
+      case "model3d":
+        return this.uploadModel3dCore(fileData, dirUpload || "models");
+      default:
+        throw new HttpException("Unsupported file type", HttpStatus.BAD_REQUEST);
+    }
+  }
+
   // --- Public REST/GraphQL Interface Methods ---
 
   /**
    * Public interface for GraphQL image uploads.
    * Converts the GraphQL FileUpload promise into a stream for the core function.
    */
-  async uploadImage(dto: CreateImageDto, dirUpload = "avatars") {
-    if (!dto.image) return null;
-
-    const uploaded = await dto.image;
-    const stream = uploaded.createReadStream();
-
-    return this.uploadImageCore(
-      { stream, filename: uploaded.filename },
-      dirUpload,
-    );
+  async uploadImage(input: any, dirUpload = "avatars"): Promise<UploadResult> {
+    const fileData = await this.processInput(input, "image");
+    if (!fileData) return null;
+    return this.uploadImageCore(fileData, dirUpload);
   }
 
   /**
    * Public interface for GraphQL video uploads.
    * Converts the GraphQL FileUpload promise into a stream for the core function.
    */
-  async uploadVideo(
-    createVideoInput: CreateVideoDto,
-    dirUpload: string = "videos",
-  ): Promise<UploadResult> {
-    if (!createVideoInput.video) {
+  async uploadVideo(input: any, dirUpload: string = "videos"): Promise<UploadResult> {
+    const fileData = await this.processInput(input, "video");
+    if (!fileData) {
       throw new HttpException("Video file is required", HttpStatus.BAD_REQUEST);
     }
-
-    const uploadedFile = await createVideoInput.video;
-    if (!uploadedFile || !uploadedFile.createReadStream) {
-      throw new HttpException("Invalid video file", HttpStatus.BAD_REQUEST);
-    }
-
-    const { createReadStream, filename } = uploadedFile;
-    const stream = createReadStream();
-
-    return this.uploadVideoCore({ stream, filename }, dirUpload);
+    return this.uploadVideoCore(fileData, dirUpload);
   }
 
   /**
    * Public interface for GraphQL audio uploads.
    */
-  async uploadAudio(
-    createAudioInput: CreateAudioDto,
-    dirUpload: string = "audios",
-  ): Promise<UploadResult> {
-    if (!createAudioInput.audio) {
+  async uploadAudio(input: any, dirUpload: string = "audios"): Promise<UploadResult> {
+    const fileData = await this.processInput(input, "audio");
+    if (!fileData) {
       throw new HttpException("Audio file is required", HttpStatus.BAD_REQUEST);
     }
-
-    const uploadedFile = await createAudioInput.audio;
-    if (!uploadedFile || !uploadedFile.createReadStream) {
-      throw new HttpException("Invalid audio file", HttpStatus.BAD_REQUEST);
-    }
-
-    const { createReadStream, filename } = uploadedFile;
-    const stream = createReadStream();
-
-    return this.uploadAudioCore({ stream, filename }, dirUpload);
+    return this.uploadAudioCore(fileData, dirUpload);
   }
 
   /**
@@ -678,23 +769,12 @@ export class UploadService {
     }
   }
 
-  async uploadFile(
-    createFileInput: CreateFileDto,
-    dirUpload: string = "files",
-  ): Promise<UploadResult> {
-    if (!createFileInput.file) {
+  async uploadFile(input: any, dirUpload: string = "files"): Promise<UploadResult> {
+    const fileData = await this.processInput(input, "file");
+    if (!fileData) {
       throw new HttpException("File is required", HttpStatus.BAD_REQUEST);
     }
-
-    const uploadedFile = await createFileInput.file;
-    if (!uploadedFile || !uploadedFile.createReadStream) {
-      throw new HttpException("Invalid file", HttpStatus.BAD_REQUEST);
-    }
-
-    const { createReadStream, filename } = uploadedFile;
-    const stream = createReadStream();
-
-    return this.uploadFileCore({ stream, filename }, dirUpload);
+    return this.uploadFileCore(fileData, dirUpload);
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
@@ -740,23 +820,12 @@ export class UploadService {
     }
   }
 
-  async uploadModel3d(
-    createModel3dInput: CreateModel3dDto,
-    dirUpload: string = "models",
-  ): Promise<UploadResult> {
-    if (!createModel3dInput.file) {
+  async uploadModel3d(input: any, dirUpload: string = "models"): Promise<UploadResult> {
+    const fileData = await this.processInput(input, "model3d");
+    if (!fileData) {
       throw new HttpException("3D model is required", HttpStatus.BAD_REQUEST);
     }
-
-    const uploadedFile = await createModel3dInput.file;
-    if (!uploadedFile || !uploadedFile.createReadStream) {
-      throw new HttpException("Invalid 3D model", HttpStatus.BAD_REQUEST);
-    }
-
-    const { createReadStream, filename } = uploadedFile;
-    const stream = createReadStream();
-
-    return this.uploadModel3dCore({ stream, filename }, dirUpload);
+    return this.uploadModel3dCore(fileData, dirUpload);
   }
 
   async deleteModel3d(modelUrl: string): Promise<void> {

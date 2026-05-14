@@ -18,6 +18,7 @@ import { GeoRedisService } from "./services/geoRedis.service";
 import { TransactionRedisService } from "./services/transactionRedis.service";
 import { PubSubRedisService } from "./services/pubSubRedis.service";
 import { LockRedisService } from "./services/lockRedis.service";
+
 /**
  * RedisModule
  *

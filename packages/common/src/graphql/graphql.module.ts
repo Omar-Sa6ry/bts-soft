@@ -4,6 +4,7 @@ import { APP_FILTER } from "@nestjs/core";
 import { GraphQLModule } from "@nestjs/graphql";
 import { join } from "path";
 import { HttpExceptionFilter } from "./errorHandling.filter";
+import { GraphQLUpload } from "graphql-upload-minimal";
 
 export interface GraphqlModuleOptions {
   path?: string;
@@ -44,6 +45,9 @@ export class GraphqlModule {
           keepAlive: 10000,
         },
         "graphql-ws": true,
+      },
+      resolvers: {
+        Upload: GraphQLUpload,
       },
       formatError: (error) => {
         return {
