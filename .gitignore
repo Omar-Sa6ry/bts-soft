@@ -18,6 +18,9 @@ pnpm-lock.yaml
 .env
 .env.local
 .env.*
+.npmrc
+packages/**/.npmrc
+
 
 # OS Files and IDE
 .DS_Store

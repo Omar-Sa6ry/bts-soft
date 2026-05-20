@@ -167,16 +167,24 @@ export class UploadService {
 
     this.validateFile(filename, "image", size);
 
-    const options = {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    const isImage = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext || "");
+
+    const options: any = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, "_")}`,
       resource_type: "auto",
-      fetch_format: "auto",
-      quality: "auto",
-      width: DEFAULT_IMAGE_MAX_DIMENSIONS.WIDTH,
-      height: DEFAULT_IMAGE_MAX_DIMENSIONS.HEIGHT,
-      crop: "limit", // Non-destructive resizing
+      use_filename: true,
+      unique_filename: true,
     };
+
+    // Only apply image transformations if it's an actual image
+    if (isImage) {
+      options.fetch_format = "auto";
+      options.quality = "auto";
+      options.width = DEFAULT_IMAGE_MAX_DIMENSIONS.WIDTH;
+      options.height = DEFAULT_IMAGE_MAX_DIMENSIONS.HEIGHT;
+      options.crop = "limit";
+    }
 
     const command = new UploadImageCommand(
       this.uploadStrategy,
@@ -409,10 +417,14 @@ export class UploadService {
 
     this.validateFile(filename, "file", size);
 
-    const options = {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    const isImage = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext || "");
+
+    const options: any = {
       folder: dirUpload,
-      public_id: `${Date.now()}-${filename.replace(/[^a-z0-9.]/gi, "_")}`,
-      resource_type: "raw",
+      resource_type: isImage ? "image" : "raw",
+      use_filename: true,
+      unique_filename: true,
     };
 
     const command = new UploadFileCommand(this.uploadStrategy, stream, options);

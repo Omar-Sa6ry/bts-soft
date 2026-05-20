@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/common",
-  "version": "1.3.9",
+  "version": "1.4.0",
   "description": "Shared NestJS utilities (modules, guards, interceptors, decorators, DTOs, and entities) for all @bts-soft packages.",
   "author": "Omar Sabry",
   "license": "MIT",
@@ -85,7 +85,8 @@
     "nestjs-i18n": ">=10.0.0",
     "sequelize": ">=6.0.0",
     "sequelize-typescript": ">=2.0.0",
-    "typeorm": ">=0.3.0"
+    "typeorm": ">=0.3.0",
+    "graphql-upload-minimal": ">=1.6.0"
   },
   "peerDependenciesMeta": {
     "@apollo/server": {
@@ -126,6 +127,9 @@
     },
     "typeorm": {
       "optional": true
+    },
+    "graphql-upload-minimal": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -135,6 +139,7 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
+    "graphql-upload-minimal": "^1.6.0",
     "@nestjs/graphql": "^13.0.0",
     "@nestjs/mongoose": "^10.0.0",
     "@nestjs/platform-express": "^11.1.19",
