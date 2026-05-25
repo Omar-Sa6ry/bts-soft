@@ -35,7 +35,7 @@ export function DescriptionField(
     IsOptional(),
     IsString({ message }),
     // Allows letters, numbers, spaces, and a wider range of punctuation including newlines.
-    Matches(/^[A-Za-z0-9\s.,!?( )\-_\n\r]+$/, {
+    Matches(/^[A-Za-z0-9\s.,!?( )\-_\n\r\u0600-\u06FF]+$/, {
       message: `${text} contains invalid characters`,
     }),
     Length(min, max, {

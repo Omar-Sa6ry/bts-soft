@@ -20,6 +20,13 @@ describe('DescriptionField', () => {
     expect(errors.length).toBe(0);
   });
 
+  it('should validate Arabic description successfully', async () => {
+    const obj = new TestDescription();
+    obj.bio = 'وصف باللغة العربية';
+    const errors = await validate(obj);
+    expect(errors.length).toBe(0);
+  });
+
   it('should transform text to lowercase', async () => {
     const raw = { bio: 'THIS IS A BIO' };
     const instance = plainToInstance(TestDescription, raw);

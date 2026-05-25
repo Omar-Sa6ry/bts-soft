@@ -37,7 +37,7 @@ export function TextField(
     // Common validation rules
     IsOptional(),
     IsString({ message }),
-    Matches(/^[A-Za-z0-9\s.,-]+$/, {
+    Matches(/^[A-Za-z0-9\s.,\u0600-\u06FF-]+$/, {
       message: `${text} must contain only letters, numbers, spaces, or basic symbols (.,-)`,
     }),
     Length(min, max, { // Use flexible min/max

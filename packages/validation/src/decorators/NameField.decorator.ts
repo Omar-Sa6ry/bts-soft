@@ -34,7 +34,7 @@ export function NameField(
     
     IsOptional(),
     IsString({ message }),
-    Matches(/^[A-Za-z\s]+$/, {
+    Matches(/^[A-Za-z\s\u0600-\u06FF]+$/, {
       message: `${text} must contain only letters and spaces`,
     }),
     Length(min, max, {

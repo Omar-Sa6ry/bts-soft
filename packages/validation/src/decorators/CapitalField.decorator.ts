@@ -39,7 +39,7 @@ export function CapitalTextField(
     // Common validation rules
     IsOptional(),
     IsString({ message }),
-    Matches(/^[A-Za-z\s]+$/, {
+    Matches(/^[A-Za-z\s\u0600-\u06FF]+$/, {
       message: `${text} must contain only letters (no numbers or symbols)`,
     }),
     Length(min, max, { // Use flexible min/max

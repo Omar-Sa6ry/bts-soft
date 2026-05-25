@@ -20,6 +20,13 @@ describe('TextField', () => {
     expect(errors.length).toBe(0);
   });
 
+  it('should validate Arabic text successfully', async () => {
+    const obj = new TestText();
+    obj.title = 'عنوان عربي';
+    const errors = await validate(obj);
+    expect(errors.length).toBe(0);
+  });
+
   it('should transform text to lowercase', async () => {
     const raw = { title: 'HELLO' };
     const instance = plainToInstance(TestText, raw);

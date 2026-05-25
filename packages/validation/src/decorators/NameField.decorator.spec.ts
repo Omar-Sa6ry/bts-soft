@@ -20,6 +20,13 @@ describe('NameField', () => {
     expect(errors.length).toBe(0);
   });
 
+  it('should validate Arabic name successfully', async () => {
+    const obj = new TestName();
+    obj.name = 'عمر صبري';
+    const errors = await validate(obj);
+    expect(errors.length).toBe(0);
+  });
+
   it('should transform text to capitalized words', async () => {
     const raw = { name: 'omar sabry' };
     const instance = plainToInstance(TestName, raw);

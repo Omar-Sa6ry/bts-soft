@@ -20,6 +20,13 @@ describe('CapitalTextField', () => {
     expect(errors.length).toBe(0);
   });
 
+  it('should validate Arabic words successfully', async () => {
+    const obj = new TestCapital();
+    obj.city = 'القاهرة';
+    const errors = await validate(obj);
+    expect(errors.length).toBe(0);
+  });
+
   it('should transform text to capitalized words', async () => {
     const raw = { city: 'new york city' };
     const instance = plainToInstance(TestCapital, raw);
