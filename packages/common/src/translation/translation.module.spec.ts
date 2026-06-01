@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { Test } from '@nestjs/testing';
 import { TranslationModule } from './translation.module';
 import { I18nModule } from 'nestjs-i18n';
@@ -24,7 +25,7 @@ describe('TranslationModule', () => {
     const module = await Test.createTestingModule({
       imports: [
         TranslationModule.forRoot({
-          localesPath: './locales',
+          localesPath: path.join(__dirname, '../../test/e2e/locales'),
           watch: false,
         }),
       ],

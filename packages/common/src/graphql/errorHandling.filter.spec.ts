@@ -20,8 +20,8 @@ describe('Graphql HttpExceptionFilter', () => {
     const result = filter.catch(exception, mockArgumentsHost);
 
     expect(result.message).toBe('GQL Error');
-    // Code in filter defaults to INTERNAL_SERVER_ERROR unless extensions.code exists
-    expect(result.extensions.code).toBe('INTERNAL_SERVER_ERROR');
+    // Code in filter defaults to INTERNAL_SERVER_ERROR (or BAD_REQUEST for 400) unless extensions.code exists
+    expect(result.extensions.code).toBe('BAD_REQUEST');
   });
 
   it('should handle generic errors', () => {

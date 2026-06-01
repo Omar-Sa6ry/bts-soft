@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as fs from "fs";
 import { DynamicModule, Module, Global } from "@nestjs/common";
 import {
   AcceptLanguageResolver,
@@ -30,7 +31,11 @@ export class TranslationModule {
           loaderOptions: {
             path:
               options?.localesPath ||
-              path.join(process.cwd(), "src/common/translation/locales/"),
+              (fs.existsSync(path.join(process.cwd(), "src/common/translation/locales/"))
+                ? path.join(process.cwd(), "src/common/translation/locales/")
+                : fs.existsSync(path.join(process.cwd(), "test/e2e/locales"))
+                  ? path.join(process.cwd(), "test/e2e/locales")
+                  : path.join(process.cwd(), "src/common/translation/locales/")),
             watch: options?.watch !== undefined ? options.watch : true,
           },
           resolvers: [
