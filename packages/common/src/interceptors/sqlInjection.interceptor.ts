@@ -79,6 +79,11 @@ export class SqlInjectionInterceptor implements NestInterceptor {
   private isSqlInjectionAttempt(value: string): boolean {
     // Skip checking extremely short strings to optimize performance
     if (!value || value.length < 4) return false;
-    return this.SQL_INJECTION_PATTERNS.some((pattern) => pattern.test(value));
+    // We must ensure that the stateful /g regex lastIndex is reset to 0 before testing 
+    // or we recreate/use string.match instead, to avoid false negatives on subsequent checks.
+    return this.SQL_INJECTION_PATTERNS.some((pattern) => {
+      pattern.lastIndex = 0;
+      return pattern.test(value);
+    });
   }
 }
