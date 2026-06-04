@@ -16,6 +16,7 @@ export * from "./graphql/bases/GraphqlBaseEntity";
 export * from "./graphql/bases/GraphqlBaseResponse";
 export * from "./graphql/graphql.module";
 export * from "./graphql/errorHandling.filter";
+export * from "./graphql/upload.scalar";
 
 
 // ========== Filters & Interceptors ==========

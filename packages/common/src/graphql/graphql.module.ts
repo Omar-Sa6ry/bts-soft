@@ -5,6 +5,7 @@ import { GraphQLModule } from "@nestjs/graphql";
 import { join } from "path";
 import { HttpExceptionFilter } from "./errorHandling.filter";
 import { GraphQLUpload } from "graphql-upload-minimal";
+import { UploadScalar } from "./upload.scalar";
 
 export interface GraphqlModuleOptions {
   path?: string;
@@ -68,6 +69,7 @@ export class GraphqlModule {
         GraphQLModule.forRoot<ApolloDriverConfig>(gqlConfig),
       ],
       providers: [
+        UploadScalar,
         {
           provide: APP_FILTER,
           useClass: HttpExceptionFilter,

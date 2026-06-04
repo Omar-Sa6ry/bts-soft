@@ -57,10 +57,10 @@ describe('Common Package (e2e)', () => {
     it('/test/sql (POST) - should block SQL injection attempts', () => {
       return request(app.getHttpServer())
         .post('/test/sql')
-        .send({ query: 'SELECT * FROM users' })
+        .send({ query: 'admin\' OR 1=1 --' })
         .expect(400)
         .expect((res) => {
-          expect(res.body.message).toBe('Invalid input detected');
+          expect(res.body.message).toBe('Invalid inputs: Suspicious patterns detected.');
         });
     });
 
