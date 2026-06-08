@@ -1,5 +1,5 @@
 import { Module, Controller, Get, UseInterceptors, UseFilters, Post, Body } from '@nestjs/common';
-import { Resolver, Query, Mutation, Args, ObjectType, Field, ID } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, ObjectType, Field, ID, Scalar, CustomScalar } from '@nestjs/graphql';
 import { 
   ConfigModule, 
   TranslationModule, 
@@ -14,6 +14,7 @@ import {
 } from '../../src';
 import { I18nService } from 'nestjs-i18n';
 import * as path from 'path';
+import { GraphQLUpload } from 'graphql-upload-minimal';
 
 @ObjectType()
 class TestUser {
@@ -85,6 +86,23 @@ export class TestResolver {
   }
 }
 
+@Scalar('Upload', () => GraphQLUpload)
+export class UploadScalar implements CustomScalar<any, any> {
+  description = 'Upload custom scalar type';
+
+  parseValue(value: any) {
+    return value;
+  }
+
+  serialize(value: any) {
+    return value;
+  }
+
+  parseLiteral(ast: any) {
+    return ast.value;
+  }
+}
+
 @Module({
   imports: [
     ConfigModule,
@@ -106,6 +124,6 @@ export class TestResolver {
     }),
   ],
   controllers: [TestController],
-  providers: [TestResolver],
+  providers: [TestResolver, UploadScalar],
 })
 export class TestAppModule {}
