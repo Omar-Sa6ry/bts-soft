@@ -25,4 +25,10 @@ export class UploadResult {
 
   @Field(() => Float, { nullable: true })
   duration?: number;
+
+  @Field({ nullable: true })
+  jobId?: string;
+
+  @Field({ nullable: true })
+  cdnUrl?: string;
 }

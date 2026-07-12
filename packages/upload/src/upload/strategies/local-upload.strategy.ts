@@ -1,7 +1,8 @@
-import { IUploadStrategy } from "../interfaces/IUpload.interface";
+import { IUploadStrategy, RawUploadResult } from "../interfaces/IUpload.interface";
 import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from "@nestjs/common";
+import { Readable } from 'stream';
 
 export class LocalUploadStrategy implements IUploadStrategy {
   private readonly logger = new Logger(LocalUploadStrategy.name);
@@ -12,17 +13,17 @@ export class LocalUploadStrategy implements IUploadStrategy {
     }
   }
 
-  async upload(stream: any, options: any): Promise<any> {
+  async upload(stream: Readable, options: Record<string, unknown>): Promise<RawUploadResult> {
     return new Promise((resolve, reject) => {
-      const folderPath = path.join(this.uploadPath, options.folder || '');
+      const folderPath = path.join(this.uploadPath, (options.folder as string) || '');
       
       if (!fs.existsSync(folderPath)) {
         fs.mkdirSync(folderPath, { recursive: true });
       }
 
-      // Generate a unique filename if not provided
-      const ext = options.public_id?.includes('.') ? '' : '.bin'; // Simplified for now
-      const fileName = options.public_id || `${Date.now()}`;
+      const publicId = options.public_id as string | undefined;
+      const ext = publicId?.includes('.') ? '' : '.bin';
+      const fileName = publicId || `${Date.now()}`;
       const filePath = path.join(folderPath, fileName);
 
       const writeStream = fs.createWriteStream(filePath);
@@ -30,14 +31,13 @@ export class LocalUploadStrategy implements IUploadStrategy {
       stream.pipe(writeStream);
 
       writeStream.on('finish', () => {
-        // Return a structure similar to Cloudinary for compatibility
         resolve({
-          secure_url: filePath, // In local, it's the file path
+          secure_url: filePath,
           public_id: fileName,
           bytes: fs.statSync(filePath).size,
           format: path.extname(fileName).replace('.', ''),
           original_filename: fileName,
-          resource_type: options.resource_type || 'auto'
+          resource_type: (options.resource_type as string) || 'auto'
         });
       });
 
@@ -46,5 +46,9 @@ export class LocalUploadStrategy implements IUploadStrategy {
         reject(error);
       });
     });
+  }
+
+  async uploadLarge(stream: Readable, options: Record<string, unknown>): Promise<RawUploadResult> {
+    return this.upload(stream, options);
   }
 }

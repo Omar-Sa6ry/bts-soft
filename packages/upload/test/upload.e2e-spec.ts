@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, Controller, Post, Delete, UploadedFile, UseInterceptors, Body } from '@nestjs/common';
 import request from 'supertest';
 import { UploadService } from '../src/upload/upload.service';
+import { UploadModule } from '../src/upload/upload.module';
 import { ConfigModule } from '@nestjs/config';
 import { UploadProvider } from '../src/upload/utils/upload.constants';
 import * as fs from 'fs';
@@ -110,11 +111,10 @@ describe('UploadModule (e2e) - 100% Comprehensive Suite', () => {
             UPLOAD_MAX_FILE_SIZE: 2 * 1024 * 1024,
             UPLOAD_MAX_MODEL_3D_SIZE: 20 * 1024 * 1024,
           })],
-
         }),
+        UploadModule,
       ],
       controllers: [TestController],
-      providers: [UploadService],
     }).compile();
 
     app = moduleFixture.createNestApplication();

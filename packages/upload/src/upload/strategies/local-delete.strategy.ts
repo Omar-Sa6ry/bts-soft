@@ -8,7 +8,7 @@ export class LocalDeleteStrategy implements IDeleteStrategy {
 
   constructor(private readonly uploadPath: string) {}
 
-  async delete(publicId: string, resourceType?: string): Promise<any> {
+  async delete(publicId: string, resourceType?: string): Promise<{ result: string }> {
     return new Promise((resolve, reject) => {
       // In local strategy, we assume publicId is the relative path
       // or we need to find it. For now, let's assume it's the full path or relative to uploadPath.

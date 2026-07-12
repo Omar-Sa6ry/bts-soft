@@ -3,6 +3,10 @@ import { UploadService } from './upload.service';
 import { ConfigService } from '@nestjs/config';
 import { UploadServiceFactory } from './factories/upload.factory';
 import { UploadProvider } from './utils/upload.constants';
+import { InputProcessorService } from './services/input-processor.service';
+import { FileValidatorService } from './services/file-validator.service';
+import { CdnService } from './services/cdn.service';
+import { UploadQueueService } from './services/upload-queue.service';
 
 jest.mock('./factories/upload.factory');
 
@@ -38,6 +42,10 @@ describe('UploadService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UploadService,
+        InputProcessorService,
+        FileValidatorService,
+        CdnService,
+        UploadQueueService,
         {
           provide: ConfigService,
           useValue: mockConfigService,
@@ -58,18 +66,18 @@ describe('UploadService', () => {
   });
 
   it('should validate file extension correctly', () => {
-    expect(() => (service as any).validateFile('test.jpg', 'image')).not.toThrow();
-    expect(() => (service as any).validateFile('test.exe', 'image')).toThrow();
-    expect(() => (service as any).validateFile('test.glb', 'model3d')).not.toThrow();
-    expect(() => (service as any).validateFile('test.fbx', 'model3d')).not.toThrow();
-    expect(() => (service as any).validateFile('test.exe', 'model3d')).toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.jpg', 'image')).not.toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.exe', 'image')).toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.glb', 'model3d')).not.toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.fbx', 'model3d')).not.toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.exe', 'model3d')).toThrow();
 
   });
 
   it('should validate file size correctly', () => {
     const limit = 5 * 1024 * 1024; // 5MB
-    expect(() => (service as any).validateFile('test.jpg', 'image', limit - 100)).not.toThrow();
-    expect(() => (service as any).validateFile('test.jpg', 'image', limit + 100)).toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.jpg', 'image', limit - 100)).not.toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.jpg', 'image', limit + 100)).toThrow();
   });
 
   describe('Core Upload Methods', () => {

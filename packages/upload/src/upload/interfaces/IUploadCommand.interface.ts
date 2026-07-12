@@ -1,3 +1,3 @@
 export interface IUploadCommand {
-  execute(): Promise<any>;
+  execute(): Promise<unknown>;
 }

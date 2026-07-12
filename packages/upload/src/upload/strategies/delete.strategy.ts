@@ -1,10 +1,11 @@
 import { IDeleteStrategy } from '../interfaces/IDaeleteStrategy.interface';
+import { v2 as cloudinary } from 'cloudinary';
 
 export class CloudinaryDeleteStrategy implements IDeleteStrategy {
-  constructor(private cloudinary: any) {}
+  constructor(private readonly cloudinaryClient: typeof cloudinary) {}
 
-  async delete(publicId: string, resourceType: string = 'image'): Promise<any> {
-    return this.cloudinary.uploader.destroy(publicId, {
+  async delete(publicId: string, resourceType = 'image'): Promise<{ result: string }> {
+    return this.cloudinaryClient.uploader.destroy(publicId, {
       resource_type: resourceType,
     });
   }

@@ -39,7 +39,7 @@ export class UploadConfigDto {
   UPLOAD_MAX_FILE_SIZE: number;
 }
 
-export function validateConfig(config: Record<string, any>) {
+export function validateConfig(config: Record<string, unknown>) {
   const validatedConfig = plainToInstance(UploadConfigDto, config, {
     enableImplicitConversion: true,
   });

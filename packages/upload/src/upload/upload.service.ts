@@ -1,183 +1,91 @@
-/**
- * UploadService
- *
- * This service handles file (image and video) uploads and deletions, primarily using
- * Cloudinary (as per the current implementation). It is architected using three
- * key design patterns for flexibility, separation of concerns, and extensibility:
- *
- * 1. Strategy Pattern: Allows swapping the underlying cloud provider (e.g., Cloudinary, AWS S3)
- * by implementing the IUploadStrategy and IDeleteStrategy interfaces.
- * 2. Command Pattern: Encapsulates complex upload/delete logic into separate Command objects,
- * allowing the service methods to remain clean and focused on orchestration.
- * 3. Observer Pattern: Enables other parts of the application (Observers) to react to
- * successful or failed uploads/deletions without tight coupling.
- */
-
 import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { UploadApiResponse } from "cloudinary";
 import { UploadServiceFactory } from "./factories/upload.factory";
-// Strategy Interfaces for decoupling the service from the cloud provider
 import { IUploadStrategy } from "./interfaces/IUpload.interface";
 import { IDeleteStrategy } from "./interfaces/IDaeleteStrategy.interface";
-// Observer Interface for reactive programming
 import { IUploadObserver } from "./interfaces/IUploadObserver.interface";
-// Concrete Strategy Implementations
 import { CloudinaryUploadStrategy } from "./strategies/upload.strategy";
 import { CloudinaryDeleteStrategy } from "./strategies/delete.strategy";
-// Command Objects to encapsulate upload/delete operations
-import { UploadImageCommand } from "./commands/uploadImage.command";
-import { DeleteImageCommand } from "./commands/deleteImage.command";
-// DTOs and Commands for Video handling
-import { DeleteVideoCommand } from "./commands/deleteVideo.command";
-import { UploadVideoCommand } from "./commands/uploadVideo.command";
-// Concrete Observer Implementation
-import { LoggingObserver } from "./observer/upload.observer";
-import { UploadProvider } from "./utils/upload.constants";
 import { LocalUploadStrategy } from "./strategies/local-upload.strategy";
 import { LocalDeleteStrategy } from "./strategies/local-delete.strategy";
+import { LoggingObserver } from "./observer/upload.observer";
+import { UploadProvider } from "./utils/upload.constants";
 import { validateConfig } from "./config/config.schema";
-
-// DTOs and GraphQL types (needed for GraphQL methods)
-import { CreateImageDto } from "./dtos/createImage.dto";
-import { CreateVideoDto } from "./dtos/createVideo.dto";
 import { UploadResult } from "./dtos/uploadResult.type";
-import { UploadFileCommand } from "./commands/uploadFile.command";
-import { CreateFileDto } from "./dtos/createFile.dto";
-import Stream = require("stream");
-import { DeleteFileCommand } from "./commands/deleteFile.command";
+import { UploadCommand } from "./commands/upload.command";
+import { DeleteCommand } from "./commands/delete.command";
 import { extractPublicId } from "./utils/cloudinary.utils";
-import { CreateAudioDto } from "./dtos/createAudio.dto";
-import { UploadAudioCommand } from "./commands/uploadAudio.command";
-import { DeleteAudioCommand } from "./commands/deleteAudio.command";
-import { CreateModel3dDto } from "./dtos/createModel3d.dto";
-import { UploadModel3dCommand } from "./commands/uploadModel3d.command";
-import { DeleteModel3dCommand } from "./commands/deleteModel3d.command";
-import {
-  DEFAULT_LIMITS,
-  DEFAULT_IMAGE_MAX_DIMENSIONS,
-} from "./utils/upload.constants";
-import * as path from "path";
+import { InputProcessorService } from "./services/input-processor.service";
+import { FileValidatorService } from "./services/file-validator.service";
+import { CdnService } from "./services/cdn.service";
+import { DEFAULT_IMAGE_MAX_DIMENSIONS } from "./utils/upload.constants";
+import { Readable } from "stream";
+import { v2 as cloudinary } from 'cloudinary';
 
 export interface UploadFile {
-  stream: Stream;
+  stream: Readable;
   filename: string;
 }
 
 @Injectable()
 export class UploadService {
-  // The initialized Cloudinary client instance
-  private readonly cloudinary;
+  private readonly cloudinary: typeof cloudinary | undefined;
   private readonly logger = new Logger(UploadService.name);
-  // Strategy pattern members: can be replaced with different implementations (e.g., S3)
-  private uploadStrategy: IUploadStrategy;
-  private deleteStrategy: IDeleteStrategy;
-  // Observer pattern member: list of objects that subscribe to upload/delete events
-  private observers: IUploadObserver[] = [];
+  private readonly uploadStrategy: IUploadStrategy;
+  private readonly deleteStrategy: IDeleteStrategy;
+  private readonly observers: IUploadObserver[] = [];
 
-  // Configurable limits
-  private limits = {
-    image: DEFAULT_LIMITS.IMAGE,
-    video: DEFAULT_LIMITS.VIDEO,
-    audio: DEFAULT_LIMITS.AUDIO,
-    file: DEFAULT_LIMITS.FILE,
-    model3d: DEFAULT_LIMITS.MODEL_3D,
-  };
-
-  /**
-   * Initializes the Cloudinary client, sets the default strategies,
-   * and registers the default logging observer.
-   * @param configService NestJS configuration service
-   */
-  constructor(private configService: ConfigService) {
-    // 1. Validate Configuration
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly inputProcessor: InputProcessorService,
+    private readonly validatorService: FileValidatorService,
+    private readonly cdnService: CdnService
+  ) {
     validateConfig(this.configService["internalConfig"] || process.env);
 
-    const provider =
-      this.configService.get<UploadProvider>("UPLOAD_PROVIDER") ||
-      UploadProvider.CLOUDINARY;
+    const provider = this.configService.get<UploadProvider>("UPLOAD_PROVIDER") || UploadProvider.CLOUDINARY;
 
     if (provider === UploadProvider.CLOUDINARY) {
       this.cloudinary = UploadServiceFactory.create(this.configService);
       this.uploadStrategy = new CloudinaryUploadStrategy(this.cloudinary);
       this.deleteStrategy = new CloudinaryDeleteStrategy(this.cloudinary);
     } else {
-      const localPath =
-        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
+      const localPath = this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
       this.uploadStrategy = new LocalUploadStrategy(localPath);
       this.deleteStrategy = new LocalDeleteStrategy(localPath);
     }
 
-    // Register the default observer
     this.observers.push(new LoggingObserver());
-
-    // Load limits from config if available
-    this.limits.image =
-      this.configService.get<number>("UPLOAD_MAX_IMAGE_SIZE") ??
-      DEFAULT_LIMITS.IMAGE;
-    this.limits.video =
-      this.configService.get<number>("UPLOAD_MAX_VIDEO_SIZE") ??
-      DEFAULT_LIMITS.VIDEO;
-    this.limits.audio =
-      this.configService.get<number>("UPLOAD_MAX_AUDIO_SIZE") ??
-      DEFAULT_LIMITS.AUDIO;
-    this.limits.file =
-      this.configService.get<number>("UPLOAD_MAX_FILE_SIZE") ??
-      DEFAULT_LIMITS.FILE;
-    this.limits.model3d =
-      this.configService.get<number>("UPLOAD_MAX_MODEL_3D_SIZE") ??
-      DEFAULT_LIMITS.MODEL_3D;
-
     this.logger.log(`UploadService initialized with provider: ${provider}`);
   }
 
-  // --- Observer Notification Methods (Omitted for brevity, assume original logic) ---
-  // ... (notifyUploadSuccess, notifyUploadError, notifyDeleteSuccess, notifyDeleteError)
-
-  private notifyUploadSuccess(result: any): void {
-    this.observers.forEach((observer) => observer.onUploadSuccess(result));
+  private notifyObservers(action: "upload" | "delete", status: "success" | "error", data: Record<string, unknown> | Error): void {
+    this.observers.forEach((observer) => {
+      if (action === "upload") {
+        if (status === "success") observer.onUploadSuccess(data as Record<string, unknown>);
+        else observer.onUploadError(data as Error);
+      } else {
+        if (status === "success") observer.onDeleteSuccess(data as Record<string, unknown>);
+        else observer.onDeleteError(data as Error);
+      }
+    });
   }
 
-  private notifyUploadError(error: Error): void {
-    this.observers.forEach((observer) => observer.onUploadError(error));
-  }
-
-  private notifyDeleteSuccess(result: any): void {
-    this.observers.forEach((observer) => observer.onDeleteSuccess(result));
-  }
-
-  private notifyDeleteError(error: Error): void {
-    this.observers.forEach((observer) => observer.onDeleteError(error));
-  }
-
-  // --- Core Upload Methods (Independent of REST/GraphQL) ---
-
-  /**
-   * Core function to handle image upload from a file stream.
-   * This is used by both REST and GraphQL handlers.
-   * @param fileData Contains the readable stream and original filename.
-   * @param dirUpload The target folder/directory (default: 'avatars').
-   * @returns The secure URL of the uploaded image.
-   */
   async uploadImageCore(
     fileData: UploadFile & { size?: number },
-    dirUpload: string = "avatars",
+    dirUpload = "avatars"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
+    this.validatorService.validateFile(filename, "image", size);
 
-    this.validateFile(filename, "image", size);
-
-    const ext = filename.split(".").pop()?.toLowerCase();
-    const isImage = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext || "");
-
-    const options: any = {
+    const isImage = ["jpg", "jpeg", "png", "webp", "gif"].includes(filename.split(".").pop()?.toLowerCase() || "");
+    const options: Record<string, unknown> = {
       folder: dirUpload,
       resource_type: "auto",
       use_filename: true,
       unique_filename: true,
     };
 
-    // Only apply image transformations if it's an actual image
     if (isImage) {
       options.fetch_format = "auto";
       options.quality = "auto";
@@ -186,26 +94,25 @@ export class UploadService {
       options.crop = "limit";
     }
 
-    const command = new UploadImageCommand(
-      this.uploadStrategy,
-      stream,
-      options,
-    );
-
+    const command = new UploadCommand(this.uploadStrategy, stream, options);
     try {
       const result = await command.execute();
-
       if (!result?.secure_url) {
-        throw new HttpException(
-          "Cloudinary response invalid",
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new HttpException("Response invalid", HttpStatus.BAD_REQUEST);
       }
 
-      this.notifyUploadSuccess(result);
+      this.notifyObservers("upload", "success", result as unknown as Record<string, unknown>);
+      const url = result.secure_url;
+      const cdnUrl = this.cdnService.transformImageUrl(url, {
+        quality: "auto",
+        format: "auto",
+        width: DEFAULT_IMAGE_MAX_DIMENSIONS.WIDTH,
+        height: DEFAULT_IMAGE_MAX_DIMENSIONS.HEIGHT,
+      });
 
       return {
-        url: result.secure_url,
+        url,
+        cdnUrl,
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
         type: "image",
@@ -214,102 +121,17 @@ export class UploadService {
         height: result.height,
       };
     } catch (error) {
-      this.notifyUploadError(error as Error);
-      this.logger.error(
-        `Upload failed for file ${filename}: ${(error as Error).message}`,
-        (error as Error).stack,
-      );
+      this.notifyObservers("upload", "error", error as Error);
       throw new HttpException("Upload failed", HttpStatus.BAD_REQUEST);
     }
   }
 
-  /**
-   * Validates file size and type based on the upload category.
-   * @param filename The original filename
-   * @param size The file size in bytes (if available from stream, otherwise estimated)
-   * @param type 'image' | 'video' | 'file' | 'audio'
-   */
-  private validateFile(
-    filename: string,
-    type: "image" | "video" | "file" | "audio" | "model3d",
-    size?: number,
-  ) {
-    const ext = filename.split(".").pop()?.toLowerCase();
-
-    const ALLOWED_IMAGES = ["jpg", "jpeg", "png", "webp", "gif"];
-    const ALLOWED_VIDEOS = ["mp4", "webm", "avi", "mov"];
-    const ALLOWED_AUDIOS = ["mp3", "wav", "ogg", "m4a"];
-    const ALLOWED_FILES = [
-      "pdf",
-      "doc",
-      "docx",
-      "xls",
-      "xlsx",
-      "ppt",
-      "pptx",
-      "txt",
-      "zip",
-    ];
-    const ALLOWED_MODELS = ["glb", "gltf", "fbx", "obj", "stl", "dae"];
-
-    // Validate Extension
-    let allowedExts: string[] = [];
-    let limit = 0;
-
-    switch (type) {
-      case "image":
-        allowedExts = ALLOWED_IMAGES;
-        limit = this.limits.image;
-        break;
-      case "video":
-        allowedExts = ALLOWED_VIDEOS;
-        limit = this.limits.video;
-        break;
-      case "audio":
-        allowedExts = ALLOWED_AUDIOS;
-        limit = this.limits.audio;
-        break;
-      case "file":
-        allowedExts = ALLOWED_FILES;
-        limit = this.limits.file;
-        break;
-      case "model3d":
-        allowedExts = ALLOWED_MODELS;
-        limit = this.limits.model3d;
-        break;
-    }
-
-    if (!allowedExts.includes(ext || "")) {
-      throw new HttpException(
-        `Invalid ${type} type. Allowed: ${allowedExts.join(", ")}`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // 2. Validate Size (if provided)
-    if (size && size > limit) {
-      const limitMb = Math.round(limit / (1024 * 1024));
-      throw new HttpException(
-        `${type} size exceeds limit of ${limitMb}MB`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  /**
-   * Core function to handle video upload from a file stream.
-   * This is used by both REST and GraphQL handlers.
-   * @param fileData Contains the readable stream and original filename.
-   * @param dirUpload The target folder/directory (default: 'videos').
-   * @returns The secure URL of the uploaded video.
-   */
   async uploadVideoCore(
     fileData: UploadFile & { size?: number },
-    dirUpload: string = "videos",
+    dirUpload = "videos"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
-
-    this.validateFile(filename, "video", size);
+    this.validatorService.validateFile(filename, "video", size);
 
     const options = {
       folder: dirUpload,
@@ -318,29 +140,23 @@ export class UploadService {
       chunk_size: 6000000,
       fetch_format: "auto",
       quality: "auto",
-      eager: [{ width: 320, height: 180, crop: "pad", format: "jpg" }], // Thumbnail
+      eager: [{ width: 320, height: 180, crop: "pad", format: "jpg" }],
     };
 
-    const command = new UploadVideoCommand(
-      this.uploadStrategy,
-      stream,
-      options,
-    );
-
+    const command = new UploadCommand(this.uploadStrategy, stream, options);
     try {
       const result = await command.execute();
-
       if (!result?.secure_url) {
-        throw new HttpException(
-          "Cloudinary response invalid",
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new HttpException("Response invalid", HttpStatus.BAD_REQUEST);
       }
 
-      this.notifyUploadSuccess(result);
+      this.notifyObservers("upload", "success", result as unknown as Record<string, unknown>);
+      const url = result.secure_url;
+      const cdnUrl = this.cdnService.transformVideoUrl(url, { quality: "auto" });
 
       return {
-        url: result.secure_url,
+        url,
+        cdnUrl,
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
         type: "video",
@@ -350,53 +166,40 @@ export class UploadService {
         duration: result.duration ?? 0,
       };
     } catch (error) {
-      this.notifyUploadError(error as Error);
+      this.notifyObservers("upload", "error", error as Error);
       throw new HttpException("Video upload failed", HttpStatus.BAD_REQUEST);
     }
   }
 
-  /**
-   * Core function to handle audio upload from a file stream.
-   * @param fileData Contains the readable stream and original filename.
-   * @param dirUpload The target folder/directory (default: 'audios').
-   * @returns The secure URL of the uploaded audio.
-   */
   async uploadAudioCore(
     fileData: UploadFile & { size?: number },
-    dirUpload: string = "audios",
+    dirUpload = "audios"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
-
-    this.validateFile(filename, "audio", size);
+    this.validatorService.validateFile(filename, "audio", size);
 
     const options = {
       folder: dirUpload,
       public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, "_")}`,
-      resource_type: "video", // Audio is treated as video in Cloudinary
+      resource_type: "video",
       chunk_size: 6000000,
-      resource_type_param: "video", // Explicitly set param if strategy checks it
+      resource_type_param: "video",
     };
 
-    const command = new UploadAudioCommand(
-      this.uploadStrategy,
-      stream,
-      options,
-    );
-
+    const command = new UploadCommand(this.uploadStrategy, stream, options);
     try {
       const result = await command.execute();
-
       if (!result?.secure_url) {
-        throw new HttpException(
-          "Cloudinary response invalid",
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new HttpException("Response invalid", HttpStatus.BAD_REQUEST);
       }
 
-      this.notifyUploadSuccess(result);
+      this.notifyObservers("upload", "success", result as unknown as Record<string, unknown>);
+      const url = result.secure_url;
+      const cdnUrl = this.cdnService.transformVideoUrl(url, { quality: "auto" });
 
       return {
-        url: result.secure_url,
+        url,
+        cdnUrl,
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
         type: "audio",
@@ -404,43 +207,36 @@ export class UploadService {
         duration: result.duration ?? 0,
       };
     } catch (error) {
-      this.notifyUploadError(error as Error);
+      this.notifyObservers("upload", "error", error as Error);
       throw new HttpException("Audio upload failed", HttpStatus.BAD_REQUEST);
     }
   }
 
   async uploadFileCore(
     fileData: UploadFile & { size?: number },
-    dirUpload: string = "files",
+    dirUpload = "files"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
-
-    this.validateFile(filename, "file", size);
+    this.validatorService.validateFile(filename, "file", size);
 
     const ext = filename.split(".").pop()?.toLowerCase();
     const isImage = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext || "");
 
-    const options: any = {
+    const options: Record<string, unknown> = {
       folder: dirUpload,
       resource_type: isImage ? "image" : "raw",
       use_filename: true,
       unique_filename: true,
     };
 
-    const command = new UploadFileCommand(this.uploadStrategy, stream, options);
-
+    const command = new UploadCommand(this.uploadStrategy, stream, options);
     try {
       const result = await command.execute();
-
       if (!result?.secure_url) {
-        throw new HttpException(
-          "Cloudinary response invalid",
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new HttpException("Response invalid", HttpStatus.BAD_REQUEST);
       }
 
-      this.notifyUploadSuccess(result);
-
+      this.notifyObservers("upload", "success", result as unknown as Record<string, unknown>);
       return {
         url: result.secure_url,
         size: result.bytes ?? 0,
@@ -449,43 +245,32 @@ export class UploadService {
         format: result.format,
       };
     } catch (error) {
-      this.notifyUploadError(error as Error);
+      this.notifyObservers("upload", "error", error as Error);
       throw new HttpException("File upload failed", HttpStatus.BAD_REQUEST);
     }
   }
 
   async uploadModel3dCore(
     fileData: UploadFile & { size?: number },
-    dirUpload: string = "models",
+    dirUpload = "models"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
-
-    this.validateFile(filename, "model3d", size);
+    this.validatorService.validateFile(filename, "model3d", size);
 
     const options = {
       folder: dirUpload,
       public_id: `${Date.now()}-${filename.replace(/[^a-z0-9.]/gi, "_")}`,
-      resource_type: "raw", // 3D models are treated as raw in Cloudinary
+      resource_type: "raw",
     };
 
-    const command = new UploadModel3dCommand(
-      this.uploadStrategy,
-      stream,
-      options,
-    );
-
+    const command = new UploadCommand(this.uploadStrategy, stream, options);
     try {
       const result = await command.execute();
-
       if (!result?.secure_url) {
-        throw new HttpException(
-          "Cloudinary response invalid",
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new HttpException("Response invalid", HttpStatus.BAD_REQUEST);
       }
 
-      this.notifyUploadSuccess(result);
-
+      this.notifyObservers("upload", "success", result as unknown as Record<string, unknown>);
       return {
         url: result.secure_url,
         size: result.bytes ?? 0,
@@ -494,110 +279,17 @@ export class UploadService {
         format: result.format,
       };
     } catch (error) {
-      this.notifyUploadError(error as Error);
+      this.notifyObservers("upload", "error", error as Error);
       throw new HttpException("3D model upload failed", HttpStatus.BAD_REQUEST);
     }
   }
 
-  /**
-   * Processes various input types (GraphQL DTO, FileUpload, Base64, Buffer, Multer File) into a stream.
-   * This makes the service extremely flexible and easy to use.
-   */
-  private async processInput(
-    input: any,
-    type: string,
-  ): Promise<UploadFile & { size?: number }> {
-    if (!input) return null;
-
-    let processedInput = input;
-
-    // 1. Handle GraphQL DTOs (e.g., CreateImageDto { image: Promise<FileUpload> })
-    // We check for common field names used in our DTOs
-    const possibleFields = ["image", "video", "audio", "file"];
-    if (typeof input === "object" && !input.createReadStream && !input.buffer) {
-      for (const field of possibleFields) {
-        if (input[field]) {
-          processedInput = input[field];
-          break;
-        }
-      }
-    }
-
-    // 2. Handle Promise (GraphQL Uploads often come as promises)
-    if (
-      processedInput instanceof Promise ||
-      (typeof processedInput === "object" &&
-        typeof processedInput.then === "function")
-    ) {
-      processedInput = await processedInput;
-    }
-
-    // 3. Handle GraphQL FileUpload Object
-    if (processedInput && typeof processedInput.createReadStream === "function") {
-      return {
-        stream: processedInput.createReadStream(),
-        filename: processedInput.filename,
-      };
-    }
-
-    // 4. Handle Base64 String
-    if (typeof processedInput === "string") {
-      let base64Data = processedInput;
-      let extension = "png";
-
-      if (processedInput.startsWith("data:")) {
-        const parts = processedInput.split(",");
-        base64Data = parts[parts.length - 1];
-        const mimeMatch = processedInput.match(/data:(.*?);/);
-        if (mimeMatch) {
-          extension = mimeMatch[1].split("/")[1] || extension;
-        }
-      }
-
-      const buffer = Buffer.from(base64Data, "base64");
-      return {
-        stream: Stream.Readable.from(buffer),
-        filename: `upload-${Date.now()}.${extension}`,
-        size: buffer.length,
-      };
-    }
-
-    // 5. Handle Buffer
-    if (Buffer.isBuffer(processedInput)) {
-      return {
-        stream: Stream.Readable.from(processedInput),
-        filename: `upload-${Date.now()}.bin`,
-        size: processedInput.length,
-      };
-    }
-
-    // 6. Handle Multer File (REST API)
-    if (processedInput && processedInput.buffer && processedInput.originalname) {
-      return {
-        stream: Stream.Readable.from(processedInput.buffer),
-        filename: processedInput.originalname,
-        size: processedInput.size,
-      };
-    }
-
-    // 7. Handle Already processed stream (UploadFile interface)
-    if (processedInput && processedInput.stream && processedInput.filename) {
-      return processedInput;
-    }
-
-    return null;
-  }
-
-  /**
-   * Generic upload method that handles any file type.
-   * Detects input format automatically.
-   */
   async upload(
-    input: any,
+    input: unknown,
     dirUpload?: string,
-    type: "image" | "video" | "file" | "audio" | "model3d" = "image",
+    type: "image" | "video" | "file" | "audio" | "model3d" = "image"
   ): Promise<UploadResult> {
-    const fileData = await this.processInput(input, type);
+    const fileData = await this.inputProcessor.processInput(input, type);
     if (!fileData) {
       throw new HttpException("Invalid upload input", HttpStatus.BAD_REQUEST);
     }
@@ -618,269 +310,89 @@ export class UploadService {
     }
   }
 
-  // --- Public REST/GraphQL Interface Methods ---
-
-  /**
-   * Public interface for GraphQL image uploads.
-   * Converts the GraphQL FileUpload promise into a stream for the core function.
-   */
-  async uploadImage(input: any, dirUpload = "avatars"): Promise<UploadResult> {
-    const fileData = await this.processInput(input, "image");
-    if (!fileData) return null;
+  async uploadImage(input: unknown, dirUpload = "avatars"): Promise<UploadResult> {
+    const fileData = await this.inputProcessor.processInput(input, "image");
+    if (!fileData) return null as unknown as UploadResult;
     return this.uploadImageCore(fileData, dirUpload);
   }
 
-  /**
-   * Public interface for GraphQL video uploads.
-   * Converts the GraphQL FileUpload promise into a stream for the core function.
-   */
-  async uploadVideo(input: any, dirUpload: string = "videos"): Promise<UploadResult> {
-    const fileData = await this.processInput(input, "video");
+  async uploadVideo(input: unknown, dirUpload = "videos"): Promise<UploadResult> {
+    const fileData = await this.inputProcessor.processInput(input, "video");
     if (!fileData) {
       throw new HttpException("Video file is required", HttpStatus.BAD_REQUEST);
     }
     return this.uploadVideoCore(fileData, dirUpload);
   }
 
-  /**
-   * Public interface for GraphQL audio uploads.
-   */
-  async uploadAudio(input: any, dirUpload: string = "audios"): Promise<UploadResult> {
-    const fileData = await this.processInput(input, "audio");
+  async uploadAudio(input: unknown, dirUpload = "audios"): Promise<UploadResult> {
+    const fileData = await this.inputProcessor.processInput(input, "audio");
     if (!fileData) {
       throw new HttpException("Audio file is required", HttpStatus.BAD_REQUEST);
     }
     return this.uploadAudioCore(fileData, dirUpload);
   }
 
-  /**
-   * Deletes an image file from the configured cloud service. (Unchanged)
-   */
-  async deleteImage(imageUrl: string): Promise<void> {
-    // 1. Try to extract public ID assuming Cloudinary URL
-    let publicId = extractPublicId(imageUrl, "image");
-
-    // 2. Fallback: if it's a local path (or extraction failed), use the URL/path itself
-    if (!publicId) {
-      // If it contains the local upload path, it's likely a local file
-      const localPath =
-        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
-      if (imageUrl.includes(localPath)) {
-        publicId = imageUrl; // Use the full path for local storage
-      }
-    }
-
-    if (!publicId) {
-      throw new HttpException(
-        "Invalid image URL or path",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const command = new DeleteImageCommand(this.deleteStrategy, publicId);
-
-    try {
-      const result = await command.execute();
-
-      if (result.result !== "ok" && result.result !== "not found") {
-        throw new HttpException(
-          `Failed to delete image. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      this.notifyDeleteSuccess(result);
-    } catch (error) {
-      this.notifyDeleteError(error as Error);
-      throw new HttpException("Delete failed", HttpStatus.BAD_REQUEST);
-    }
-  }
-
-  /**
-   * Deletes a video file from the configured cloud service. (Unchanged)
-   */
-  async deleteVideo(videoUrl: string): Promise<void> {
-    // ... (Original deleteVideo logic remains here, as it doesn't depend on file upload method)
-    let publicId = extractPublicId(videoUrl, "video");
-    if (!publicId) {
-      const localPath =
-        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
-      if (videoUrl.includes(localPath)) {
-        publicId = videoUrl;
-      }
-    }
-    if (!publicId) {
-      throw new HttpException(
-        "Invalid video URL or path",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const command = new DeleteVideoCommand(
-      this.deleteStrategy,
-      publicId,
-      "video",
-    );
-
-    try {
-      const result = await command.execute();
-
-      if (result.result !== "ok" && result.result !== "not found") {
-        throw new HttpException(
-          `Failed to delete video. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      this.notifyDeleteSuccess(result);
-    } catch (error) {
-      this.notifyDeleteError(error as Error);
-      throw new HttpException("Video delete failed", HttpStatus.BAD_REQUEST);
-    }
-  }
-
-  /**
-   * Deletes an audio file from the configured cloud service.
-   */
-  async deleteAudio(audioUrl: string): Promise<void> {
-    let publicId = extractPublicId(audioUrl, "audio"); // Audio handled as video/audio
-    if (!publicId) {
-      const localPath =
-        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
-      if (audioUrl.includes(localPath)) {
-        publicId = audioUrl;
-      }
-    }
-    if (!publicId) {
-      throw new HttpException(
-        "Invalid audio URL or path",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const command = new DeleteAudioCommand(
-      this.deleteStrategy,
-      publicId,
-      "video", // Cloudinary resource type for audio is video
-    );
-
-    try {
-      const result = await command.execute();
-
-      if (result.result !== "ok" && result.result !== "not found") {
-        throw new HttpException(
-          `Failed to delete audio. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      this.notifyDeleteSuccess(result);
-    } catch (error) {
-      this.notifyDeleteError(error as Error);
-      throw new HttpException("Audio delete failed", HttpStatus.BAD_REQUEST);
-    }
-  }
-
-  async uploadFile(input: any, dirUpload: string = "files"): Promise<UploadResult> {
-    const fileData = await this.processInput(input, "file");
+  async uploadFile(input: unknown, dirUpload = "files"): Promise<UploadResult> {
+    const fileData = await this.inputProcessor.processInput(input, "file");
     if (!fileData) {
       throw new HttpException("File is required", HttpStatus.BAD_REQUEST);
     }
     return this.uploadFileCore(fileData, dirUpload);
   }
 
-  async deleteFile(fileUrl: string): Promise<void> {
-    if (!fileUrl) {
-      throw new HttpException("File URL is required", HttpStatus.BAD_REQUEST);
-    }
-
-    // Extract public ID from URL
-    let publicId = extractPublicId(fileUrl, "raw");
-
-    if (!publicId) {
-      const localPath =
-        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
-      if (fileUrl.includes(localPath)) {
-        publicId = fileUrl;
-      }
-    }
-
-    if (!publicId) {
-      throw new HttpException(
-        "Invalid file URL or path",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const command = new DeleteFileCommand(this.deleteStrategy, publicId);
-
-    try {
-      const result = await command.execute();
-
-      if (result.result !== "ok" && result.result !== "not found") {
-        throw new HttpException(
-          `Failed to delete file. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      this.notifyDeleteSuccess(result);
-    } catch (error) {
-      this.notifyDeleteError(error as Error);
-
-      throw new HttpException("File delete failed", HttpStatus.BAD_REQUEST);
-    }
-  }
-
-  async uploadModel3d(input: any, dirUpload: string = "models"): Promise<UploadResult> {
-    const fileData = await this.processInput(input, "model3d");
+  async uploadModel3d(input: unknown, dirUpload = "models"): Promise<UploadResult> {
+    const fileData = await this.inputProcessor.processInput(input, "model3d");
     if (!fileData) {
       throw new HttpException("3D model is required", HttpStatus.BAD_REQUEST);
     }
     return this.uploadModel3dCore(fileData, dirUpload);
   }
 
-  async deleteModel3d(modelUrl: string): Promise<void> {
-    if (!modelUrl) {
-      throw new HttpException(
-        "3D model URL is required",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    let publicId = extractPublicId(modelUrl, "raw");
+  private async deleteResource(url: string, type: "image" | "video" | "audio" | "file" | "model3d"): Promise<void> {
+    const cloudinaryType: "image" | "video" | "raw" | "audio" = type === "file" || type === "model3d" ? "raw" : type === "audio" ? "video" : type;
+    let publicId = extractPublicId(url, cloudinaryType);
 
     if (!publicId) {
-      const localPath =
-        this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
-      if (modelUrl.includes(localPath)) {
-        publicId = modelUrl;
+      const localPath = this.configService.get<string>("UPLOAD_LOCAL_PATH") || "uploads";
+      if (url.includes(localPath)) {
+        publicId = url;
       }
     }
 
     if (!publicId) {
-      throw new HttpException(
-        "Invalid 3D model URL or path",
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException(`Invalid ${type} URL or path`, HttpStatus.BAD_REQUEST);
     }
 
-    const command = new DeleteModel3dCommand(this.deleteStrategy, publicId);
-
+    const command = new DeleteCommand(this.deleteStrategy, publicId, cloudinaryType);
     try {
-      const result = await command.execute();
-
+      const result = await command.execute() as { result: string };
       if (result.result !== "ok" && result.result !== "not found") {
-        throw new HttpException(
-          `Failed to delete 3D model. Reason: ${result.result}`,
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new HttpException(`Failed to delete resource. Reason: ${result.result}`, HttpStatus.BAD_REQUEST);
       }
-
-      this.notifyDeleteSuccess(result);
+      this.notifyObservers("delete", "success", result as unknown as Record<string, unknown>);
     } catch (error) {
-      this.notifyDeleteError(error as Error);
-      throw new HttpException("3D model delete failed", HttpStatus.BAD_REQUEST);
+      this.notifyObservers("delete", "error", error as Error);
+      throw new HttpException(`${type} delete failed`, HttpStatus.BAD_REQUEST);
     }
+  }
+
+  async deleteImage(imageUrl: string): Promise<void> {
+    return this.deleteResource(imageUrl, "image");
+  }
+
+  async deleteVideo(videoUrl: string): Promise<void> {
+    return this.deleteResource(videoUrl, "video");
+  }
+
+  async deleteAudio(audioUrl: string): Promise<void> {
+    return this.deleteResource(audioUrl, "audio");
+  }
+
+  async deleteFile(fileUrl: string): Promise<void> {
+    return this.deleteResource(fileUrl, "file");
+  }
+
+  async deleteModel3d(modelUrl: string): Promise<void> {
+    return this.deleteResource(modelUrl, "model3d");
   }
 }

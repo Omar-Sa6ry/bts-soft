@@ -1,3 +1,3 @@
 export interface IDeleteStrategy {
-  delete(publicId: string, resourceType?: string): Promise<any>;
+  delete(publicId: string, resourceType?: string): Promise<{ result: string }>;
 }
