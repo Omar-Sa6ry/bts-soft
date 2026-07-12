@@ -1,8 +1,8 @@
-import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
+import { Injectable, HttpException, HttpStatus, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { UploadServiceFactory } from "./factories/upload.factory";
 import { IUploadStrategy } from "./interfaces/IUpload.interface";
-import { IDeleteStrategy } from "./interfaces/IDaeleteStrategy.interface";
+import { IDeleteStrategy } from "./interfaces/IDeleteStrategy.interface";
 import { IUploadObserver } from "./interfaces/IUploadObserver.interface";
 import { CloudinaryUploadStrategy } from "./strategies/upload.strategy";
 import { CloudinaryDeleteStrategy } from "./strategies/delete.strategy";
@@ -21,9 +21,10 @@ import { CdnService } from "./services/cdn.service";
 import { DEFAULT_IMAGE_MAX_DIMENSIONS } from "./utils/upload.constants";
 import { Readable } from "stream";
 import { v2 as cloudinary } from 'cloudinary';
+import { UploadJobService } from './services/upload-job.service';
 
 export interface UploadFile {
-  stream: Readable;
+  stream: Readable | (() => Readable);
   filename: string;
 }
 
@@ -39,9 +40,13 @@ export class UploadService {
     private readonly configService: ConfigService,
     private readonly inputProcessor: InputProcessorService,
     private readonly validatorService: FileValidatorService,
-    private readonly cdnService: CdnService
+    private readonly cdnService: CdnService,
+    @Optional() private readonly uploadJobService?: UploadJobService
   ) {
-    validateConfig(this.configService["internalConfig"] || process.env);
+    const rawConfig = this.configService['internalConfig'] && Object.keys(this.configService['internalConfig']).length > 0 
+      ? this.configService['internalConfig'] 
+      : process.env;
+    validateConfig(rawConfig);
 
     const provider = this.configService.get<UploadProvider>("UPLOAD_PROVIDER") || UploadProvider.CLOUDINARY;
 
@@ -55,8 +60,20 @@ export class UploadService {
       this.deleteStrategy = new LocalDeleteStrategy(localPath);
     }
 
-    this.observers.push(new LoggingObserver());
+    const defaultObserver = new LoggingObserver();
+    this.observers.push(defaultObserver);
+    if (this.uploadJobService) {
+      this.uploadJobService.addObserver(defaultObserver);
+    }
+    
     this.logger.log(`UploadService initialized with provider: ${provider}`);
+  }
+
+  addObserver(observer: IUploadObserver): void {
+    this.observers.push(observer);
+    if (this.uploadJobService) {
+      this.uploadJobService.addObserver(observer);
+    }
   }
 
   private notifyObservers(action: "upload" | "delete", status: "success" | "error", data: Record<string, unknown> | Error): void {
@@ -182,7 +199,6 @@ export class UploadService {
       folder: dirUpload,
       public_id: `${Date.now()}-${filename.split(".")[0].replace(/[^a-z0-9]/gi, "_")}`,
       resource_type: "video",
-      chunk_size: 6000000,
       resource_type_param: "video",
     };
 

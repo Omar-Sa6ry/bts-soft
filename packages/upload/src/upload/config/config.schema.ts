@@ -37,6 +37,13 @@ export class UploadConfigDto {
 
   @IsOptional()
   UPLOAD_MAX_FILE_SIZE: number;
+
+  // Rate Limiting
+  @IsOptional()
+  UPLOAD_RATE_LIMIT_CAPACITY: number = 10;
+
+  @IsOptional()
+  UPLOAD_RATE_LIMIT_REFILL_RATE: number = 2;
 }
 
 export function validateConfig(config: Record<string, unknown>) {

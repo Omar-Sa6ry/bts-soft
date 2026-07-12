@@ -54,11 +54,12 @@ export * from "./upload/graphql/main.graphql";
 /*          INTERFACES             */
 /* ============================== */
 
-export * from "./upload/interfaces/IDaeleteStrategy.interface";
+export * from "./upload/interfaces/IDeleteStrategy.interface";
 export * from "./upload/interfaces/IUploadObserver.interface";
 export * from "./upload/interfaces/IUploadCommand.interface";
 export * from "./upload/interfaces/IUpload.interface";
 export * from "./upload/interfaces/IJobStore.interface";
+export * from "./upload/interfaces/IChunkStorage.interface";
 
 /* ============================== */
 /*            OBSERVERS            */
@@ -78,6 +79,11 @@ export * from "./upload/services/chunked-upload.service";
 export * from "./upload/services/file-validator.service";
 export * from "./upload/services/input-processor.service";
 export * from "./upload/services/upload-queue.service";
+export * from "./upload/services/local-chunk-storage.service";
+export * from "./upload/services/rate-limiter.service";
+export * from "./upload/processors/upload.processor";
+export * from "./upload/controllers/upload-webhook.controller";
+export * from "./upload/controllers/upload-notification.controller";
 
 /* ============================== */
 /*           STRATEGIES            */
@@ -92,4 +98,3 @@ export * from "./upload/strategies/local-delete.strategy";
 /*             UTILS              */
 /* ============================== */
 export * from "./upload/utils/upload.constants";
-

@@ -1,4 +1,4 @@
-import { IDeleteStrategy } from "../interfaces/IDaeleteStrategy.interface";
+import { IDeleteStrategy } from "../interfaces/IDeleteStrategy.interface";
 import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from "@nestjs/common";

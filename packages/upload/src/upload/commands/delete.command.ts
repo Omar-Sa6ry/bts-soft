@@ -1,4 +1,4 @@
-import { IDeleteStrategy } from '../interfaces/IDaeleteStrategy.interface';
+import { IDeleteStrategy } from '../interfaces/IDeleteStrategy.interface';
 import { IUploadCommand } from '../interfaces/IUploadCommand.interface';
 
 export class DeleteCommand implements IUploadCommand {

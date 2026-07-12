@@ -2,6 +2,7 @@ import { Injectable, Optional, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UploadJob } from '../dtos/upload-job.dto';
 import { IJobStore } from '../interfaces/IJobStore.interface';
+import { IUploadObserver } from '../interfaces/IUploadObserver.interface';
 import { RedisService } from '@bts-soft/cache';
 
 class InMemoryJobStore implements IJobStore {
@@ -61,6 +62,7 @@ export class UploadJobService {
   private readonly logger = new Logger(UploadJobService.name);
   private readonly store: IJobStore;
   private readonly defaultTtlMs = 60 * 60 * 1000;
+  private readonly observers: IUploadObserver[] = [];
 
   constructor(
     private readonly configService: ConfigService,
@@ -83,6 +85,10 @@ export class UploadJobService {
     }
   }
 
+  addObserver(observer: import('../interfaces/IUploadObserver.interface').IUploadObserver): void {
+    this.observers.push(observer);
+  }
+
   async createJob(
     filename: string,
     size: number,
@@ -101,6 +107,11 @@ export class UploadJobService {
       updatedAt: new Date(),
     };
     await this.store.set(jobId, job, this.defaultTtlMs);
+    
+    this.observers.forEach(obs => {
+      if (obs.onJobCreated) obs.onJobCreated(job);
+    });
+    
     return job;
   }
 
@@ -116,6 +127,10 @@ export class UploadJobService {
     job.progress = Math.min(100, Math.max(0, Math.round(progress)));
     job.updatedAt = new Date();
     await this.store.set(jobId, job, this.defaultTtlMs);
+    
+    this.observers.forEach(obs => {
+      if (obs.onJobProgress) obs.onJobProgress(jobId, job.progress);
+    });
   }
 
   async completeJob(jobId: string, result: unknown): Promise<void> {
@@ -127,6 +142,10 @@ export class UploadJobService {
     job.result = result as UploadJob['result'];
     job.updatedAt = new Date();
     await this.store.set(jobId, job, this.defaultTtlMs);
+    
+    this.observers.forEach(obs => {
+      if (obs.onJobCompleted) obs.onJobCompleted(jobId, result);
+    });
   }
 
   async failJob(jobId: string, error: string): Promise<void> {
@@ -137,5 +156,9 @@ export class UploadJobService {
     job.error = error;
     job.updatedAt = new Date();
     await this.store.set(jobId, job, this.defaultTtlMs);
+    
+    this.observers.forEach(obs => {
+      if (obs.onJobFailed) obs.onJobFailed(jobId, error);
+    });
   }
 }

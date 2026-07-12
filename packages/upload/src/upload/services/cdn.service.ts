@@ -81,6 +81,28 @@ export class CdnService {
   }
 
   /**
+   * Generates an HLS (HTTP Live Streaming) adaptive bitrate URL for video files.
+   * Configures Cloudinary's dynamic streaming profile.
+   */
+  generateHlsUrl(
+    url: string,
+    options: {
+      streamingProfile?: string; // e.g., 'hd', 'sd', 'full_hd'
+    } = {}
+  ): string {
+    if (!url || !url.includes('cloudinary.com')) {
+      return url;
+    }
+
+    const { streamingProfile = 'hd' } = options;
+
+    return this.transformVideoUrl(url, {
+      streamingProfile,
+      format: 'm3u8'
+    });
+  }
+
+  /**
    * Generates a dictionary of optimized image URLs for different screen widths.
    * Useful for HTML `srcset` implementation in responsive frontends.
    */

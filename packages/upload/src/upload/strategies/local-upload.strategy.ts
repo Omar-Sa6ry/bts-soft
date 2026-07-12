@@ -13,8 +13,9 @@ export class LocalUploadStrategy implements IUploadStrategy {
     }
   }
 
-  async upload(stream: Readable, options: Record<string, unknown>): Promise<RawUploadResult> {
+  async upload(streamOrFn: Readable | (() => Readable), options: Record<string, unknown>): Promise<RawUploadResult> {
     return new Promise((resolve, reject) => {
+      const stream = typeof streamOrFn === 'function' ? streamOrFn() : streamOrFn;
       const folderPath = path.join(this.uploadPath, (options.folder as string) || '');
       
       if (!fs.existsSync(folderPath)) {
@@ -48,7 +49,7 @@ export class LocalUploadStrategy implements IUploadStrategy {
     });
   }
 
-  async uploadLarge(stream: Readable, options: Record<string, unknown>): Promise<RawUploadResult> {
-    return this.upload(stream, options);
+  async uploadLarge(streamOrFn: Readable | (() => Readable), options: Record<string, unknown>): Promise<RawUploadResult> {
+    return this.upload(streamOrFn, options);
   }
 }

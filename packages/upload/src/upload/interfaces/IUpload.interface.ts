@@ -13,6 +13,6 @@ export interface RawUploadResult {
 }
 
 export interface IUploadStrategy {
-  upload(stream: Readable, options: Record<string, unknown>): Promise<RawUploadResult>;
-  uploadLarge?(stream: Readable, options: Record<string, unknown>): Promise<RawUploadResult>;
+  upload(stream: Readable | (() => Readable), options: Record<string, unknown>): Promise<RawUploadResult>;
+  uploadLarge?(stream: Readable | (() => Readable), options: Record<string, unknown>): Promise<RawUploadResult>;
 }

@@ -54,4 +54,13 @@ describe('CdnService', () => {
     expect(srcSet['1080w']).toContain('w_1080');
     expect(srcSet['1920w']).toContain('w_1920');
   });
+
+  it('should generate HLS streaming URLs correctly', () => {
+    const rawUrl = 'https://res.cloudinary.com/demo/video/upload/v1570979139/sample.mp4';
+    const hlsUrl = service.generateHlsUrl(rawUrl, { streamingProfile: 'full_hd' });
+
+    expect(hlsUrl).toContain('f_m3u8');
+    expect(hlsUrl).toContain('p_full_hd');
+    expect(hlsUrl).toContain('vc_auto');
+  });
 });

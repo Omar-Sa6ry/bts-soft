@@ -7,6 +7,7 @@ import { InputProcessorService } from './services/input-processor.service';
 import { FileValidatorService } from './services/file-validator.service';
 import { CdnService } from './services/cdn.service';
 import { UploadQueueService } from './services/upload-queue.service';
+import { Readable } from 'stream';
 
 jest.mock('./factories/upload.factory');
 
@@ -33,6 +34,8 @@ describe('UploadService', () => {
   const mockCloudinary = {
     uploader: {
       upload_stream: jest.fn(),
+      upload: jest.fn(),
+      upload_large: jest.fn(),
     },
   };
 
@@ -45,7 +48,10 @@ describe('UploadService', () => {
         InputProcessorService,
         FileValidatorService,
         CdnService,
-        UploadQueueService,
+        {
+          provide: UploadQueueService,
+          useValue: { enqueue: jest.fn() },
+        },
         {
           provide: ConfigService,
           useValue: mockConfigService,
@@ -71,7 +77,6 @@ describe('UploadService', () => {
     expect(() => (service as any).validatorService.validateFile('test.glb', 'model3d')).not.toThrow();
     expect(() => (service as any).validatorService.validateFile('test.fbx', 'model3d')).not.toThrow();
     expect(() => (service as any).validatorService.validateFile('test.exe', 'model3d')).toThrow();
-
   });
 
   it('should validate file size correctly', () => {
@@ -82,12 +87,14 @@ describe('UploadService', () => {
 
   describe('Core Upload Methods', () => {
     const mockFile = {
-      stream: { pipe: jest.fn() } as any,
+      get stream() {
+        return Readable.from(['mock-data']);
+      },
       filename: 'test.jpg',
     };
 
     it('should upload image core successfully', async () => {
-      mockCloudinary.uploader.upload_stream.mockImplementation((opts, cb) => {
+      mockCloudinary.uploader.upload.mockImplementation((file, opts, cb) => {
         cb(null, { secure_url: 'http://test.com/img.jpg', bytes: 100, public_id: 'img' });
       });
 
@@ -97,7 +104,8 @@ describe('UploadService', () => {
     });
 
     it('should upload video core successfully', async () => {
-      mockCloudinary.uploader.upload_stream.mockImplementation((opts, cb) => {
+      // In tests, file size is < 5MB, so it falls back to standard upload inside uploadLarge.
+      mockCloudinary.uploader.upload.mockImplementation((file, opts, cb) => {
         cb(null, { secure_url: 'http://test.com/vid.mp4', bytes: 1000, public_id: 'vid', duration: 10 });
       });
 
@@ -107,7 +115,7 @@ describe('UploadService', () => {
     });
 
     it('should upload audio core successfully', async () => {
-      mockCloudinary.uploader.upload_stream.mockImplementation((opts, cb) => {
+      mockCloudinary.uploader.upload.mockImplementation((file, opts, cb) => {
         cb(null, { secure_url: 'http://test.com/aud.mp3', bytes: 500, public_id: 'aud', duration: 5 });
       });
 
@@ -116,7 +124,7 @@ describe('UploadService', () => {
     });
 
     it('should upload raw file core successfully', async () => {
-      mockCloudinary.uploader.upload_stream.mockImplementation((opts, cb) => {
+      mockCloudinary.uploader.upload.mockImplementation((file, opts, cb) => {
         cb(null, { secure_url: 'http://test.com/file.pdf', bytes: 200, public_id: 'file' });
       });
 
@@ -125,7 +133,7 @@ describe('UploadService', () => {
     });
 
     it('should upload 3D model core successfully', async () => {
-      mockCloudinary.uploader.upload_stream.mockImplementation((opts, cb) => {
+      mockCloudinary.uploader.upload.mockImplementation((file, opts, cb) => {
         cb(null, { secure_url: 'http://test.com/model.glb', bytes: 5000, public_id: 'model' });
       });
 
@@ -133,7 +141,6 @@ describe('UploadService', () => {
       expect(result.type).toBe('model3d');
       expect(result.url).toContain('model.glb');
     });
-
   });
 
   describe('Delete Methods', () => {

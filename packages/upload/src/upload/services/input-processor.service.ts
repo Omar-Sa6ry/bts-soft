@@ -42,7 +42,7 @@ export class InputProcessorService {
     ) {
       const fileUpload = processedInput as { createReadStream: () => Readable; filename: string };
       return {
-        stream: fileUpload.createReadStream(),
+        stream: () => fileUpload.createReadStream(),
         filename: fileUpload.filename,
       };
     }

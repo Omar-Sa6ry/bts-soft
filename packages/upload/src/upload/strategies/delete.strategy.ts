@@ -1,4 +1,4 @@
-import { IDeleteStrategy } from '../interfaces/IDaeleteStrategy.interface';
+import { IDeleteStrategy } from '../interfaces/IDeleteStrategy.interface';
 import { v2 as cloudinary } from 'cloudinary';
 
 export class CloudinaryDeleteStrategy implements IDeleteStrategy {
