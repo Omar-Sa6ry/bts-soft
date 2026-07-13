@@ -18,6 +18,7 @@ import { extractPublicId } from "./utils/cloudinary.utils";
 import { InputProcessorService } from "./services/input-processor.service";
 import { FileValidatorService } from "./services/file-validator.service";
 import { CdnService } from "./services/cdn.service";
+import { UploadType } from "./enums/upload-type.enum";
 import { DEFAULT_IMAGE_MAX_DIMENSIONS } from "./utils/upload.constants";
 import { Readable } from "stream";
 import { v2 as cloudinary } from 'cloudinary';
@@ -93,7 +94,7 @@ export class UploadService {
     dirUpload = "avatars"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
-    this.validatorService.validateFile(filename, "image", size);
+    this.validatorService.validateFile(filename, UploadType.IMAGE, size);
 
     const isImage = ["jpg", "jpeg", "png", "webp", "gif"].includes(filename.split(".").pop()?.toLowerCase() || "");
     const options: Record<string, unknown> = {
@@ -132,7 +133,7 @@ export class UploadService {
         cdnUrl,
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
-        type: "image",
+        type: UploadType.IMAGE,
         format: result.format,
         width: result.width,
         height: result.height,
@@ -148,7 +149,7 @@ export class UploadService {
     dirUpload = "videos"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
-    this.validatorService.validateFile(filename, "video", size);
+    this.validatorService.validateFile(filename, UploadType.VIDEO, size);
 
     const options = {
       folder: dirUpload,
@@ -176,7 +177,7 @@ export class UploadService {
         cdnUrl,
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
-        type: "video",
+        type: UploadType.VIDEO,
         format: result.format,
         width: result.width,
         height: result.height,
@@ -193,7 +194,7 @@ export class UploadService {
     dirUpload = "audios"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
-    this.validatorService.validateFile(filename, "audio", size);
+    this.validatorService.validateFile(filename, UploadType.AUDIO, size);
 
     const options = {
       folder: dirUpload,
@@ -218,7 +219,7 @@ export class UploadService {
         cdnUrl,
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
-        type: "audio",
+        type: UploadType.AUDIO,
         format: result.format,
         duration: result.duration ?? 0,
       };
@@ -233,7 +234,7 @@ export class UploadService {
     dirUpload = "files"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
-    this.validatorService.validateFile(filename, "file", size);
+    this.validatorService.validateFile(filename, UploadType.FILE, size);
 
     const ext = filename.split(".").pop()?.toLowerCase();
     const isImage = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext || "");
@@ -257,7 +258,7 @@ export class UploadService {
         url: result.secure_url,
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
-        type: "file",
+        type: UploadType.FILE,
         format: result.format,
       };
     } catch (error) {
@@ -271,7 +272,7 @@ export class UploadService {
     dirUpload = "models"
   ): Promise<UploadResult> {
     const { stream, filename, size } = fileData;
-    this.validatorService.validateFile(filename, "model3d", size);
+    this.validatorService.validateFile(filename, UploadType.MODEL3D, size);
 
     const options = {
       folder: dirUpload,
@@ -291,7 +292,7 @@ export class UploadService {
         url: result.secure_url,
         size: result.bytes ?? 0,
         filename: result.original_filename ?? filename,
-        type: "model3d",
+        type: UploadType.MODEL3D,
         format: result.format,
       };
     } catch (error) {
@@ -303,7 +304,7 @@ export class UploadService {
   async upload(
     input: unknown,
     dirUpload?: string,
-    type: "image" | "video" | "file" | "audio" | "model3d" = "image"
+    type: UploadType = UploadType.IMAGE
   ): Promise<UploadResult> {
     const fileData = await this.inputProcessor.processInput(input, type);
     if (!fileData) {
@@ -364,7 +365,7 @@ export class UploadService {
     return this.uploadModel3dCore(fileData, dirUpload);
   }
 
-  private async deleteResource(url: string, type: "image" | "video" | "audio" | "file" | "model3d"): Promise<void> {
+  private async deleteResource(url: string, type: UploadType): Promise<void> {
     const cloudinaryType: "image" | "video" | "raw" | "audio" = type === "file" || type === "model3d" ? "raw" : type === "audio" ? "video" : type;
     let publicId = extractPublicId(url, cloudinaryType);
 
@@ -393,22 +394,22 @@ export class UploadService {
   }
 
   async deleteImage(imageUrl: string): Promise<void> {
-    return this.deleteResource(imageUrl, "image");
+    return this.deleteResource(imageUrl, UploadType.IMAGE);
   }
 
   async deleteVideo(videoUrl: string): Promise<void> {
-    return this.deleteResource(videoUrl, "video");
+    return this.deleteResource(videoUrl, UploadType.VIDEO);
   }
 
   async deleteAudio(audioUrl: string): Promise<void> {
-    return this.deleteResource(audioUrl, "audio");
+    return this.deleteResource(audioUrl, UploadType.AUDIO);
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
-    return this.deleteResource(fileUrl, "file");
+    return this.deleteResource(fileUrl, UploadType.FILE);
   }
 
   async deleteModel3d(modelUrl: string): Promise<void> {
-    return this.deleteResource(modelUrl, "model3d");
+    return this.deleteResource(modelUrl, UploadType.MODEL3D);
   }
 }

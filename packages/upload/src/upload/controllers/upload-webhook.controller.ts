@@ -1,6 +1,24 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { UploadJobService } from '../services/upload-job.service';
 
+export interface CloudinaryWebhookBody {
+  notification_type?: string;
+  public_id?: string;
+  secure_url?: string;
+  status?: string;
+  bytes?: number;
+  format?: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+  error?: { message?: string };
+  context?: {
+    custom?: {
+      jobId?: string;
+    };
+  };
+}
+
 @Controller('upload/webhooks')
 export class UploadWebhookController {
   private readonly logger = new Logger(UploadWebhookController.name);
@@ -9,7 +27,7 @@ export class UploadWebhookController {
 
   @Post('cloudinary')
   @HttpCode(HttpStatus.OK)
-  async handleCloudinaryWebhook(@Body() body: any) {
+  async handleCloudinaryWebhook(@Body() body: CloudinaryWebhookBody) {
     this.logger.log(`Received Cloudinary webhook notification: ${JSON.stringify(body)}`);
 
     const { notification_type, public_id, secure_url, status, error } = body;

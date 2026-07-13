@@ -1,6 +1,6 @@
 import { LocalUploadStrategy } from './local-upload.strategy';
 import * as fs from 'fs';
-import * as path from 'path';
+
 import { Readable } from 'stream';
 
 jest.mock('fs');
@@ -28,7 +28,7 @@ describe('LocalUploadStrategy', () => {
 
     const mockWriteStream: any = {
       on: jest.fn((event, cb) => {
-        if (event === 'finish') setTimeout(cb, 0);
+        if (event === 'finish' || event === 'close') setTimeout(cb, 0);
         return mockWriteStream;
       }),
       once: jest.fn(),

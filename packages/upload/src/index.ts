@@ -62,6 +62,10 @@ export * from "./upload/interfaces/IJobStore.interface";
 export * from "./upload/interfaces/IChunkStorage.interface";
 
 /* ============================== */
+/*              ENUMS             */
+/* ============================== */
+
+export * from "./upload/enums/upload-type.enum";
 /*            OBSERVERS            */
 /* ============================== */
 

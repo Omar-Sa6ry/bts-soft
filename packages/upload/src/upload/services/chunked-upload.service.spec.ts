@@ -1,5 +1,5 @@
 import { ChunkedUploadService } from './chunked-upload.service';
-import { ConfigService } from '@nestjs/config';
+import { UploadType } from '../enums/upload-type.enum';
 import { UploadJobService } from './upload-job.service';
 import { FileValidatorService } from './file-validator.service';
 import { UploadQueueService } from './upload-queue.service';
@@ -28,7 +28,7 @@ describe('ChunkedUploadService', () => {
     if (!fs.existsSync(testRoot)) {
       fs.mkdirSync(testRoot, { recursive: true });
     }
-    jobService = new UploadJobService(mockConfigService);
+    jobService = new UploadJobService();
     validatorService = new FileValidatorService(mockConfigService);
     const mockQueue = {
       add: jest.fn().mockImplementation(async (name, data) => {
@@ -63,7 +63,7 @@ describe('ChunkedUploadService', () => {
   });
 
   it('should initiate upload and create job status entries', async () => {
-    const res = await service.initiateUpload('test.mp4', 1024, 'video');
+    const res = await service.initiateUpload('test.mp4', 1024, UploadType.VIDEO);
     expect(res.jobId).toBeDefined();
     expect(res.status).toBe('pending');
 
@@ -73,7 +73,7 @@ describe('ChunkedUploadService', () => {
   });
 
   it('should accept chunks and finalize assembly on the last chunk', async () => {
-    const initRes = await service.initiateUpload('test-chunk.txt', 12, 'file');
+    const initRes = await service.initiateUpload('test-chunk.txt', 12, UploadType.FILE);
     const jobId = initRes.jobId;
 
     const chunk1 = Buffer.from('hello ');
@@ -100,14 +100,14 @@ describe('ChunkedUploadService', () => {
 
   it('should support deduplication on hash match', async () => {
     // 1. First upload
-    const initRes1 = await service.initiateUpload('original.txt', 12, 'file');
+    const initRes1 = await service.initiateUpload('original.txt', 12, UploadType.FILE);
     const jobId1 = initRes1.jobId;
     const chunk = Buffer.from('dedup-test!!');
     const res1 = await service.uploadChunk(jobId1, 0, 1, chunk, 'hash123');
     expect(res1.completed).toBe(true);
 
     // 2. Second upload with same hash should instant-complete (deduplicate)
-    const initRes2 = await service.initiateUpload('duplicate.txt', 12, 'file', 'hash123');
+    const initRes2 = await service.initiateUpload('duplicate.txt', 12, UploadType.FILE, 'hash123');
     expect(initRes2.status).toBe('done');
     expect(initRes2.url).toBe(res1.url);
 
@@ -117,7 +117,7 @@ describe('ChunkedUploadService', () => {
   });
 
   it('should accept chunks and finalize assembly in background queue when async is true', async () => {
-    const initRes = await service.initiateUpload('test-async.txt', 12, 'file');
+    const initRes = await service.initiateUpload('test-async.txt', 12, UploadType.FILE);
     const jobId = initRes.jobId;
 
     const chunk1 = Buffer.from('async ');
@@ -148,7 +148,7 @@ describe('ChunkedUploadService', () => {
   });
 
   it('should return the correct uploaded chunks indexes', async () => {
-    const initRes = await service.initiateUpload('resume.txt', 12, 'file');
+    const initRes = await service.initiateUpload('resume.txt', 12, UploadType.FILE);
     const jobId = initRes.jobId;
 
     let chunks = await service.getUploadedChunks(jobId);
@@ -187,7 +187,7 @@ describe('ChunkedUploadService', () => {
       testRateLimiter
     );
 
-    const initRes = await testService.initiateUpload('test-rate-limit.txt', 12, 'file');
+    const initRes = await testService.initiateUpload('test-rate-limit.txt', 12, UploadType.FILE);
     const jobId = initRes.jobId;
 
     // First chunk upload should be allowed

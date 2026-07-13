@@ -3,28 +3,28 @@ import { Observable, Subject } from 'rxjs';
 import { filter, map } from 'rxjs/operators';
 import { UploadJobService } from '../services/upload-job.service';
 import { IUploadObserver } from '../interfaces/IUploadObserver.interface';
+import { UploadJob } from '../dtos/upload-job.dto';
 
 @Controller('upload/jobs')
 export class UploadNotificationController implements IUploadObserver {
   private readonly logger = new Logger(UploadNotificationController.name);
-  private readonly eventSubject = new Subject<{ jobId: string; type: string; data: any }>();
+  private readonly eventSubject = new Subject<{ jobId: string; type: string; data: Record<string, unknown> }>();
 
   constructor(private readonly jobService: UploadJobService) {
-    // Register self as an observer to get job events
     this.jobService.addObserver(this);
   }
 
   // Implementing IUploadObserver callbacks
-  onJobCreated(job: any): void {
-    this.eventSubject.next({ jobId: job.jobId, type: 'created', data: job });
+  onJobCreated(job: UploadJob): void {
+    this.eventSubject.next({ jobId: job.jobId, type: 'created', data: job as unknown as Record<string, unknown> });
   }
 
   onJobProgress(jobId: string, progress: number): void {
     this.eventSubject.next({ jobId, type: 'progress', data: { progress } });
   }
 
-  onJobCompleted(jobId: string, result: any): void {
-    this.eventSubject.next({ jobId, type: 'completed', data: result });
+  onJobCompleted(jobId: string, result: unknown): void {
+    this.eventSubject.next({ jobId, type: 'completed', data: result as Record<string, unknown> });
   }
 
   onJobFailed(jobId: string, error: string): void {

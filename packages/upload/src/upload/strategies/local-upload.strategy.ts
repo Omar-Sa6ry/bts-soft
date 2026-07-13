@@ -23,7 +23,7 @@ export class LocalUploadStrategy implements IUploadStrategy {
       }
 
       const publicId = options.public_id as string | undefined;
-      const ext = publicId?.includes('.') ? '' : '.bin';
+
       const fileName = publicId || `${Date.now()}`;
       const filePath = path.join(folderPath, fileName);
 
@@ -31,7 +31,7 @@ export class LocalUploadStrategy implements IUploadStrategy {
 
       stream.pipe(writeStream);
 
-      writeStream.on('finish', () => {
+      writeStream.on('close', () => {
         resolve({
           secure_url: filePath,
           public_id: fileName,

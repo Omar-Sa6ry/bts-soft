@@ -1,9 +1,9 @@
 import { Injectable, Optional, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { UploadJob } from '../dtos/upload-job.dto';
 import { IJobStore } from '../interfaces/IJobStore.interface';
 import { IUploadObserver } from '../interfaces/IUploadObserver.interface';
 import { RedisService } from '@bts-soft/cache';
+import { UploadType } from '../enums/upload-type.enum';
 
 class InMemoryJobStore implements IJobStore {
   private readonly store = new Map<string, { job: UploadJob; expiresAt: number }>();
@@ -65,7 +65,6 @@ export class UploadJobService {
   private readonly observers: IUploadObserver[] = [];
 
   constructor(
-    private readonly configService: ConfigService,
     @Optional() private readonly redisService?: RedisService,
     @Optional() customStore?: IJobStore
   ) {
@@ -85,14 +84,14 @@ export class UploadJobService {
     }
   }
 
-  addObserver(observer: import('../interfaces/IUploadObserver.interface').IUploadObserver): void {
+  addObserver(observer: IUploadObserver): void {
     this.observers.push(observer);
   }
 
   async createJob(
     filename: string,
     size: number,
-    type: 'image' | 'video' | 'audio' | 'file' | 'model3d',
+    type: UploadType,
     customJobId?: string
   ): Promise<UploadJob> {
     const jobId = customJobId || `job_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;

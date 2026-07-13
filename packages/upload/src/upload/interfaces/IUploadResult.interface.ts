@@ -1,7 +1,9 @@
+import { UploadType } from '../enums/upload-type.enum';
+
 export interface UploadResult {
   url: string;
   size: number;
   filename: string;
-  type: "image" | "video" | "file";
+  type: UploadType;
   duration?: number;
 }

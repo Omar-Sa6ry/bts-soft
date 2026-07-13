@@ -1,6 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DEFAULT_LIMITS } from '../utils/upload.constants';
+import { UploadType } from '../enums/upload-type.enum';
 
 @Injectable()
 export class FileValidatorService {
@@ -22,7 +23,7 @@ export class FileValidatorService {
 
   validateFile(
     filename: string,
-    type: 'image' | 'video' | 'file' | 'audio' | 'model3d',
+    type: UploadType,
     size?: number,
   ): void {
     const ext = filename.split('.').pop()?.toLowerCase();

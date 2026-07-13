@@ -3,14 +3,13 @@ import { Job } from 'bullmq';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { UploadJobService } from '../services/upload-job.service';
 import { ConfigService } from '@nestjs/config';
-import { CdnService } from '../services/cdn.service';
+
 import { RedisService } from '@bts-soft/cache';
 import { IUploadStrategy } from '../interfaces/IUpload.interface';
 import { UploadServiceFactory } from '../factories/upload.factory';
 import { UploadProvider } from '../utils/upload.constants';
 import { CloudinaryUploadStrategy } from '../strategies/upload.strategy';
 import * as fs from 'fs';
-import * as path from 'path';
 
 // Dynamically resolve strategies if needed
 import { LocalUploadStrategy as ActualLocalUpload } from '../strategies/local-upload.strategy';
@@ -24,7 +23,6 @@ export class UploadProcessor extends WorkerHost {
   constructor(
     private readonly configService: ConfigService,
     private readonly jobService: UploadJobService,
-    private readonly cdnService: CdnService,
     @Optional() private readonly redisService?: RedisService,
   ) {
     super();

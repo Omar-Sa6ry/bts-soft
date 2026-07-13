@@ -1,10 +1,6 @@
 import { UploadProcessor } from './upload.processor';
 import { ConfigService } from '@nestjs/config';
-import { UploadJobService } from '../services/upload-job.service';
-import { CdnService } from '../services/cdn.service';
-import { RedisService } from '@bts-soft/cache';
 import * as fs from 'fs';
-import * as path from 'path';
 
 jest.mock('fs', () => {
   const original = jest.requireActual('fs');
@@ -23,7 +19,6 @@ describe('UploadProcessor', () => {
   let processor: UploadProcessor;
   let mockConfigService: jest.Mocked<ConfigService>;
   let mockJobService: any;
-  let mockCdnService: any;
   let mockRedisService: any;
   let mockStrategy: any;
 
@@ -42,10 +37,7 @@ describe('UploadProcessor', () => {
       failJob: jest.fn().mockResolvedValue(undefined),
     };
 
-    mockCdnService = {
-      transformImageUrl: jest.fn(),
-      transformVideoUrl: jest.fn(),
-    };
+
 
     mockRedisService = {
       set: jest.fn().mockResolvedValue(undefined),
@@ -54,7 +46,6 @@ describe('UploadProcessor', () => {
     processor = new UploadProcessor(
       mockConfigService,
       mockJobService,
-      mockCdnService,
       mockRedisService
     );
 

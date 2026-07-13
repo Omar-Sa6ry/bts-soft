@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UploadService } from './upload.service';
 import { ConfigService } from '@nestjs/config';
+import { UploadType } from './enums/upload-type.enum';
 import { UploadServiceFactory } from './factories/upload.factory';
 import { UploadProvider } from './utils/upload.constants';
 import { InputProcessorService } from './services/input-processor.service';
@@ -13,7 +14,6 @@ jest.mock('./factories/upload.factory');
 
 describe('UploadService', () => {
   let service: UploadService;
-  let configService: ConfigService;
 
   const mockConfigService = {
     get: jest.fn((key: string) => {
@@ -60,7 +60,6 @@ describe('UploadService', () => {
     }).compile();
 
     service = module.get<UploadService>(UploadService);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   it('should be defined', () => {
@@ -72,17 +71,17 @@ describe('UploadService', () => {
   });
 
   it('should validate file extension correctly', () => {
-    expect(() => (service as any).validatorService.validateFile('test.jpg', 'image')).not.toThrow();
-    expect(() => (service as any).validatorService.validateFile('test.exe', 'image')).toThrow();
-    expect(() => (service as any).validatorService.validateFile('test.glb', 'model3d')).not.toThrow();
-    expect(() => (service as any).validatorService.validateFile('test.fbx', 'model3d')).not.toThrow();
-    expect(() => (service as any).validatorService.validateFile('test.exe', 'model3d')).toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.jpg', UploadType.IMAGE)).not.toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.exe', UploadType.IMAGE)).toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.glb', UploadType.MODEL3D)).not.toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.fbx', UploadType.MODEL3D)).not.toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.exe', UploadType.MODEL3D)).toThrow();
   });
 
   it('should validate file size correctly', () => {
     const limit = 5 * 1024 * 1024; // 5MB
-    expect(() => (service as any).validatorService.validateFile('test.jpg', 'image', limit - 100)).not.toThrow();
-    expect(() => (service as any).validatorService.validateFile('test.jpg', 'image', limit + 100)).toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.jpg', UploadType.IMAGE, limit - 100)).not.toThrow();
+    expect(() => (service as any).validatorService.validateFile('test.jpg', UploadType.IMAGE, limit + 100)).toThrow();
   });
 
   describe('Core Upload Methods', () => {
@@ -100,7 +99,7 @@ describe('UploadService', () => {
 
       const result = await service.uploadImageCore(mockFile);
       expect(result.url).toBe('http://test.com/img.jpg');
-      expect(result.type).toBe('image');
+      expect(result.type).toBe(UploadType.IMAGE);
     });
 
     it('should upload video core successfully', async () => {
@@ -110,7 +109,7 @@ describe('UploadService', () => {
       });
 
       const result = await service.uploadVideoCore({ ...mockFile, filename: 'test.mp4' });
-      expect(result.type).toBe('video');
+      expect(result.type).toBe(UploadType.VIDEO);
       expect(result.duration).toBe(10);
     });
 
@@ -120,7 +119,7 @@ describe('UploadService', () => {
       });
 
       const result = await service.uploadAudioCore({ ...mockFile, filename: 'test.mp3' });
-      expect(result.type).toBe('audio');
+      expect(result.type).toBe(UploadType.AUDIO);
     });
 
     it('should upload raw file core successfully', async () => {
@@ -129,7 +128,7 @@ describe('UploadService', () => {
       });
 
       const result = await service.uploadFileCore({ ...mockFile, filename: 'test.pdf' });
-      expect(result.type).toBe('file');
+      expect(result.type).toBe(UploadType.FILE);
     });
 
     it('should upload 3D model core successfully', async () => {
@@ -138,7 +137,7 @@ describe('UploadService', () => {
       });
 
       const result = await service.uploadModel3dCore({ ...mockFile, filename: 'test.glb' });
-      expect(result.type).toBe('model3d');
+      expect(result.type).toBe(UploadType.MODEL3D);
       expect(result.url).toContain('model.glb');
     });
   });

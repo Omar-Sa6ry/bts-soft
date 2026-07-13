@@ -1,3 +1,5 @@
+import { UploadType } from '../enums/upload-type.enum';
+
 export type UploadJobStatus =
   | 'pending'
   | 'uploading'
@@ -9,7 +11,7 @@ export class UploadJob {
   jobId: string;
   filename: string;
   size: number;
-  type: 'image' | 'video' | 'audio' | 'file' | 'model3d';
+  type: UploadType;
   status: UploadJobStatus;
   /** Upload progress from 0 to 100. */
   progress: number;

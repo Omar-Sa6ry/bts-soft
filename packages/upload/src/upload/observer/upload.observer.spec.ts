@@ -3,11 +3,11 @@ import { Logger } from '@nestjs/common';
 
 describe('LoggingObserver', () => {
   let observer: LoggingObserver;
-  let loggerSpy: jest.SpyInstance;
+
 
   beforeEach(() => {
     observer = new LoggingObserver();
-    loggerSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    jest.spyOn(Logger.prototype, 'log').mockImplementation();
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
   });
 

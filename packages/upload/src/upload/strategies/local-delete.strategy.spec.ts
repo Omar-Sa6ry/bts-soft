@@ -1,6 +1,6 @@
 import { LocalDeleteStrategy } from './local-delete.strategy';
 import * as fs from 'fs';
-import { Logger } from '@nestjs/common';
+
 
 jest.mock('fs');
 
