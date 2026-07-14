@@ -58,6 +58,18 @@ describe('TeamsChannel', () => {
     );
   });
 
+  it('should override webhookUrl if recipientId is a valid URL', async () => {
+    await channel.send({
+      recipientId: 'https://teams.com/api/recipient-url',
+      body: 'Override Recipient',
+    });
+
+    expect(httpService.post).toHaveBeenCalledWith(
+      'https://teams.com/api/recipient-url',
+      expect.any(Object)
+    );
+  });
+
   it('should throw NotificationProviderError if webhookUrl is missing', async () => {
     configService.teamsWebhookUrl = undefined;
     await expect(channel.send({ recipientId: 'n', body: 'b' }))

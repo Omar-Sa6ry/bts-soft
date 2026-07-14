@@ -23,12 +23,21 @@ export class TeamsChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    const { body, channelOptions } = message;
-    const webhookUrl = (channelOptions?.webhookUrl as string | undefined) || this.configService.teamsWebhookUrl;
+    const { body, channelOptions, recipientId } = message;
+    let webhookUrl = channelOptions?.webhookUrl as string | undefined;
+
+    if (recipientId && (recipientId.startsWith("http://") || recipientId.startsWith("https://"))) {
+      webhookUrl = recipientId;
+    }
+
+    if (!webhookUrl) {
+      webhookUrl = this.configService.teamsWebhookUrl;
+    }
 
     if (!webhookUrl) throw new NotificationProviderError('Teams Webhook URL is not configured.');
 
-    this.logger.log(`Sending Teams notification via ${channelOptions?.webhookUrl ? 'dynamic' : 'default'} webhook.`);
+    const isDynamic = !!(channelOptions?.webhookUrl || (recipientId && (recipientId.startsWith("http://") || recipientId.startsWith("https://"))));
+    this.logger.log(`Sending Teams notification via ${isDynamic ? 'dynamic' : 'default'} webhook.`);
 
     try {
       await lastValueFrom(

@@ -23,12 +23,21 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
   }
 
   public async send(message: NotificationMessage): Promise<void> {
-    const { body, channelOptions } = message;
-    const webhookUrl = (channelOptions?.webhookUrl as string | undefined) || this.configService.discordWebhookUrl;
+    const { body, channelOptions, recipientId } = message;
+    let webhookUrl = channelOptions?.webhookUrl as string | undefined;
+
+    if (recipientId && (recipientId.startsWith("http://") || recipientId.startsWith("https://"))) {
+      webhookUrl = recipientId;
+    }
+
+    if (!webhookUrl) {
+      webhookUrl = this.configService.discordWebhookUrl;
+    }
 
     if (!webhookUrl) throw new NotificationProviderError('Discord Webhook URL is not configured.');
 
-    this.logger.log(`Sending Discord notification via ${channelOptions?.webhookUrl ? 'dynamic' : 'default'} webhook.`);
+    const isDynamic = !!(channelOptions?.webhookUrl || (recipientId && (recipientId.startsWith("http://") || recipientId.startsWith("https://"))));
+    this.logger.log(`Sending Discord notification via ${isDynamic ? 'dynamic' : 'default'} webhook.`);
 
     try {
       await lastValueFrom(

@@ -57,6 +57,18 @@ describe('DiscordChannel', () => {
     );
   });
 
+  it('should override webhookUrl if recipientId is a valid URL', async () => {
+    await channel.send({
+      recipientId: 'https://discord.com/api/recipient-url',
+      body: 'Override Recipient',
+    });
+
+    expect(httpService.post).toHaveBeenCalledWith(
+      'https://discord.com/api/recipient-url',
+      expect.any(Object)
+    );
+  });
+
   it('should throw NotificationProviderError if webhookUrl is missing', async () => {
     configService.discordWebhookUrl = undefined;
     await expect(channel.send({ recipientId: 'n', body: 'b' }))
