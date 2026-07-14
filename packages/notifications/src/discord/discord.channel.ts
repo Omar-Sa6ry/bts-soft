@@ -1,4 +1,4 @@
-import { INotificationChannel } from "../telegram/channels/INotificationChannel.interface";
+import { INotificationChannel } from "../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
 import { HttpService } from "@nestjs/axios";
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
@@ -24,28 +24,27 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
 
   public async send(message: NotificationMessage): Promise<void> {
     const { body, channelOptions } = message;
-    const webhookUrl = channelOptions?.webhookUrl || this.configService.discordWebhookUrl;
+    const webhookUrl = (channelOptions?.webhookUrl as string | undefined) || this.configService.discordWebhookUrl;
 
-    if (!webhookUrl) throw new NotificationProviderError("Discord Webhook URL is not configured.");
+    if (!webhookUrl) throw new NotificationProviderError('Discord Webhook URL is not configured.');
 
     this.logger.log(`Sending Discord notification via ${channelOptions?.webhookUrl ? 'dynamic' : 'default'} webhook.`);
 
     try {
       await lastValueFrom(
-        this.httpService.post(webhookUrl, {
-          content: body,
-          ...channelOptions,
-        })
+        this.httpService.post(webhookUrl, { content: body })
       );
       this.logger.log(`Discord notification sent successfully.`);
-    } catch (error: any) {
-      this.logger.error(`Failed to send Discord notification:`, error.response?.data || error.message);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const axiosError = error as { response?: { status?: number; data?: unknown } };
+      this.logger.error('Failed to send Discord notification:', axiosError.response?.data || err.message);
       
-      if (error.response && error.response.status >= 400 && error.response.status < 500) {
-        throw new NotificationClientError(`Discord client error: ${error.message}`);
+      if (axiosError.response && axiosError.response.status && axiosError.response.status >= 400 && axiosError.response.status < 500) {
+        throw new NotificationClientError(`Discord client error: ${err.message}`);
       }
       
-      throw new NotificationProviderError(`Discord provider error: ${error.message}`);
+      throw new NotificationProviderError(`Discord provider error: ${err.message}`);
     }
   }
 }

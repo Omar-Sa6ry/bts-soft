@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import * as admin from "firebase-admin";
-import { INotificationChannel } from "../telegram/channels/INotificationChannel.interface";
+import { INotificationChannel } from "../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
@@ -24,19 +24,35 @@ export class FirebaseChannel implements INotificationChannel, OnModuleInit {
 
   private initializeFirebase() {
     const serviceAccountPath = this.configService.firebaseServiceAccountPath;
-    if (!serviceAccountPath) {
-      this.logger.warn("Firebase serviceAccountPath missing. FirebaseChannel will not function.");
-      return;
-    }
+    const projectId = process.env.PROJECT_ID;
+    const clientEmail = process.env.CLIENT_EMAIL;
+    const privateKey = process.env.PRIVATE_KEY;
 
     try {
       if (admin.apps.length === 0) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccountPath),
-        });
+        if (serviceAccountPath) {
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccountPath),
+          });
+          this.initialized = true;
+          this.logger.log("Firebase Admin SDK initialized from service account path.");
+        } else if (projectId && clientEmail && privateKey) {
+          const formattedPrivateKey = privateKey.replace(/\\n/g, "\n");
+          admin.initializeApp({
+            credential: admin.credential.cert({
+              projectId,
+              clientEmail,
+              privateKey: formattedPrivateKey,
+            }),
+          });
+          this.initialized = true;
+          this.logger.log("Firebase Admin SDK initialized from inline credentials.");
+        } else {
+          this.logger.warn("Firebase credentials missing. FirebaseChannel will not function.");
+        }
+      } else {
+        this.initialized = true;
       }
-      this.initialized = true;
-      this.logger.log("Firebase Admin SDK initialized successfully.");
     } catch (error) {
       this.logger.error("Failed to initialize Firebase Admin SDK:", error);
     }
@@ -60,22 +76,22 @@ export class FirebaseChannel implements INotificationChannel, OnModuleInit {
         ...channelOptions,
       });
       this.logger.log("FCM notification sent successfully.");
-    } catch (error: any) {
-      this.logger.error("Failed to send FCM notification:", error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('Failed to send FCM notification:', err);
       
       // Categorize Firebase errors
-      const code = error.code;
+      const fcmError = error as { code?: string };
       if (
-        code === 'messaging/invalid-registration-token' ||
-        code === 'messaging/registration-token-not-registered' ||
-        code === 'messaging/invalid-argument' ||
-        code === 'messaging/invalid-payload'
+        fcmError.code === 'messaging/invalid-registration-token' ||
+        fcmError.code === 'messaging/registration-token-not-registered' ||
+        fcmError.code === 'messaging/invalid-argument' ||
+        fcmError.code === 'messaging/invalid-payload'
       ) {
-        throw new NotificationClientError(`Firebase client error: ${error.message}`);
+        throw new NotificationClientError(`Firebase client error: ${err.message}`);
       }
       
-      throw new NotificationProviderError(`Firebase provider error: ${error.message}`);
+      throw new NotificationProviderError(`Firebase provider error: ${err.message}`);
     }
   }
 }
-

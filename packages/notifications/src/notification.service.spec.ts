@@ -1,34 +1,41 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NotificationService, NOTIFICATION_QUEUE_NAME } from './notification.service';
-import { getQueueToken } from '@nestjs/bullmq';
-import { ChannelType } from './core/models/ChannelType.const';
-import { NOTIFICATION_LOG_REPOSITORY } from './core/models/NotificationLog.interface';
+import { Test, TestingModule } from "@nestjs/testing";
+import { NotificationService, NOTIFICATION_QUEUE_NAME, NotificationRequest } from "./notification.service";
+import { getQueueToken } from "@nestjs/bullmq";
+import { ChannelType } from "./core/enums/ChannelType.enum";
+import { NotificationPriority } from "./core/enums/NotificationPriority.enum";
+import {
+  NOTIFICATION_LOG_REPOSITORY,
+  NOTIFICATION_RATE_LIMITER,
+  USER_PREFERENCE_REPOSITORY,
+  NOTIFICATION_DEDUP_STORE,
+} from "./core/constants/injection-tokens.const";
 
 describe('NotificationService', () => {
   let service: NotificationService;
-  let queue: any;
-  let logRepo: any;
+  let queue: jest.Mocked<{ add: jest.Mock }>;
+  let logRepo: jest.Mocked<{ create: jest.Mock }>;
+  let rateLimiter: jest.Mocked<{ isAllowed: jest.Mock }>;
+  let preferenceRepo: jest.Mocked<{ isOptedOut: jest.Mock }>;
+  let dedupStore: jest.Mocked<{ isDuplicate: jest.Mock; markSent: jest.Mock }>;
 
   beforeEach(async () => {
-    queue = {
-      add: jest.fn().mockResolvedValue({ id: 'job_123' }),
-    };
-
-    logRepo = {
-      create: jest.fn().mockResolvedValue({ id: 'log_123' }),
+    queue = { add: jest.fn().mockResolvedValue({ id: 'job_123' }) };
+    logRepo = { create: jest.fn().mockResolvedValue({ id: 'log_123' }) };
+    rateLimiter = { isAllowed: jest.fn().mockResolvedValue(true) };
+    preferenceRepo = { isOptedOut: jest.fn().mockResolvedValue(false) };
+    dedupStore = {
+      isDuplicate: jest.fn().mockResolvedValue(false),
+      markSent: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificationService,
-        {
-          provide: getQueueToken(NOTIFICATION_QUEUE_NAME),
-          useValue: queue,
-        },
-        {
-          provide: NOTIFICATION_LOG_REPOSITORY,
-          useValue: logRepo,
-        },
+        { provide: getQueueToken(NOTIFICATION_QUEUE_NAME), useValue: queue },
+        { provide: NOTIFICATION_LOG_REPOSITORY, useValue: logRepo },
+        { provide: NOTIFICATION_RATE_LIMITER, useValue: rateLimiter },
+        { provide: USER_PREFERENCE_REPOSITORY, useValue: preferenceRepo },
+        { provide: NOTIFICATION_DEDUP_STORE, useValue: dedupStore },
       ],
     }).compile();
 
@@ -39,88 +46,126 @@ describe('NotificationService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should send a notification and create a log', async () => {
-    const message = {
-      recipientId: 'user1',
-      body: 'Hello',
-    };
-
-    await service.send(ChannelType.EMAIL, message);
-
-    expect(logRepo.create).toHaveBeenCalledWith(expect.objectContaining({
-      channel: 'email',
-      recipientId: 'user1',
-      status: 'pending',
-    }));
+  it('should enqueue a notification and create a pending log', async () => {
+    await service.send(ChannelType.EMAIL, { recipientId: 'user1', body: 'Hello' });
 
     expect(queue.add).toHaveBeenCalledWith(
-      'email', // The job name is the channel type
-      expect.objectContaining({
-        channel: 'email',
-        message: expect.objectContaining({ body: 'Hello' }),
-      }),
-      expect.any(Object)
+      'email',
+      expect.objectContaining({ channel: 'email', message: expect.objectContaining({ body: 'Hello' }) }),
+      expect.any(Object),
+    );
+    expect(logRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: 'email', recipientId: 'user1', status: 'pending' }),
     );
   });
 
-  it('should respect priority in job options', async () => {
-    const message = {
+  it('should use NotificationPriority enum value in job options', async () => {
+    await service.send(ChannelType.SMS, {
       recipientId: 'user1',
       body: 'Urgent',
-      priority: 1,
+      priority: NotificationPriority.CRITICAL,
+    });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Object),
+      expect.objectContaining({ priority: NotificationPriority.CRITICAL }),
+    );
+  });
+
+  it('should use default retry policy for channels without overrides', async () => {
+    await service.send(ChannelType.TELEGRAM, { recipientId: 'x', body: 'y' });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Object),
+      expect.objectContaining({ attempts: 3 }),
+    );
+  });
+
+  it('should use channel-specific retry policy for EMAIL', async () => {
+    await service.send(ChannelType.EMAIL, { recipientId: 'x', body: 'y' });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Object),
+      expect.objectContaining({ attempts: 5, backoff: expect.objectContaining({ delay: 10000 }) }),
+    );
+  });
+
+  it('should skip notification if it has expired', async () => {
+    const expiredMessage = {
+      recipientId: 'user1',
+      body: 'Stale notification',
+      expiresAt: new Date(Date.now() - 1000),
     };
 
-    await service.send(ChannelType.SMS, message);
+    await service.send(ChannelType.EMAIL, expiredMessage);
 
-    expect(queue.add).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(Object),
-      expect.objectContaining({
-        priority: 1,
-      })
-    );
+    expect(queue.add).not.toHaveBeenCalled();
+    expect(logRepo.create).not.toHaveBeenCalled();
   });
 
-  it('should use default retry policy if none specified for channel', async () => {
-     // Use TELEGRAM which has no override in DEFAULT_RETRY_CONFIG
-     await service.send(ChannelType.TELEGRAM, { recipientId: 'x', body: 'y' });
-     
-     expect(queue.add).toHaveBeenCalledWith(
-       expect.any(String),
-       expect.any(Object),
-       expect.objectContaining({
-         attempts: 3, // Default from DEFAULT_RETRY_CONFIG
-       })
-     );
+  it('should skip notification if idempotency key is a duplicate', async () => {
+    dedupStore.isDuplicate.mockResolvedValue(true);
+
+    await service.send(ChannelType.SMS, {
+      recipientId: 'user1',
+      body: 'Hello',
+      idempotencyKey: 'order:42:user1',
+    });
+
+    expect(queue.add).not.toHaveBeenCalled();
   });
 
-  it('should use custom retry policy if specified for channel', async () => {
-    // EMAIL has an override of 5 attempts in DEFAULT_RETRY_CONFIG
-    await service.send(ChannelType.EMAIL, { recipientId: 'x', body: 'y' });
-    
-    expect(queue.add).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(Object),
-      expect.objectContaining({
-        attempts: 5,
-        backoff: expect.objectContaining({ delay: 10000 })
-      })
-    );
+  it('should mark idempotency key after successful enqueue', async () => {
+    await service.send(ChannelType.SMS, {
+      recipientId: 'user1',
+      body: 'Hello',
+      idempotencyKey: 'order:42:user1',
+    });
+
+    expect(dedupStore.markSent).toHaveBeenCalledWith('order:42:user1');
   });
 
-  it('should not crash if logRepository is not provided', async () => {
-    // Re-create service without logRepo
-    const module: TestingModule = await Test.createTestingModule({
+  it('should skip notification if user has opted out', async () => {
+    preferenceRepo.isOptedOut.mockResolvedValue(true);
+
+    await service.send(ChannelType.EMAIL, { recipientId: 'user1', body: 'Newsletter' });
+
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('should skip notification if rate-limited', async () => {
+    rateLimiter.isAllowed.mockResolvedValue(false);
+
+    await service.send(ChannelType.SMS, { recipientId: 'user1', body: 'Too many messages' });
+
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('should send all notifications in sendBulk()', async () => {
+    const requests: NotificationRequest[] = [
+      { channel: ChannelType.EMAIL, message: { recipientId: 'a@a.com', body: 'Hi' } },
+      { channel: ChannelType.SMS, message: { recipientId: '+201234567890', body: 'Hi' } },
+    ];
+
+    await service.sendBulk(requests);
+
+    expect(queue.add).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not crash if optional services are not provided', async () => {
+    const minimalModule = await Test.createTestingModule({
       providers: [
         NotificationService,
         { provide: getQueueToken(NOTIFICATION_QUEUE_NAME), useValue: queue },
-        // Skip logRepo
       ],
     }).compile();
 
-    const noRepoService = module.get<NotificationService>(NotificationService);
-    await expect(noRepoService.send(ChannelType.SMS, { recipientId: '123', body: 'hi' }))
-      .resolves.not.toThrow();
+    const minimalService = minimalModule.get<NotificationService>(NotificationService);
+    await expect(
+      minimalService.send(ChannelType.SMS, { recipientId: '+201234567890', body: 'hi' }),
+    ).resolves.not.toThrow();
   });
 });
-

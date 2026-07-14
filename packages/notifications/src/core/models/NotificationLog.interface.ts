@@ -1,9 +1,7 @@
-export enum NotificationStatus {
-  PENDING = 'pending',
-  SENT = 'sent',
-  FAILED = 'failed',
-  RETRYING = 'retrying',
-}
+import { NotificationStatus } from "../enums/NotificationStatus.enum";
+import { NOTIFICATION_LOG_REPOSITORY } from "../constants/injection-tokens.const";
+
+export { NotificationStatus };
 
 export interface NotificationLog {
   id?: string;
@@ -17,15 +15,14 @@ export interface NotificationLog {
   updatedAt?: Date;
 }
 
-/**
- * Abstract repository interface for notification logging.
- * Implement this in your application using your preferred ORM (TypeORM, Prisma, etc.)
- * and register the implementation as a provider with the token NOTIFICATION_LOG_REPOSITORY.
- */
 export abstract class INotificationLogRepository {
-  abstract create(log: Omit<NotificationLog, 'id'>): Promise<NotificationLog>;
+  abstract create(log: Omit<NotificationLog, "id">): Promise<NotificationLog>;
   abstract updateByJobId(jobId: string, update: Partial<NotificationLog>): Promise<void>;
   abstract findByJobId(jobId: string): Promise<NotificationLog | null>;
+  /** Returns all logs for a recipient, sorted by createdAt descending. */
+  abstract findByRecipientId(recipientId: string): Promise<NotificationLog[]>;
+  /** Returns all logs with optional partial-match filter. */
+  abstract findAll(filter?: Partial<NotificationLog>): Promise<NotificationLog[]>;
 }
 
-export const NOTIFICATION_LOG_REPOSITORY = Symbol('NOTIFICATION_LOG_REPOSITORY');
+export { NOTIFICATION_LOG_REPOSITORY };

@@ -112,7 +112,8 @@ export class NotificationConfigService implements OnModuleInit {
   }
 
   get emailPort(): number | undefined {
-    return this.configService.get<number>("EMAIL_PORT");
+    const val = this.configService.get<any>("EMAIL_PORT");
+    return val ? Number(val) : undefined;
   }
 
   get emailService(): string | undefined {

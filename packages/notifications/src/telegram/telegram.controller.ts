@@ -8,7 +8,7 @@ import {
   Get,
 } from "@nestjs/common";
 import { TelegramWebhookDto } from "./dto/Telegram-webhook.dto";
-import { ChannelType } from "../core/models/ChannelType.const";
+import { ChannelType } from "../core/enums/ChannelType.enum";
 import { NotificationService } from "../notification.service";
 console.log(`Telegram account linked successfully for user .`);
 

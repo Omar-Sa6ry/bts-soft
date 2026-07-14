@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TelegramController } from './telegram.controller';
 import { TelegramService } from './telegram.service';
 import { NotificationService } from '../notification.service';
-import { ChannelType } from '../core/models/ChannelType.const';
+import { ChannelType } from '../core/enums/ChannelType.enum';
 
 describe('TelegramController', () => {
   let controller: TelegramController;

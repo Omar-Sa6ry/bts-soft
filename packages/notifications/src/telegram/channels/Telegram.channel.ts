@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import * as TelegramBot from "node-telegram-bot-api";
-import { INotificationChannel } from "./INotificationChannel.interface";
+import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
@@ -33,12 +33,13 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
 
   public async send(message: NotificationMessage): Promise<void> {
     const { recipientId: chatId, body, channelOptions } = message;
-    const dynamicToken = channelOptions?.botToken;
+    const dynamicToken = channelOptions?.botToken as string | undefined;
+    const { botToken, ...restOptions } = channelOptions || {};
     
-    // Use dynamic bot instance if token is provided, otherwise fall back to initialized bot
+    // Use dynamic bot instance if token is provided, otherwise fall back to initialized bot.
     let botToUse = this.bot;
     if (dynamicToken) {
-      this.logger.debug(`Using dynamic bot token for Telegram message.`);
+      this.logger.debug('Using dynamic bot token for Telegram message.');
       botToUse = new TelegramBot(dynamicToken, { polling: false });
     }
 
@@ -50,18 +51,20 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
     try {
       await botToUse.sendMessage(chatId, body, {
         parse_mode: "Markdown",
-        ...channelOptions,
+        ...restOptions,
       });
       this.logger.log(`Telegram message sent successfully.`);
-    } catch (error: any) {
-      this.logger.error(`Failed to send Telegram message to ${chatId}:`, error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Failed to send Telegram message to ${chatId}:`, err);
       
       // Handle Telegram-specific error codes
-      if (error.response && error.response.statusCode >= 400 && error.response.statusCode < 500) {
-        throw new NotificationClientError(`Telegram client error: ${error.message}`);
+      const tgError = error as { response?: { statusCode?: number } };
+      if (tgError.response && tgError.response.statusCode && tgError.response.statusCode >= 400 && tgError.response.statusCode < 500) {
+        throw new NotificationClientError(`Telegram client error: ${err.message}`);
       }
       
-      throw new NotificationProviderError(`Telegram provider error: ${error.message}`);
+      throw new NotificationProviderError(`Telegram provider error: ${err.message}`);
     }
   }
 }

@@ -5,44 +5,67 @@ import { ModuleRef } from "@nestjs/core";
 import { NotificationChannelFactory } from "./core/factories/NotificationChannel.factory";
 import {
   INotificationLogRepository,
-  NOTIFICATION_LOG_REPOSITORY,
   NotificationStatus,
 } from "./core/models/NotificationLog.interface";
-import { InMemoryNotificationLogRepository } from "./core/repositories/InMemoryNotificationLog.repository";
-import { NotificationClientError } from "./core/errors/NotificationError";
+import {
+  NotificationClientError,
+  NotificationExpiredError,
+} from "./core/errors/NotificationError";
 import { TemplateService } from "./core/templates/template.service";
 import { NotificationMessage } from "./core/models/NotificationMessage.interface";
+import { NotificationJobData } from "./notification.service";
+import { II18nService } from "./core/interfaces/II18nService.interface";
+import {
+  INotificationObserver,
+} from "./core/observer/INotificationObserver.interface";
+import {
+  NOTIFICATION_LOG_REPOSITORY,
+  NOTIFICATION_OBSERVERS,
+} from "./core/constants/injection-tokens.const";
 
 /**
- * NotificationProcessor
- * ----------------------
  * BullMQ worker that processes queued notification jobs.
- * Automatically updates the NotificationLog on each attempt result.
+ *
+ * Three-phase pipeline: pre-process (expiry, i18n, templates) → send → post-process (log, observers).
  */
 @Processor("send-notification")
 @Injectable()
 export class NotificationProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationProcessor.name);
+  private readonly observers: INotificationObserver[] = [];
 
   constructor(
-    private channelFactory: NotificationChannelFactory,
-    private moduleRef: ModuleRef,
-    private templateService: TemplateService,
-    @Optional() @Inject(NOTIFICATION_LOG_REPOSITORY) private logRepository: INotificationLogRepository,
-    @Optional() private inMemoryLogRepository: InMemoryNotificationLogRepository,
+    private readonly channelFactory: NotificationChannelFactory,
+    private readonly moduleRef: ModuleRef,
+    private readonly templateService: TemplateService,
+
+    @Optional()
+    @Inject(NOTIFICATION_LOG_REPOSITORY)
+    private logRepository: INotificationLogRepository,
+
+    @Optional()
+    @Inject(NOTIFICATION_OBSERVERS)
+    observers: INotificationObserver | INotificationObserver[],
   ) {
     super();
-    // Fall back to in-memory if no custom repository is injected
-    if (!this.logRepository && this.inMemoryLogRepository) {
-      this.logRepository = this.inMemoryLogRepository;
+
+    if (observers) {
+      const list = Array.isArray(observers) ? observers : [observers];
+      this.observers.push(...list);
     }
   }
 
-  async process(job: Job): Promise<void> {
-    let { channel, message } = job.data as { channel: string, message: NotificationMessage };
-    this.logger.log(`Processing job ${job.id} | Channel: ${channel} | Attempt: ${job.attemptsMade + 1}`);
+  // Main processing entry point
 
-    // Mark as RETRYING if this is not the first attempt
+  async process(job: Job<NotificationJobData>): Promise<void> {
+    const { channel } = job.data;
+    let { message } = job.data;
+
+    this.logger.log(
+      `Processing job ${job.id} | Channel: ${channel} | Attempt: ${job.attemptsMade + 1}`,
+    );
+
+    // Mark as RETRYING if this is a subsequent attempt.
     if (job.attemptsMade > 0 && this.logRepository) {
       await this.logRepository.updateByJobId(job.id!, {
         status: NotificationStatus.RETRYING,
@@ -51,86 +74,147 @@ export class NotificationProcessor extends WorkerHost {
     }
 
     try {
-      // Resolve I18n
-      message = await this.applyI18n(message);
+      // Phase 1: Pre-process
+      message = await this.preProcess(channel, message);
 
-      // Resolve Templates
-      message = this.applyTemplates(message);
-
+      // Phase 2: Send
       const notificationChannel = this.channelFactory.getChannel(channel);
       await notificationChannel.send(message);
 
-      this.logger.log(`Job ${job.id} (Channel: ${channel}) completed successfully.`);
+      this.logger.log(
+        `Job ${job.id} (Channel: ${channel}) completed successfully.`,
+      );
 
-      // Mark as SENT
+      // Phase 3: Post-process — success
       if (this.logRepository) {
         await this.logRepository.updateByJobId(job.id!, {
           status: NotificationStatus.SENT,
           attemptsMade: job.attemptsMade + 1,
         });
       }
-    } catch (error: any) {
+
+      this.notifyObservers((obs) =>
+        obs.onDelivered?.(job.id!, channel, message.recipientId),
+      );
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+
       this.logger.error(
-        `Job ${job.id} (Channel: ${channel}) failed on attempt ${job.attemptsMade + 1}:`,
-        error.message,
+        `Job ${job.id} (Channel: ${channel}) failed on attempt ${job.attemptsMade + 1}: ${err.message}`,
       );
 
-      // Mark as FAILED
+      // Phase 3: Post-process — failure
       if (this.logRepository) {
+        const status =
+          error instanceof NotificationExpiredError
+            ? NotificationStatus.EXPIRED
+            : NotificationStatus.FAILED;
+
         await this.logRepository.updateByJobId(job.id!, {
-          status: NotificationStatus.FAILED,
-          errorMessage: error.message,
+          status,
+          errorMessage: err.message,
           attemptsMade: job.attemptsMade + 1,
         });
       }
 
-      // If it's a client error (e.g., bad format, missing contact), do not retry
-      if (error instanceof NotificationClientError) {
-        throw new UnrecoverableError(error.message);
+      this.notifyObservers((obs) => obs.onFailed?.(job.id!, channel, err));
+
+      // Client errors and expiry are terminal — do not retry.
+      if (
+        error instanceof NotificationClientError ||
+        error instanceof NotificationExpiredError
+      ) {
+        throw new UnrecoverableError(err.message);
       }
 
-      throw error; // Let BullMQ handle retries for provider/unknown errors
+      // Provider errors are retried by BullMQ.
+      throw err;
     }
   }
 
+  // Phase 1: Pre-processing
+
   /**
-   * Translates the body, title, and subject if `nestjs-i18n` is available
-   * and `message.lang` is provided.
+   * Pre-processes the message:
+   * 1. Checks expiry (second guard inside the worker).
+   * 2. Applies I18n translation.
+   * 3. Renders Handlebars templates.
    */
-  private async applyI18n(message: NotificationMessage): Promise<NotificationMessage> {
+  private async preProcess(
+    channel: string,
+    message: NotificationMessage,
+  ): Promise<NotificationMessage> {
+    // Guard: discard expired jobs that arrived late in the queue.
+    if (message.expiresAt && new Date(message.expiresAt) <= new Date()) {
+      throw new NotificationExpiredError(
+        channel,
+        message.recipientId,
+        new Date(message.expiresAt),
+      );
+    }
+
+    message = await this.applyI18n(message);
+    message = this.applyTemplates(message);
+    return message;
+  }
+
+  /**
+   * Translates `body`, `title`, and `subject` via `nestjs-i18n` if
+   * `message.lang` is provided.
+   *
+   * Uses the typed {@link II18nService} interface instead of `any`.
+   * The service is resolved dynamically via `ModuleRef` so the package
+   * does not take a hard dependency on `nestjs-i18n`.
+   */
+  private async applyI18n(
+    message: NotificationMessage,
+  ): Promise<NotificationMessage> {
     if (!message.lang) return message;
 
-    let i18nService: any;
+    let i18nService: II18nService | null = null;
+
     try {
-      i18nService = this.moduleRef.get('I18nService', { strict: false });
-    } catch (e) {
-      // I18nService not found, gracefully skip translation
-      this.logger.warn(`Language '${message.lang}' specified, but I18nService is not available.`);
+      i18nService = this.moduleRef.get<II18nService>("I18nService", {
+        strict: false,
+      });
+    } catch {
+      this.logger.warn(
+        `Language '${message.lang}' specified, but I18nService is not available in this application.`,
+      );
       return message;
     }
 
     if (i18nService) {
-      const args = message.context ?? {};
+      const args = (message.context ?? {}) as Record<string, unknown>;
       const lang = message.lang;
 
-      if (message.body) message.body = await i18nService.t(message.body, { lang, args });
-      if (message.title) message.title = await i18nService.t(message.title, { lang, args });
-      if (message.subject) message.subject = await i18nService.t(message.subject, { lang, args });
+      if (message.body) {
+        message.body = await i18nService.t(message.body, { lang, args });
+      }
+      if (message.title) {
+        message.title = await i18nService.t(message.title, { lang, args });
+      }
+      if (message.subject) {
+        message.subject = await i18nService.t(message.subject, { lang, args });
+      }
     }
 
     return message;
   }
 
   /**
-   * Renders the body, title, and subject using Handlebars if they contain
-   * template syntax and `context` is provided.
+   * Renders Handlebars templates in `body`, `title`, and `subject`
+   * if they contain `{{` syntax and `message.context` is provided.
    */
   private applyTemplates(message: NotificationMessage): NotificationMessage {
     if (!message.context) return message;
 
-    const renderIfTemplate = (text?: string) => {
-      if (text && text.includes('{{')) {
-        return this.templateService.render({ template: text, context: message.context! });
+    const renderIfTemplate = (text: string | undefined): string | undefined => {
+      if (text && text.includes("{{")) {
+        return this.templateService.render({
+          template: text,
+          context: message.context as Record<string, unknown>,
+        });
       }
       return text;
     };
@@ -140,5 +224,17 @@ export class NotificationProcessor extends WorkerHost {
     message.subject = renderIfTemplate(message.subject);
 
     return message;
+  }
+
+  // Observer notification
+  private notifyObservers(fn: (observer: INotificationObserver) => void): void {
+    for (const observer of this.observers) {
+      try {
+        fn(observer);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Observer error in processor: ${message}`);
+      }
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { Twilio } from "twilio";
-import { INotificationChannel } from "../../telegram/channels/INotificationChannel.interface";
+import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
@@ -71,11 +71,13 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
 
     // Support dynamic Twilio credentials
     let clientToUse = this.client;
-    let fromRaw = channelOptions?.from || this.configService.twilioWhatsappNumber;
+    let fromRaw = (channelOptions?.from as string | undefined) || this.configService.twilioWhatsappNumber;
+
+    const { accountSid, authToken, from: _, ...restOptions } = channelOptions || {};
 
     if (channelOptions?.accountSid && channelOptions?.authToken) {
-      this.logger.debug(`Using dynamic Twilio credentials for WhatsApp.`);
-      clientToUse = new Twilio(channelOptions.accountSid, channelOptions.authToken);
+      this.logger.debug('Using dynamic Twilio credentials for WhatsApp.');
+      clientToUse = new Twilio(channelOptions.accountSid as string, channelOptions.authToken as string);
     }
 
     if (!clientToUse) throw new NotificationProviderError("Twilio client is not initialized and no dynamic credentials provided.");
@@ -91,19 +93,21 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
 
     try {
       await clientToUse.messages.create({
-        ...channelOptions,
+        ...restOptions,
         from,
         to: formattedTo,
         body,
       });
       this.logger.log(`WhatsApp message sent successfully to ${formattedTo}`);
 
-    } catch (error: any) {
-      this.logger.error(`Failed to send WhatsApp message to ${formattedTo}:`, error);
-      if (error.status && error.status >= 400 && error.status < 500) {
-        throw new NotificationClientError(`WhatsApp client error: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Failed to send WhatsApp message to ${formattedTo}:`, err);
+      const twilioError = error as { status?: number };
+      if (twilioError.status && twilioError.status >= 400 && twilioError.status < 500) {
+        throw new NotificationClientError(`WhatsApp client error: ${err.message}`);
       }
-      throw new NotificationProviderError(`WhatsApp send error: ${error.message}`);
+      throw new NotificationProviderError(`WhatsApp send error: ${err.message}`);
     }
   }
 }

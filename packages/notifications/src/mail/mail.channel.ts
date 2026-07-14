@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { createTransport, Transporter } from "nodemailer";
-import { INotificationChannel } from "../telegram/channels/INotificationChannel.interface";
+import { INotificationChannel } from "../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
@@ -54,14 +54,16 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
 
   public async send(message: NotificationMessage): Promise<void> {
     const { recipientId: to, body, subject, channelOptions } = message;
-    const sender = channelOptions?.from || this.configService.emailSender;
+    const sender = (channelOptions?.from as string | undefined) || this.configService.emailSender;
 
     // Support dynamic SMTP configuration
     let transporterToUse = this.transporter;
     if (channelOptions?.smtpConfig) {
       this.logger.debug(`Using dynamic SMTP configuration for email to ${to}`);
-      transporterToUse = createTransport(channelOptions.smtpConfig);
+      transporterToUse = createTransport(channelOptions.smtpConfig as Record<string, unknown>);
     }
+
+    const { smtpConfig, htmlTemplate, from: _, ...restOptions } = channelOptions || {};
 
     if (!to) throw new NotificationClientError("Email recipientId (email address) is required.");
     if (!subject) throw new NotificationClientError("Email subject is required in the NotificationMessage.");
@@ -71,27 +73,29 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
 
     // Use body as HTML if it contains tags, otherwise fallback to plain text.
     const isHtml = /<[a-z][\s\S]*>/i.test(body);
-    const htmlContent = channelOptions?.htmlTemplate || (isHtml ? body : undefined);
+    const htmlContent = (htmlTemplate as string | undefined) || (isHtml ? body : undefined);
     const textContent = isHtml ? body.replace(/<[^>]*>?/gm, '') : body;
 
     try {
       await transporterToUse.sendMail({
-        ...channelOptions,
         from: sender,
         to,
         subject,
         text: textContent,
         ...(htmlContent ? { html: htmlContent } : {}),
+        ...restOptions,
       });
       this.logger.log(`Email sent successfully to ${to}`);
 
-    } catch (error: any) {
-      this.logger.error(`Failed to send email to ${to}:`, error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Failed to send email to ${to}:`, err);
       // Determine if error is client or provider side based on Nodemailer response
-      if (error.responseCode && error.responseCode >= 400 && error.responseCode < 500) {
-        throw new NotificationClientError(`Email send rejected: ${error.message}`);
+      const mailerError = error as { responseCode?: number };
+      if (mailerError.responseCode && mailerError.responseCode >= 400 && mailerError.responseCode < 500) {
+        throw new NotificationClientError(`Email send rejected: ${err.message}`);
       }
-      throw new NotificationProviderError(`Email provider error: ${error.message}`);
+      throw new NotificationProviderError(`Email provider error: ${err.message}`);
     }
   }
 }

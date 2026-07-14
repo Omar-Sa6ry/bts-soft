@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { INotificationChannel } from "../../telegram/channels/INotificationChannel.interface";
-import { ChannelType } from "../models/ChannelType.const";
+import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
+import { ChannelType } from "../enums/ChannelType.enum";
 import { ChannelRegistry } from "../registry/channel.registry";
 
 @Injectable()

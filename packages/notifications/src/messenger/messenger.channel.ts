@@ -2,7 +2,7 @@ import { HttpService } from "@nestjs/axios";
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { lastValueFrom } from "rxjs";
 import { NotificationMessage } from "../core/models/NotificationMessage.interface";
-import { INotificationChannel } from "../telegram/channels/INotificationChannel.interface";
+import { INotificationChannel } from "../core/interfaces/INotificationChannel.interface";
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
 import { NotificationClientError, NotificationProviderError } from "../core/errors/NotificationError";
@@ -46,14 +46,16 @@ export class FacebookMessengerChannel implements INotificationChannel, OnModuleI
         })
       );
       this.logger.log("Facebook Messenger notification sent successfully.");
-    } catch (error: any) {
-      this.logger.error("Failed to send Facebook Messenger notification:", error.response?.data || error.message);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const axiosError = error as { response?: { status?: number; data?: unknown } };
+      this.logger.error('Failed to send Facebook Messenger notification:', axiosError.response?.data || err.message);
       
-      if (error.response && error.response.status >= 400 && error.response.status < 500) {
-        throw new NotificationClientError(`Messenger client error: ${error.message}`);
+      if (axiosError.response && axiosError.response.status && axiosError.response.status >= 400 && axiosError.response.status < 500) {
+        throw new NotificationClientError(`Messenger client error: ${err.message}`);
       }
       
-      throw new NotificationProviderError(`Messenger provider error: ${error.message}`);
+      throw new NotificationProviderError(`Messenger provider error: ${err.message}`);
     }
   }
 }
