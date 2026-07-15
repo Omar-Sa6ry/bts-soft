@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { IsString, IsNotEmpty, IsOptional, IsNumber, validateSync, IsEnum } from "class-validator";
+import { IsString, IsOptional, IsNumber, validateSync } from "class-validator";
 import { plainToInstance } from "class-transformer";
 
 class NotificationConfigDto {

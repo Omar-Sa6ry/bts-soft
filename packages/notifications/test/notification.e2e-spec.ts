@@ -1,17 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationService, NOTIFICATION_QUEUE_NAME } from '../src/notification.service';
 import { NotificationProcessor } from '../src/notification.processor';
 import { NotificationChannelFactory } from '../src/core/factories/NotificationChannel.factory';
 import { TemplateService } from '../src/core/templates/template.service';
-import { NOTIFICATION_LOG_REPOSITORY, INotificationLogRepository } from '../src/core/models/NotificationLog.interface';
+import { NOTIFICATION_LOG_REPOSITORY } from '../src/core/models/NotificationLog.interface';
 import { InMemoryNotificationLogRepository } from '../src/core/repositories/InMemoryNotificationLog.repository';
 import { NotificationConfigService } from '../src/core/config/notification.config';
 import { ChannelRegistry } from '../src/core/registry/channel.registry';
 import { NotificationClientError, NotificationProviderError } from '../src/core/errors/NotificationError';
-import { NotificationStatus } from '../src/core/models/NotificationLog.interface';
-import { ChannelType } from '../src/core/models/ChannelType.const';
+import { ChannelType } from '../src/core/enums/ChannelType.enum';
 import { I18nService } from 'nestjs-i18n';
 import { NOTIFICATION_RETRY_CONFIG } from '../src/core/models/RetryPolicy.interface';
 
@@ -30,6 +28,8 @@ describe('NotificationSystem Full Integration (E2E)', () => {
     [ChannelType.DISCORD]: { name: 'discord', send: jest.fn().mockResolvedValue(undefined) },
     [ChannelType.TEAMS]: { name: 'teams', send: jest.fn().mockResolvedValue(undefined) },
     [ChannelType.MESSENGER]: { name: 'messenger', send: jest.fn().mockResolvedValue(undefined) },
+    [ChannelType.SLACK]: { name: 'slack', send: jest.fn().mockResolvedValue(undefined) },
+    [ChannelType.WEBHOOK]: { name: 'webhook', send: jest.fn().mockResolvedValue(undefined) },
   };
 
   beforeAll(async () => {
@@ -119,6 +119,8 @@ describe('NotificationSystem Full Integration (E2E)', () => {
   it('should process DISCORD notifications', () => testChannel(ChannelType.DISCORD, 'webhook_discord'));
   it('should process TEAMS notifications', () => testChannel(ChannelType.TEAMS, 'webhook_teams'));
   it('should process MESSENGER notifications', () => testChannel(ChannelType.MESSENGER, 'psid_123'));
+  it('should process SLACK notifications', () => testChannel(ChannelType.SLACK, 'https://hooks.slack.com/services/abc'));
+  it('should process WEBHOOK notifications', () => testChannel(ChannelType.WEBHOOK, 'https://api.receiver.com/hook'));
 
   it('should handle Provider failures and retries', async () => {
     mockChannels[ChannelType.EMAIL].send
