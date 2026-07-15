@@ -23,6 +23,8 @@ import { FirebaseChannel } from "./firebase/firebase.channel";
 import { DiscordChannel } from "./discord/discord.channel";
 import { TeamsChannel } from "./teams/teams.channel";
 import { FacebookMessengerChannel } from "./messenger/messenger.channel";
+import { SlackChannel } from "./slack/slack.channel";
+import { WebhookChannel } from "./webhook/webhook.channel";
 import {
   NOTIFICATION_RATE_LIMITER,
   NOTIFICATION_DEDUP_STORE,
@@ -64,6 +66,8 @@ import {
     DiscordChannel,
     TeamsChannel,
     FacebookMessengerChannel,
+    SlackChannel,
+    WebhookChannel,
   ],
   exports: [
     NotificationService,

@@ -52,6 +52,8 @@ export * from "./discord/discord.channel";
 export * from "./teams/teams.channel";
 export * from "./firebase/firebase.channel";
 export * from "./messenger/messenger.channel";
+export * from "./slack/slack.channel";
+export * from "./webhook/webhook.channel";
 
 // Module, service, processor
 export * from "./notification.module";

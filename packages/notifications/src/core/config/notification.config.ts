@@ -22,6 +22,10 @@ class NotificationConfigDto {
   @IsString() @IsOptional() EMAIL_SENDER?: string;
   @IsString() @IsOptional() EMAIL_PROVIDER?: string;
   @IsString() @IsOptional() SENDGRID_API_KEY?: string;
+  @IsString() @IsOptional() SLACK_WEBHOOK_URL?: string;
+  @IsString() @IsOptional() SLACK_BOT_TOKEN?: string;
+  @IsString() @IsOptional() SLACK_DEFAULT_CHANNEL?: string;
+  @IsString() @IsOptional() WEBHOOK_DEFAULT_SIGNING_SECRET?: string;
 }
 
 @Injectable()
@@ -54,6 +58,10 @@ export class NotificationConfigService implements OnModuleInit {
         EMAIL_SENDER: this.emailSender,
         EMAIL_PROVIDER: this.emailProvider,
         SENDGRID_API_KEY: this.sendgridApiKey,
+        SLACK_WEBHOOK_URL: this.slackWebhookUrl,
+        SLACK_BOT_TOKEN: this.slackBotToken,
+        SLACK_DEFAULT_CHANNEL: this.slackDefaultChannel,
+        WEBHOOK_DEFAULT_SIGNING_SECRET: this.webhookDefaultSigningSecret,
     });
 
     const errors = validateSync(config);
@@ -137,5 +145,21 @@ export class NotificationConfigService implements OnModuleInit {
 
   get sendgridApiKey(): string | undefined {
     return this.configService.get<string>("SENDGRID_API_KEY");
+  }
+
+  get slackWebhookUrl(): string | undefined {
+    return this.configService.get<string>("SLACK_WEBHOOK_URL");
+  }
+
+  get slackBotToken(): string | undefined {
+    return this.configService.get<string>("SLACK_BOT_TOKEN");
+  }
+
+  get slackDefaultChannel(): string | undefined {
+    return this.configService.get<string>("SLACK_DEFAULT_CHANNEL");
+  }
+
+  get webhookDefaultSigningSecret(): string | undefined {
+    return this.configService.get<string>("WEBHOOK_DEFAULT_SIGNING_SECRET");
   }
 }

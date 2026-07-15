@@ -7,4 +7,6 @@ export enum ChannelType {
   TEAMS = "teams",
   EMAIL = "email",
   SMS = "sms",
+  SLACK = "slack",
+  WEBHOOK = "webhook",
 }
