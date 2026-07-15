@@ -20,6 +20,8 @@ class NotificationConfigDto {
   @IsNumber() @IsOptional() EMAIL_PORT?: number;
   @IsString() @IsOptional() EMAIL_SERVICE?: string;
   @IsString() @IsOptional() EMAIL_SENDER?: string;
+  @IsString() @IsOptional() EMAIL_PROVIDER?: string;
+  @IsString() @IsOptional() SENDGRID_API_KEY?: string;
 }
 
 @Injectable()
@@ -50,6 +52,8 @@ export class NotificationConfigService implements OnModuleInit {
         EMAIL_PORT: this.emailPort,
         EMAIL_SERVICE: this.emailService,
         EMAIL_SENDER: this.emailSender,
+        EMAIL_PROVIDER: this.emailProvider,
+        SENDGRID_API_KEY: this.sendgridApiKey,
     });
 
     const errors = validateSync(config);
@@ -125,5 +129,13 @@ export class NotificationConfigService implements OnModuleInit {
       this.configService.get<string>("EMAIL_SENDER") ||
       this.configService.get<string>("EMAIL_USER")
     );
+  }
+
+  get emailProvider(): string {
+    return this.configService.get<string>("EMAIL_PROVIDER") || "nodemailer";
+  }
+
+  get sendgridApiKey(): string | undefined {
+    return this.configService.get<string>("SENDGRID_API_KEY");
   }
 }

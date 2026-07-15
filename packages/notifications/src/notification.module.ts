@@ -10,18 +10,12 @@ import { NotificationChannelFactory } from "./core/factories/NotificationChannel
 import { ChannelRegistry } from "./core/registry/channel.registry";
 import { TemplateService } from "./core/templates/template.service";
 import { LoggingNotificationObserver } from "./core/observer/LoggingNotificationObserver";
-
-import {
-  NOTIFICATION_RATE_LIMITER,
-  NOTIFICATION_DEDUP_STORE,
-  USER_PREFERENCE_REPOSITORY,
-} from "./core/constants/injection-tokens.const";
-
 import { RedisRateLimiter } from "./core/rate-limiter/RedisRateLimiter.service";
 import { RedisDeduplicationStore } from "./core/deduplication/RedisDeduplicationStore";
 import { RedisUserPreferenceRepository } from "./core/preferences/RedisUserPreferenceRepository";
-
 import { EmailChannel } from "./mail/mail.channel";
+import { NodemailerMailProvider } from "./mail/providers/nodemailer.provider";
+import { TwilioMailProvider } from "./mail/providers/twilio-mail.provider";
 import { SmsChannel } from "./sms/sms.channel";
 import { WhatsAppChannel } from "./whatsapp/channel/whatsapp.channel";
 import { TelegramChannel } from "./telegram/channels/Telegram.channel";
@@ -29,6 +23,11 @@ import { FirebaseChannel } from "./firebase/firebase.channel";
 import { DiscordChannel } from "./discord/discord.channel";
 import { TeamsChannel } from "./teams/teams.channel";
 import { FacebookMessengerChannel } from "./messenger/messenger.channel";
+import {
+  NOTIFICATION_RATE_LIMITER,
+  NOTIFICATION_DEDUP_STORE,
+  USER_PREFERENCE_REPOSITORY,
+} from "./core/constants/injection-tokens.const";
 
 @Global()
 @Module({
@@ -55,6 +54,8 @@ import { FacebookMessengerChannel } from "./messenger/messenger.channel";
     RedisUserPreferenceRepository,
     { provide: USER_PREFERENCE_REPOSITORY, useExisting: RedisUserPreferenceRepository },
 
+    NodemailerMailProvider,
+    TwilioMailProvider,
     EmailChannel,
     SmsChannel,
     WhatsAppChannel,
