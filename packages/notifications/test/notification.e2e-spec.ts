@@ -2,6 +2,18 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationService, NOTIFICATION_QUEUE_NAME } from '../src/notification.service';
 import { NotificationProcessor } from '../src/notification.processor';
+import {
+  FirebaseFcmProcessor,
+  FacebookMessengerProcessor,
+  WhatsAppProcessor,
+  TelegramProcessor,
+  DiscordProcessor,
+  TeamsProcessor,
+  EmailProcessor,
+  SmsProcessor,
+  SlackProcessor,
+  WebhookProcessor,
+} from '../src/notification.processors';
 import { NotificationChannelFactory } from '../src/core/factories/NotificationChannel.factory';
 import { TemplateService } from '../src/core/templates/template.service';
 import { NOTIFICATION_LOG_REPOSITORY } from '../src/core/models/NotificationLog.interface';
@@ -41,13 +53,26 @@ describe('NotificationSystem Full Integration (E2E)', () => {
             port: parseInt(process.env.REDIS_PORT || '6379'),
           },
         }),
-        BullModule.registerQueue({
-          name: NOTIFICATION_QUEUE_NAME,
-        }),
+        BullModule.registerQueue(
+          { name: NOTIFICATION_QUEUE_NAME },
+          ...Object.values(ChannelType).map((channel) => ({
+            name: `send-notification-${channel}`,
+          }))
+        ),
       ],
       providers: [
         NotificationService,
         NotificationProcessor,
+        FirebaseFcmProcessor,
+        FacebookMessengerProcessor,
+        WhatsAppProcessor,
+        TelegramProcessor,
+        DiscordProcessor,
+        TeamsProcessor,
+        EmailProcessor,
+        SmsProcessor,
+        SlackProcessor,
+        WebhookProcessor,
         TemplateService,
         {
           provide: NotificationChannelFactory,
@@ -91,7 +116,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
 
   afterAll(async () => {
     await moduleFixture.close();
-  });
+  }, 20000);
 
 
   beforeEach(() => {

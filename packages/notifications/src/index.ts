@@ -18,7 +18,6 @@ export * from "./core/errors/NotificationError";
 
 // Core interfaces
 export * from "./core/interfaces/INotificationChannel.interface";
-export * from "./core/interfaces/INotificationPipeline.interface";
 export * from "./core/interfaces/II18nService.interface";
 
 // Rate limiter
@@ -59,6 +58,7 @@ export * from "./webhook/webhook.channel";
 export * from "./notification.module";
 export * from "./notification.service";
 export * from "./notification.processor";
+export * from "./notification.processors";
 
 // Telegram integration
 export * from "./telegram/telegram.module";

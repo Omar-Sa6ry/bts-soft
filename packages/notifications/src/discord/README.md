@@ -1,146 +1,90 @@
+# Discord Notification Channel
 
-# DiscordChannel
-
-## Overview
-
-The `DiscordChannel` class implements the `INotificationChannel` interface to send notifications directly to Discord channels using **Discord Webhooks**.  
-It allows backend services to deliver messages such as alerts, updates, or user notifications to a configured Discord server channel.
-
-This implementation uses the **Axios** HTTP client to send POST requests to Discord’s webhook endpoint.
+The Discord notification channel enables backend systems to send alerts, reports, and logs directly to Discord server text channels using **Discord Webhooks**.
 
 ---
 
-## Features
+## Obtaining Your Webhook URL
 
-- Send messages to Discord channels using webhooks.
-    
-- Supports additional message options like embeds, username, or avatar customization.
-    
-- Implements a unified notification interface for multi-channel architecture.
-    
-- Provides structured error handling and logging for debugging.
-    
+To send messages to a Discord channel, configure an Incoming Webhook in your Discord client:
+
+1. **Access Channel Settings**:
+   - Open Discord and go to the target server.
+   - Click the gear icon next to the text channel name (**Edit Channel**).
+2. **Configure Integration**:
+   - Select the **Integrations** tab in the settings sidebar.
+   - Click the **Webhooks** option and click **New Webhook** (or **Create Webhook**).
+   - Customize the name and default avatar of the webhook bot.
+3. **Copy Webhook URL**:
+   - Click the **Copy Webhook URL** button.
+   - Store the URL securely. Anyone with access to this URL can send messages anonymously to your server channel.
 
 ---
 
-## Installation
+## Configuration Variables
 
-Before using the `DiscordChannel`, ensure you have **Axios** installed in your project:
+Set your default webhook URL under the `DISCORD_WEBHOOK_URL` variable in your `.env` file:
 
-```bash
-npm install axios
+```env
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-id/your-webhook-token
 ```
 
 ---
 
-## Usage
+## Code Example
 
-### 1. Import the Class
+```typescript
+import { NotificationService, ChannelType } from '@bts-soft/notifications';
 
-```ts
-import { DiscordChannel } from "./channels/DiscordChannel";
-```
-
-### 2. Initialize the Channel
-
-You need a **Discord Webhook URL** to send messages.  
-To create one:
-
-1. Open your Discord server settings.
-    
-2. Go to **Integrations > Webhooks > New Webhook**.
-    
-3. Copy the generated webhook URL.
-    
-
-Then initialize the class:
-
-```ts
-const discordChannel = new DiscordChannel(
-  "https://discord.com/api/webhooks/your-webhook-id/your-webhook-token"
-);
-```
-
-### 3. Send a Message
-
-You can send a message by calling the `send()` method with a `NotificationMessage` object:
-
-```ts
-await discordChannel.send({
-  body: "System Alert: Deployment completed successfully!",
-  channelOptions: {
-    username: "Notification Bot",
-    avatar_url: "https://example.com/avatar.png",
-  },
+// Send message to the default webhook URL configured in environment
+await notificationService.send(ChannelType.DISCORD, {
+  recipientId: 'default',
+  body: 'Deployment succeeded for environment: staging',
 });
 ```
 
----
+### Dynamic Webhook Routing
+You can route messages to different webhooks on the fly in two ways:
 
-## Parameters
+1. **By passing the Webhook URL as `recipientId`**:
+   ```typescript
+   await notificationService.send(ChannelType.DISCORD, {
+     recipientId: 'https://discord.com/api/webhooks/another-webhook-id/token',
+     body: 'Dynamic channel alert',
+   });
+   ```
 
-### Constructor Parameters
-
-|Parameter|Type|Description|
-|---|---|---|
-|`webhookUrl`|`string`|The Discord Webhook URL where messages will be sent.|
-
-### `NotificationMessage` Interface
-
-|Property|Type|Description|
-|---|---|---|
-|`body`|`string`|The main content of the message sent to Discord.|
-|`channelOptions?`|`Record<string, any>`|Optional additional options such as `username`, `avatar_url`, or `embeds`.|
-
----
-
-## Example Output
-
-A successful message will appear in the specified Discord channel as:
-
-```
-System Alert: Deployment completed successfully!
-```
-
-If you included `username` and `avatar_url`, Discord will display them as the sender’s name and image.
+2. **By using `channelOptions`**:
+   ```typescript
+   await notificationService.send(ChannelType.DISCORD, {
+     recipientId: 'default',
+     body: 'Dynamic channel alert',
+     channelOptions: {
+       webhookUrl: 'https://discord.com/api/webhooks/another-webhook-id/token',
+     },
+   });
+   ```
 
 ---
 
-## Error Handling
+## Technical Details & Payloads
 
-- Throws an error if the webhook URL is missing.
-    
-- Logs detailed information if message delivery fails.
-    
-- Uses `error.response.data` when available to capture Discord API error messages.
-    
-
----
-
-## Integration Example
-
-This class can be easily integrated into a broader notification system that includes multiple channels (e.g., SMS, WhatsApp, Telegram):
-
-```ts
-import { NotificationMessage } from "../core/models/NotificationMessage.interface";
-import { DiscordChannel } from "./DiscordChannel";
-
-const discord = new DiscordChannel(process.env.DISCORD_WEBHOOK_URL);
-
-const message: NotificationMessage = {
-  body: "Server CPU usage exceeded 90%",
-};
-
-await discord.send(message);
-```
-
----
-
-## Notes
-
-- Ensure the webhook URL remains private; anyone with it can post messages to your Discord channel.
-    
-- Discord has rate limits; avoid sending too many messages in a short time.
-    
-- The `channelOptions` property can be extended to include Discord’s advanced message formatting (embeds, mentions, etc.).
-    
+- **Message Styling**: Discord supports markdown in the `body`. You can use formatting like bold (`**text**`), code blocks (`` `code` ``), and italics.
+- **Customization Overrides**: You can pass custom profile parameters or rich embeds in `channelOptions`:
+  ```typescript
+  await notificationService.send(ChannelType.DISCORD, {
+    recipientId: 'default',
+    body: 'Backup complete',
+    channelOptions: {
+      username: 'DB Backup Reporter',
+      avatar_url: 'https://example.com/backup-bot.png',
+      embeds: [
+        {
+          title: 'Database Status',
+          description: 'Backup files zipped and uploaded to AWS S3.',
+          color: 3066993, // Green decimal color code
+        }
+      ]
+    }
+  });
+  ```

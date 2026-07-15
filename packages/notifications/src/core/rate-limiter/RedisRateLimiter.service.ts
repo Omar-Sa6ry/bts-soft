@@ -40,23 +40,53 @@ export class RedisRateLimiter implements IRateLimiter {
     const now = Date.now();
     const windowStart = now - this.config.windowMs;
     const windowSeconds = Math.ceil(this.config.windowMs / 1000);
+    const member = `${now}-${Math.random()}`;
 
-    // Remove timestamps that have fallen outside the sliding window.
-    await this.redis.zRemRangeByScore(key, 0, windowStart);
+    // Atomic sliding window rate limiter script.
+    // Removes expired logs, counts remaining, and conditionally adds the current request.
+    const script = `
+      local key = KEYS[1]
+      local now = tonumber(ARGV[1])
+      local windowStart = tonumber(ARGV[2])
+      local maxRequests = tonumber(ARGV[3])
+      local windowSeconds = tonumber(ARGV[4])
+      local member = ARGV[5]
 
-    const count = await this.redis.zCard(key);
+      redis.call('ZREMRANGEBYSCORE', key, 0, windowStart)
+      local count = redis.call('ZCARD', key)
 
-    if (count >= this.config.maxRequests) {
-      this.logger.warn(
-        `Rate limit exceeded: recipient=${recipientId} channel=${channel} count=${count}/${this.config.maxRequests}`,
+      if count < maxRequests then
+        redis.call('ZADD', key, now, member)
+        redis.call('EXPIRE', key, windowSeconds)
+        return 1
+      else
+        return 0
+      end
+    `;
+
+    try {
+      const result = await this.redis.eval(
+        script,
+        [key],
+        [
+          now.toString(),
+          windowStart.toString(),
+          this.config.maxRequests.toString(),
+          windowSeconds.toString(),
+          member,
+        ]
       );
-      return false;
+
+      const allowed = result === 1;
+      if (!allowed) {
+        this.logger.warn(
+          `Rate limit exceeded: recipient=${recipientId} channel=${channel}`,
+        );
+      }
+      return allowed;
+    } catch (error) {
+      this.logger.error(`Error executing rate limiter Lua script`, (error as Error).stack);
+      throw error;
     }
-
-    // Record this request. Use `now` as both score and member (with jitter to avoid collisions).
-    await this.redis.zAdd(key, now, `${now}-${Math.random()}`);
-    await this.redis.expire(key, windowSeconds);
-
-    return true;
   }
 }

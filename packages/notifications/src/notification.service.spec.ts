@@ -16,7 +16,12 @@ describe('NotificationService', () => {
   let logRepo: jest.Mocked<{ create: jest.Mock }>;
   let rateLimiter: jest.Mocked<{ isAllowed: jest.Mock }>;
   let preferenceRepo: jest.Mocked<{ isOptedOut: jest.Mock }>;
-  let dedupStore: jest.Mocked<{ isDuplicate: jest.Mock; markSent: jest.Mock }>;
+  let dedupStore: jest.Mocked<{
+    isDuplicate: jest.Mock;
+    markSent: jest.Mock;
+    acquireIdempotency: jest.Mock;
+    deleteIdempotency: jest.Mock;
+  }>;
 
   beforeEach(async () => {
     queue = { add: jest.fn().mockResolvedValue({ id: 'job_123' }) };
@@ -26,7 +31,9 @@ describe('NotificationService', () => {
     dedupStore = {
       isDuplicate: jest.fn().mockResolvedValue(false),
       markSent: jest.fn().mockResolvedValue(undefined),
-    };
+      acquireIdempotency: jest.fn().mockResolvedValue(true),
+      deleteIdempotency: jest.fn().mockResolvedValue(undefined),
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -107,7 +114,7 @@ describe('NotificationService', () => {
   });
 
   it('should skip notification if idempotency key is a duplicate', async () => {
-    dedupStore.isDuplicate.mockResolvedValue(true);
+    dedupStore.acquireIdempotency.mockResolvedValue(false);
 
     await service.send(ChannelType.SMS, {
       recipientId: 'user1',
@@ -118,14 +125,14 @@ describe('NotificationService', () => {
     expect(queue.add).not.toHaveBeenCalled();
   });
 
-  it('should mark idempotency key after successful enqueue', async () => {
+  it('should check idempotency key atomically', async () => {
     await service.send(ChannelType.SMS, {
       recipientId: 'user1',
       body: 'Hello',
       idempotencyKey: 'order:42:user1',
     });
 
-    expect(dedupStore.markSent).toHaveBeenCalledWith('order:42:user1');
+    expect(dedupStore.acquireIdempotency).toHaveBeenCalledWith('order:42:user1', undefined);
   });
 
   it('should skip notification if user has opted out', async () => {

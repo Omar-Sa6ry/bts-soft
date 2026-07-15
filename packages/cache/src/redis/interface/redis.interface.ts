@@ -139,4 +139,8 @@ export interface IRedisInterface {
   isLocked(lockKey: string): Promise<boolean>;
   getLockValue(lockKey: string): Promise<string>;
   waitForLock(lockKey: string, value?: string, ttlMs?: number, retryIntervalMs?: number, timeoutMs?: number): Promise<boolean>;
+
+  // ===== Custom Atomic Operations =====
+  setNX(key: string, value: any, ttlSeconds: number): Promise<boolean>;
+  eval(script: string, keys: string[], args: string[]): Promise<any>;
 }

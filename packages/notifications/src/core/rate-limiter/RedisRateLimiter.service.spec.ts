@@ -10,10 +10,7 @@ describe("RedisRateLimiter", () => {
 
   beforeEach(async () => {
     redisService = {
-      zRemRangeByScore: jest.fn(),
-      zCard: jest.fn(),
-      zAdd: jest.fn(),
-      expire: jest.fn(),
+      eval: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -31,31 +28,26 @@ describe("RedisRateLimiter", () => {
   });
 
   describe("isAllowed", () => {
-    it("should allow request if count is below maxRequests", async () => {
-      redisService.zRemRangeByScore.mockResolvedValue(0);
-      redisService.zCard.mockResolvedValue(2);
+    it("should allow request if count is below maxRequests (eval returns 1)", async () => {
+      redisService.eval.mockResolvedValue(1);
 
       const res = await rateLimiter.isAllowed("user123", "email");
       expect(res).toBe(true);
 
-      expect(redisService.zRemRangeByScore).toHaveBeenCalledWith(
-        "notif:rl:user123:email",
-        0,
-        expect.any(Number)
-      );
-      expect(redisService.zCard).toHaveBeenCalledWith("notif:rl:user123:email");
-      expect(redisService.zAdd).toHaveBeenCalledWith(
-        "notif:rl:user123:email",
-        expect.any(Number),
-        expect.any(String)
-      );
-      expect(redisService.expire).toHaveBeenCalledWith(
-        "notif:rl:user123:email",
-        expect.any(Number)
+      expect(redisService.eval).toHaveBeenCalledWith(
+        expect.any(String),
+        ["notif:rl:user123:email"],
+        [
+          expect.any(String),
+          expect.any(String),
+          expect.any(String),
+          expect.any(String),
+          expect.any(String),
+        ]
       );
     });
 
-    it("should reject request and return false if count exceeds maxRequests", async () => {
+    it("should reject request and return false if count exceeds maxRequests (eval returns 0)", async () => {
       const customConfig = { windowMs: 10000, maxRequests: 2 };
 
       const module: TestingModule = await Test.createTestingModule({
@@ -68,16 +60,12 @@ describe("RedisRateLimiter", () => {
 
       const customLimiter = module.get<RedisRateLimiter>(RedisRateLimiter);
 
-      redisService.zRemRangeByScore.mockResolvedValue(0);
-      redisService.zCard.mockResolvedValue(2);
+      redisService.eval.mockResolvedValue(0);
 
       const res = await customLimiter.isAllowed("user123", "email");
       expect(res).toBe(false);
 
-      expect(redisService.zRemRangeByScore).toHaveBeenCalled();
-      expect(redisService.zCard).toHaveBeenCalled();
-      expect(redisService.zAdd).not.toHaveBeenCalled();
-      expect(redisService.expire).not.toHaveBeenCalled();
+      expect(redisService.eval).toHaveBeenCalled();
     });
   });
 });

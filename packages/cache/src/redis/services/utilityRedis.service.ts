@@ -46,7 +46,26 @@ export class UtilityRedisService {
     try {
       return await this.redisClient.ttl(key);
     } catch (error) {
-      this.logger.error(`Error getting TTL for key ${key}`, error.stack);
+      this.logger.error(`Error getting TTL for key ${key}`, (error as Error).stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute a generic Lua script
+   * @param script - The Lua script content
+   * @param keys - The KEYS argument array
+   * @param args - The ARGV argument array
+   * @returns Script evaluation result
+   */
+  async eval(script: string, keys: string[], args: string[]): Promise<any> {
+    try {
+      return await this.redisClient.eval(script, {
+        keys,
+        arguments: args,
+      });
+    } catch (error) {
+      this.logger.error(`Error executing eval script`, (error as Error).stack);
       throw error;
     }
   }

@@ -1,163 +1,77 @@
+# Facebook Messenger Notification Channel
 
-# EmailChannel
-
-The `EmailChannel` class provides a way to send email notifications through either an SMTP server or a predefined email service (e.g., Gmail, Outlook) using **Nodemailer**.  
-It implements the `INotificationChannel` interface, making it easily pluggable into any notification system.
+The Facebook Messenger channel delivers automated notifications to users via the Meta Graph API. It supports sending rich card templates, attachments, and quick replies.
 
 ---
 
-## Features
+## Getting Your Credentials
 
-- Supports both **SMTP** and **service-based** email configurations.
-    
-- Allows sending plain text emails with optional custom settings (HTML, attachments, etc.).
-    
-- Uses **Nodemailer** as the underlying email transport library.
-    
-- Fully compatible with the `NotificationMessage` interface.
-    
+To send messages, you need to set up a Meta Developer App:
+
+1. **Create Meta App**:
+   - Log in to the [Meta Developers Portal](https://developers.facebook.com).
+   - Click **My Apps** and choose **Create App**. Select **Business** or **Other** as the app type.
+
+2. **Add Messenger Product**:
+   - In the App Dashboard, scroll to **Add products to your app** and add **Messenger**.
+
+3. **Link Facebook Page & Generate Token**:
+   - Under **Messenger > API Settings**, link the Facebook Page you wish to send messages from.
+   - Click **Generate Token** for the linked Page. Copy this token. This is your `FB_PAGE_ACCESS_TOKEN`.
+
+4. **Obtain Page-Scoped ID (PSID)**:
+   - Facebook messages require the recipient's **Page-Scoped ID (PSID)** as the `recipientId`. You cannot message users using their personal Facebook Profile ID, phone number, or email.
+   - The PSID is sent to your webhook when the user sends a message to your Page.
 
 ---
 
-## File Location
+## Configuration Variables
 
+Set these credentials in your `.env` file:
+
+```env
+FB_PAGE_ACCESS_TOKEN=EAAG...your_page_access_token_here
+FB_GRAPH_API_VERSION=v18.0
 ```
-src/email/email.channel.ts
-```
 
 ---
 
-## Constructor
+## Code Example
 
-```ts
-constructor(config: EmailConfig)
-```
+Once you have the user's PSID, send notifications via `NotificationService`:
 
-### Parameters
+```typescript
+import { NotificationService, ChannelType } from '@bts-soft/notifications';
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|`host`|`string`|Optional|SMTP host (e.g., `smtp.gmail.com`)|
-|`port`|`number`|Optional|SMTP port (465 for SSL, 587 for TLS)|
-|`service`|`string`|Optional|Predefined service name (e.g., `gmail`, `hotmail`)|
-|`user`|`string`|Required|Sender email username|
-|`pass`|`string`|Required|Sender email password or app-specific password|
-|`sender`|`string`|Required|Displayed "from" address in outgoing emails|
-
----
-
-## Example Usage
-
-### 1. Using Gmail (Service-based)
-
-```ts
-import { EmailChannel } from "./email/email.channel";
-import { NotificationMessage } from "./core/models/NotificationMessage.interface";
-
-const emailChannel = new EmailChannel({
-  service: "gmail",
-  user: "your-email@gmail.com",
-  pass: "your-app-password",
-  sender: "your-email@gmail.com",
+await notificationService.send(ChannelType.MESSENGER, {
+  recipientId: 'your_user_psid_here',
+  body: 'Hi, your weekly account report is ready.',
 });
-
-const message: NotificationMessage = {
-  recipientId: "recipient@example.com",
-  subject: "Welcome to the Platform",
-  body: "Thank you for signing up. We are glad to have you with us!",
-};
-
-await emailChannel.send(message);
 ```
 
----
+### Advanced Messenger Templates
+You can pass custom payloads (like images, attachments, or quick replies) using `channelOptions` which will be spread into the POST body:
 
-### 2. Using Custom SMTP Configuration
-
-```ts
-const emailChannel = new EmailChannel({
-  host: "smtp.mailtrap.io",
-  port: 587,
-  user: "your-smtp-user",
-  pass: "your-smtp-password",
-  sender: "no-reply@yourdomain.com",
-});
-
-const message = {
-  recipientId: "test@example.com",
-  subject: "System Alert",
-  body: "A new alert was generated in your system.",
+```typescript
+await notificationService.send(ChannelType.MESSENGER, {
+  recipientId: 'your_user_psid_here',
+  body: 'Please select an option:',
   channelOptions: {
-    html: "<h3>System Alert</h3><p>A new alert was generated in your system.</p>",
-  },
-};
-
-await emailChannel.send(message);
+    message: {
+      text: 'Please select an option:',
+      quick_replies: [
+        {
+          content_type: 'text',
+          title: 'Yes',
+          payload: 'DEVELOPER_DEFINED_PAYLOAD_YES',
+        },
+        {
+          content_type: 'text',
+          title: 'No',
+          payload: 'DEVELOPER_DEFINED_PAYLOAD_NO',
+        }
+      ]
+    }
+  }
+});
 ```
-
----
-
-## `send` Method
-
-```ts
-async send(message: NotificationMessage): Promise<void>
-```
-
-### Parameters
-
-|Name|Type|Description|
-|---|---|---|
-|`message.recipientId`|`string`|The recipient's email address|
-|`message.subject`|`string`|Subject of the email|
-|`message.body`|`string`|Text content of the email|
-|`message.channelOptions`|`object`|Optional Nodemailer settings such as `html`, `attachments`, etc.|
-
-### Behavior
-
-1. Validates that both `recipientId` and `subject` are provided.
-    
-2. Logs the sending process for monitoring.
-    
-3. Uses the configured transporter to send the email.
-    
-4. Logs a success or error message depending on the outcome.
-    
-
----
-
-## Example `NotificationMessage` Interface
-
-```ts
-export interface NotificationMessage {
-  recipientId: string; // The email address of the recipient
-  subject?: string;    // The email subject
-  body: string;        // The body of the message
-  channelOptions?: any; // Optional settings (HTML, attachments, etc.)
-}
-```
-
----
-
-## Error Handling
-
-If sending fails, the method throws a descriptive error message indicating the cause of failure, such as authentication issues or invalid SMTP configuration.
-
----
-
-## Requirements
-
-- **Node.js** v16 or higher
-    
-- **Nodemailer** installed in your project
-    
-    ```bash
-    npm install nodemailer
-    ```
-    
-
----
-
-## Summary
-
-The `EmailChannel` class is a flexible and reusable way to handle email notifications in any NestJS or Node.js project.  
-It supports both **service-based** and **custom SMTP** configurations, provides clear error handling, and can easily integrate into a queue-based or event-driven notification system.

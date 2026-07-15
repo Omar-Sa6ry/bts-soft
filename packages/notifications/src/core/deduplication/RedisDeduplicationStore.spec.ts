@@ -51,4 +51,36 @@ describe("RedisDeduplicationStore", () => {
       expect(redisService.set).toHaveBeenCalledWith("notif:dedup:key123", "1", 5);
     });
   });
+
+  describe("acquireIdempotency", () => {
+    beforeEach(() => {
+      redisService.setNX = jest.fn();
+    });
+
+    it("should return true if key was successfully set in Redis", async () => {
+      redisService.setNX.mockResolvedValue(true);
+      const res = await store.acquireIdempotency("key123");
+      expect(res).toBe(true);
+      const expectedTtlSeconds = Math.ceil(DEFAULT_DEDUP_TTL_MS / 1000);
+      expect(redisService.setNX).toHaveBeenCalledWith("notif:dedup:key123", "1", expectedTtlSeconds);
+    });
+
+    it("should return false if key already existed in Redis", async () => {
+      redisService.setNX.mockResolvedValue(false);
+      const res = await store.acquireIdempotency("key123", 5000);
+      expect(res).toBe(false);
+      expect(redisService.setNX).toHaveBeenCalledWith("notif:dedup:key123", "1", 5);
+    });
+  });
+
+  describe("deleteIdempotency", () => {
+    beforeEach(() => {
+      redisService.del = jest.fn();
+    });
+
+    it("should delete key from Redis", async () => {
+      await store.deleteIdempotency("key123");
+      expect(redisService.del).toHaveBeenCalledWith("notif:dedup:key123");
+    });
+  });
 });

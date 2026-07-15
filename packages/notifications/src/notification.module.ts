@@ -5,6 +5,19 @@ import { RedisModule } from "@bts-soft/cache";
 
 import { NotificationService, NOTIFICATION_QUEUE_NAME } from "./notification.service";
 import { NotificationProcessor } from "./notification.processor";
+import { ChannelType } from "./core/enums/ChannelType.enum";
+import {
+  FirebaseFcmProcessor,
+  FacebookMessengerProcessor,
+  WhatsAppProcessor,
+  TelegramProcessor,
+  DiscordProcessor,
+  TeamsProcessor,
+  EmailProcessor,
+  SmsProcessor,
+  SlackProcessor,
+  WebhookProcessor,
+} from "./notification.processors";
 import { NotificationConfigService } from "./core/config/notification.config";
 import { NotificationChannelFactory } from "./core/factories/NotificationChannel.factory";
 import { ChannelRegistry } from "./core/registry/channel.registry";
@@ -36,12 +49,27 @@ import {
   imports: [
     HttpModule,
     RedisModule,
-    BullModule.registerQueue({ name: NOTIFICATION_QUEUE_NAME }),
+    BullModule.registerQueue(
+      { name: NOTIFICATION_QUEUE_NAME },
+      ...Object.values(ChannelType).map((channel) => ({
+        name: `send-notification-${channel}`,
+      }))
+    ),
   ],
   providers: [
     NotificationConfigService,
     NotificationService,
     NotificationProcessor,
+    FirebaseFcmProcessor,
+    FacebookMessengerProcessor,
+    WhatsAppProcessor,
+    TelegramProcessor,
+    DiscordProcessor,
+    TeamsProcessor,
+    EmailProcessor,
+    SmsProcessor,
+    SlackProcessor,
+    WebhookProcessor,
     NotificationChannelFactory,
     ChannelRegistry,
     TemplateService,

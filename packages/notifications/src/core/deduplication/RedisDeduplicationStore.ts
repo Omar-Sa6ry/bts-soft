@@ -30,4 +30,18 @@ export class RedisDeduplicationStore implements IDeduplicationStore {
     await this.redis.set(key, "1", ttlSeconds);
     this.logger.debug(`Dedup key set: ${idempotencyKey} (TTL: ${ttlSeconds}s)`);
   }
+
+  async acquireIdempotency(idempotencyKey: string, ttlMs: number = DEFAULT_DEDUP_TTL_MS): Promise<boolean> {
+    const key = `notif:dedup:${idempotencyKey}`;
+    const ttlSeconds = Math.ceil(ttlMs / 1000);
+    const result = await this.redis.setNX(key, "1", ttlSeconds);
+    this.logger.debug(`Dedup key acquire attempt for ${idempotencyKey}: ${result ? "success" : "duplicate"}`);
+    return result;
+  }
+
+  async deleteIdempotency(idempotencyKey: string): Promise<void> {
+    const key = `notif:dedup:${idempotencyKey}`;
+    await this.redis.del(key);
+    this.logger.debug(`Dedup key deleted: ${idempotencyKey}`);
+  }
 }

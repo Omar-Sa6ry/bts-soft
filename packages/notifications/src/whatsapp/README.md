@@ -1,166 +1,74 @@
+# WhatsApp Notification Channel (Twilio Integration)
 
-# WhatsAppChannel (Twilio Integration)
-
-The `WhatsAppChannel` class provides a simple and reusable way to send WhatsApp messages through **Twilio's API**.  
-It implements the `INotificationChannel` interface, allowing it to be seamlessly integrated into a larger notification system that supports multiple channels such as Telegram, SMS, and more.
+The WhatsApp channel delivers real-time notifications to users via the Twilio Messaging API. It handles phone number normalization, sandboxing validation, and dynamically routes messages through pre-configured or dynamically provided Twilio accounts.
 
 ---
 
-## Features
+## Getting Your Credentials
 
-- Sends WhatsApp messages using the **Twilio API**.
-    
-- Implements a consistent notification interface for easy integration.
-    
-- Supports dynamic message content and additional Twilio message options.
-    
-- Logs all sending operations and errors for debugging purposes.
-    
+To send WhatsApp messages, you need a Twilio account. Follow these steps to obtain your credentials:
 
----
+1. **Twilio Account SID & Auth Token**:
+   - Log in to your [Twilio Console](https://www.twilio.com).
+   - Find your **Account SID** and **Auth Token** on the homepage dashboard under the "Account Info" section.
 
-## Installation
-
-Before using this class, make sure you have installed the **Twilio SDK**:
-
-```bash
-npm install twilio
-```
-
-You should also have a valid **Twilio account** with **WhatsApp messaging** enabled.  
-To set it up, follow [Twilio's WhatsApp Business API documentation](https://www.twilio.com/docs/whatsapp).
+2. **WhatsApp Sender Phone Number**:
+   - **Sandbox Testing**: Go to **Messaging > Try it out > Send a WhatsApp message** in the Twilio Console.
+   - Connect to the sandbox by sending the activation message (e.g., `join <sandbox-keyword>`) to the Twilio sandbox phone number (typically `+1 415 523 8886`).
+   - Copy this sandbox number (formatted with `whatsapp:` prefix, e.g., `whatsapp:+14155238886`) and set it as your sender number.
+   - **Production**: To use a live number, request approval for your WhatsApp Business Profile via Twilio Business Manager.
 
 ---
 
-## Environment Variables
+## Configuration Variables
 
-Make sure you have the following credentials from your Twilio console:
+Set these variables in your `.env` file:
 
-```bash
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_WHATSAPP_NUMBER=your_twilio_whatsapp_number
-```
-
-Example of a Twilio WhatsApp-enabled number:
-
-```
-whatsapp:+14155238886
+```env
+TWILIO_ACCOUNT_SID=ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 ```
 
 ---
 
-## Usage Example
+## Code Example
 
-```ts
-import { WhatsAppChannel } from './WhatsApp.channel';
-import { NotificationMessage } from '../../core/models/NotificationMessage.interface';
+```typescript
+import { NotificationService, ChannelType } from '@bts-soft/notifications';
 
-// Initialize the channel
-const accountSid = process.env.TWILIO_ACCOUNT_SID as string;
-const authToken = process.env.TWILIO_AUTH_TOKEN as string;
-const twilioNumber = process.env.TWILIO_WHATSAPP_NUMBER as string;
-
-const whatsappChannel = new WhatsAppChannel(accountSid, authToken, twilioNumber);
-
-// Create a notification message
-const message: NotificationMessage = {
-  recipientId: '+201234567890', // recipient phone number in international format
-  body: 'Hello! This is a WhatsApp test message from Twilio.',
-  channelOptions: {}, // optional Twilio message parameters
-};
-
-// Send the message
-await whatsappChannel.send(message);
-```
-
----
-
-## Class Overview
-
-### `WhatsAppChannel`
-
-Implements the `INotificationChannel` interface for Twilio WhatsApp integration.
-
-#### Constructor
-
-```ts
-constructor(accountSid: string, authToken: string, twilioWhatsAppNumber: string)
-```
-
-**Parameters:**
-
-- `accountSid`: Twilio Account SID (from Twilio Console).
-    
-- `authToken`: Twilio Auth Token.
-    
-- `twilioWhatsAppNumber`: Twilio WhatsApp-enabled number used as the sender.
-    
-
----
-
-### `send(message: NotificationMessage): Promise<void>`
-
-Sends a WhatsApp message using the Twilio API.
-
-**Parameters:**
-
-- `message`: An object containing:
-    
-    - `recipientId`: Recipient phone number (with or without `whatsapp:` prefix).
-        
-    - `body`: The message text to send.
-        
-    - `channelOptions` _(optional)_: Additional Twilio message parameters such as media URLs.
-        
-
-**Behavior:**
-
-- Automatically prefixes numbers with `whatsapp:` if not provided.
-    
-- Sends the message through Twilio's API.
-    
-- Logs the sending process and handles errors gracefully.
-    
-
----
-
-## Example Log Output
-
-```
-Sending WhatsApp message from whatsapp:+14155238886 to whatsapp:+201234567890: "Hello!"
-WhatsApp message sent successfully to +201234567890
-```
-
-If an error occurs:
-
-```
-Failed to send WhatsApp message to +201234567890: Error: Message failed
-```
-
----
-
-## Integration with Notification Factory
-
-When integrated into a larger notification system, this class can be dynamically loaded through a channel factory:
-
-```ts
-import { NotificationChannelFactory } from '../core/factories/NotificationChannel.factory';
-import { ChannelType } from '../core/models/ChannelType.const';
-
-const factory = new NotificationChannelFactory({
-  telegram: process.env.TELEGRAM_BOT_TOKEN,
-  whatsapp: process.env.TWILIO_AUTH_TOKEN,
-  whatsappPhoneId: process.env.TWILIO_WHATSAPP_NUMBER,
+// Inject NotificationService and send
+await notificationService.send(ChannelType.WHATSAPP, {
+  recipientId: '+201001234567', // Recipient number in international format
+  body: 'Your booking confirmation code is {{code}}.',
+  context: { code: 'W-9982' },
 });
+```
 
-const channel = factory.getChannel(ChannelType.WHATSAPP);
-await channel.send(message);
+### Dynamic Twilio Credentials
+You can override credentials dynamically for multi-tenant applications using `channelOptions`:
+
+```typescript
+await notificationService.send(ChannelType.WHATSAPP, {
+  recipientId: '+201001234567',
+  body: 'Hello Tenant User!',
+  channelOptions: {
+    accountSid: 'AC_CUSTOM_SID',
+    authToken: 'CUSTOM_AUTH_TOKEN',
+    from: 'whatsapp:+1234567890',
+  }
+});
 ```
 
 ---
 
-## License
+## Technical Details
 
-This module is part of the **@bts-soft/notifications** package.  
-You may reuse or extend it according to your project’s license and Twilio’s API usage terms.
+- **Recipient Sanitization**: The channel checks the `recipientId`. If the number does not start with `whatsapp:`, the channel automatically prepends `whatsapp:` to comply with Twilio API requirements.
+- **Media Support**: You can pass media attachments by providing `mediaUrl` in `channelOptions`:
+  ```typescript
+  channelOptions: {
+    mediaUrl: ['https://example.com/invoice.pdf']
+  }
+  ```
+- **Error Propagation**: Twilio API responses with HTTP status codes in the 4xx range are converted to `NotificationClientError`, while 5xx codes are converted to `NotificationProviderError` to allow BullMQ to attempt retries.

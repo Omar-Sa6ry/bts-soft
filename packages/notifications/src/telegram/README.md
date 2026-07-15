@@ -1,272 +1,79 @@
+# Telegram Integration Channel
 
-###  **`/telegram/README.md`**
-
-# @bts-soft/notifications — Telegram Integration
-
-This folder provides full Telegram integration for the `@bts-soft/notifications` package.  
-It allows linking user accounts to Telegram, sending messages through the Telegram Bot API, and processing Telegram webhooks.
+The Telegram integration allows your system to link user accounts to Telegram and send automated notifications using the Telegram Bot API. It handles incoming webhooks to link Chat IDs to user records dynamically.
 
 ---
 
-## Overview
+## Setting Up Your Bot & Webhook
 
-The Telegram integration consists of:
+Follow these steps to obtain a token and hook up the bot to your application:
 
-- **TelegramModule** — Registers all necessary providers and controllers.
-- **TelegramService** — Handles token generation, user linking, and database updates.
-- **TelegramController** — Handles incoming Telegram webhooks and validates tokens.
-- **TelegramChannel** — Implements the `INotificationChannel` interface for sending Telegram messages.
-- **NotificationService** — Adds notification jobs to BullMQ queues.
-- **NotificationProcessor** — Processes queued jobs and sends messages through Telegram.
+1. **Create the Bot via BotFather**:
+   - Open Telegram and search for the official account [@BotFather](https://t.me/BotFather).
+   - Send `/newbot` and follow the instructions to set a display name and a unique username (ending in `_bot`).
+   - Copy the generated HTTP API Token (e.g., `8032610224:AAHTuP...`).
 
----
+2. **Expose Local Host for Webhooks**:
+   - Telegram webhooks require an HTTPS URL. For local development, establish an SSH tunnel:
+     ```bash
+     ssh -R 80:localhost:3002 serveo.net
+     ```
+   - This command exposes your local server running on port `3002` to a public HTTPS domain provided by Serveo.
 
-## Folder Structure
-
-```
-
-telegram/  
-├── channels/  
-│ ├── interfaces/  
-│ │ └── INotificationChannel.interface.ts  
-│ ├── Telegram.channel.ts  
-│ └── telegram.bot.ts  
-├── dto/  
-│ └── Telegram-webhook.dto.ts  
-├── telegram.controller.ts  
-├── telegram.module.ts  
-└── telegram.service.ts
-
-````
+3. **Register Webhook with Telegram**:
+   - Register your public URL endpoint `/telegram/webhook` with the Telegram API:
+     ```bash
+     curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://<YOUR_PUBLIC_SUBDOMAIN>.serveo.net/telegram/webhook&drop_pending_updates=true"
+     ```
+   - On success, the API returns `{"ok": true, "result": true, "description": "Webhook was set"}`.
 
 ---
 
-## Installation
+## Configuration Variables
 
-Make sure Redis is running and BullMQ is configured.
+Configure the following variables in your `.env` file:
 
-Install the required dependencies:
-
-```bash
-npm install bullmq node-telegram-bot-api typeorm nestjs-i18n
-````
-
----
-
-## Environment Variables
-
-Before running the app, set the following environment variables:
-
-```bash
-REDIS_HOST=localhost
-REDIS_PORT=6379
-TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token_here
 ENABLE_TELEGRAM_BOT=true
 ```
 
-Optional for testing:
+---
 
-```bash
-# Used for tunneling in development (Serveo or Ngrok)
-PORT=3002
-```
+## User Account Linking Flow
+
+To send notifications, the bot needs to know the user's Telegram Chat ID. The system links them securely using a temporary token:
+
+1. **Generate Link Token**: The user generates a short-lived link token code (e.g. `C5F178C3`) from your frontend application.
+2. **Send Code to Bot**: The user starts a conversation with your bot on Telegram and sends the code:
+   - e.g., `/start C5F178C3` or simply typing `C5F178C3`.
+3. **Webhook Processing**: Telegram posts the message payload to `/telegram/webhook`. `TelegramController` intercepts the message, validates the token using `TelegramService`, and associates the user's database record with their unique Telegram `Chat ID`.
+4. **Verification**: The bot replies with a confirmation message on Telegram.
 
 ---
 
-## Telegram Bot Setup
+## Code Example
 
-1. Create a new Telegram bot via [@BotFather](https://t.me/BotFather).
-    
-2. Copy the generated token and assign it to `TELEGRAM_BOT_TOKEN`.
-    
-3. Set your webhook to your development server using:
-    
+Once linked, send notifications to users by specifying their Telegram Chat ID as the `recipientId`:
 
-```bash
-curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<YOUR_PUBLIC_URL>/telegram/webhook&drop_pending_updates=true"
+```typescript
+import { NotificationService, ChannelType } from '@bts-soft/notifications';
+
+await notificationService.send(ChannelType.TELEGRAM, {
+  recipientId: '123456789', // Linked Chat ID
+  body: 'Your account was successfully verified!',
+});
 ```
 
-Example:
+### Dynamic Token Overrides
+You can override the Telegram bot token dynamically in the call options:
 
-```bash
-https://api.telegram.org/bot8032610224:AAHTuP5A_WzwfEtamhYLywRiV3pRV6n6QUc/setWebhook?url=https://390f3c04723f242b6a8d9c6723f29db8.serveo.net/telegram/webhook&drop_pending_updates=true
+```typescript
+await notificationService.send(ChannelType.TELEGRAM, {
+  recipientId: '123456789',
+  body: 'System update alert!',
+  channelOptions: {
+    botToken: 'xoxb-different-token',
+  },
+});
 ```
-
-When successful, you should receive:
-
-```json
-{"ok": true, "result": true, "description": "Webhook was set"}
-```
-
----
-
-## Development Tunnel (Serveo or Ngrok)
-
-To expose your local server to Telegram during development:
-
-```bash
-ssh -R 80:localhost:3002 serveo.net
-```
-
-This creates a public URL that forwards traffic to your local NestJS server at port `3002`.
-
-Use that public URL when setting your Telegram webhook.
-
----
-
-## Usage
-
-### 1. Import the Module
-
-In your main project’s `AppModule` or any feature module:
-
-```ts
-import { NotificationModule } from '@bts-soft/notifications';
-
-@Module({
-  imports: [NotificationModule],
-})
-export class AppModule {}
-```
-
----
-
-### 2. Generate Telegram Link Token (GraphQL Example)
-
-A logged-in user can generate a Telegram link token through GraphQL:
-
-```graphql
-mutation {
-  generateTelegramLinkToken {
-    data
-    success
-  }
-}
-```
-
-Example response:
-
-```json
-{
-  "data": {
-    "generateTelegramLinkToken": {
-      "data": "761DACF3",
-      "success": true
-    }
-  }
-}
-```
-
-This token should then be sent by the user to the Telegram bot chat.
-
----
-
-### 3. Telegram Webhook Flow
-
-1. The user sends the token (`761DACF3`) to your Telegram bot.
-    
-2. Telegram sends a webhook request to `/telegram/webhook`.
-    
-3. The backend verifies the token using `TelegramService.findUserByTelegramLinkToken()`.
-    
-4. If valid:
-    
-    - The user’s Telegram chat ID is saved to the database.
-        
-    - A welcome message is sent via Telegram.
-        
-5. If invalid:
-    
-    - The bot replies with `Invalid Code`.
-        
-
----
-
-## Code Explanation
-
-### TelegramService
-
-- Responsible for:
-    
-    - Generating link tokens.
-        
-    - Saving tokens in the database.
-        
-    - Linking Telegram Chat IDs to users.
-        
-- Uses `nestjs-i18n` for localized messages.
-    
-- Uses `typeorm-transactional` for safe DB operations.
-    
-
-### TelegramController
-
-- Exposes `POST /telegram/webhook` to handle Telegram updates.
-    
-- Validates incoming messages using `TelegramWebhookDto`.
-    
-
-### TelegramChannel
-
-- Implements `INotificationChannel`.
-    
-- Uses `node-telegram-bot-api` to send messages to users via chat ID.
-    
-
-### NotificationService
-
-- Adds jobs to the `send-notification` BullMQ queue.
-    
-- Supports retries with exponential backoff.
-    
-
-### NotificationProcessor
-
-- Processes jobs from Redis.
-    
-- Selects the proper channel using `NotificationChannelFactory`.
-    
-- Sends messages through the corresponding implementation (e.g., Telegram).
-    
-
----
-
-## Example Log Flow
-
-When a user sends a valid token:
-
-```
-DB: Saved link token '761DACF3' for user ID 01K7J3D9E788CC8HRP860MHZD2
-Telegram account linked successfully for user 01K7J3D9E788CC8HRP860MHZD2.
-Notification request added to queue: telegram
-Job 45 (Channel: telegram) completed successfully.
-```
-
----
-
-## Testing Checklist
-
-1. Start Redis.
-    
-2. Run your NestJS app on port 3002.
-    
-3. Expose it using Serveo or Ngrok.
-    
-4. Set your Telegram webhook URL.
-    
-5. Run the following flow:
-    
-    - Generate a token using GraphQL.
-        
-    - Send that token to your Telegram bot.
-        
-    - Verify that the account is linked and the welcome message is received.
-        
-
----
-
-## License
-
-This package is part of the `@bts-soft` ecosystem.  
-All rights reserved © BTS Soft.
-

@@ -1,170 +1,87 @@
-Here is a clean and professional **README.md** file for your `FirebaseChannel` implementation:
+# Firebase Push Notification Channel (FCM Integration)
+
+The Firebase notification channel dispatches push alerts to Android, iOS, and Web clients via Firebase Cloud Messaging (FCM) using the Firebase Admin SDK.
 
 ---
 
-# FirebaseChannel
+## Obtaining Your Service Account Key
 
-The `FirebaseChannel` class provides a way to send push notifications using **Firebase Cloud Messaging (FCM)** through the Firebase Admin SDK.  
-It is designed to integrate into a modular notification system that supports multiple channels such as Telegram, SMS, and others.
+To authenticate requests to the Firebase Cloud Messaging API, you need a service account key:
 
----
-
-## Overview
-
-`FirebaseChannel` implements the `INotificationChannel` interface and handles sending messages to specific device tokens using Firebase Cloud Messaging (FCM).  
-It ensures that Firebase is initialized only once and provides a structured way to send notifications within a larger notification system.
-
----
-
-## Features
-
-- Sends notifications via Firebase Cloud Messaging (FCM)
-    
-- Supports title, body, and additional data payloads
-    
-- Prevents multiple Firebase initializations
-    
-- Follows a consistent interface for easy integration with other channels
-    
+1. **Open Firebase Console**:
+   - Go to the [Firebase Console](https://console.firebase.google.com) and select your project.
+2. **Access Service Accounts Settings**:
+   - Click the gear icon next to **Project Overview** in the left sidebar and select **Project Settings**.
+   - Select the **Service Accounts** tab.
+3. **Generate Private Key**:
+   - Select the **Node.js** option, and click the **Generate New Private Key** button.
+   - Click **Generate Key** to download the credentials JSON file.
+4. **Deploy the Key**:
+   - Save the downloaded JSON file (e.g. `firebase-key.json`) securely on your server host directory.
+   - **Important**: Do not commit this file to public version control repositories. Add its filename to your `.gitignore`.
 
 ---
 
-## Installation
+## Configuration Variables
 
-Before using the `FirebaseChannel`, ensure that you have installed the required dependencies:
+Configure the path to the downloaded JSON file in your `.env` file:
 
-```bash
-npm install firebase-admin
+```env
+FIREBASE_SERVICE_ACCOUNT_PATH=/absolute/or/relative/path/to/firebase-key.json
 ```
 
 ---
 
-## Configuration
-
-You must provide a **Firebase service account JSON file** to authenticate with Firebase.  
-This file can be generated from your Firebase project settings under **Project Settings → Service Accounts**.
-
-Create a configuration object that includes the path to your service account file:
+## Code Example
 
 ```typescript
-const firebaseConfig = {
-  serviceAccountPath: './path/to/serviceAccountKey.json',
-};
-```
+import { NotificationService, ChannelType } from '@bts-soft/notifications';
 
----
-
-## Usage
-
-1. Import and initialize the `FirebaseChannel` class.
-    
-2. Use the `send()` method to send notifications to a target device token.
-    
-
-```typescript
-import { FirebaseChannel } from './path/to/FirebaseChannel';
-import { NotificationMessage } from './path/to/core/models/NotificationMessage.interface';
-
-const firebaseChannel = new FirebaseChannel({
-  serviceAccountPath: './firebase-service-account.json',
-});
-
-const message: NotificationMessage = {
-  recipientId: 'DEVICE_FCM_TOKEN',
-  title: 'Welcome',
-  body: 'Thank you for joining our app!',
+await notificationService.send(ChannelType.FIREBASE_FCM, {
+  recipientId: 'user_device_fcm_token_here',
+  title: 'Discount Alert!',
+  body: 'Get 20% off on all items today only!',
   channelOptions: {
-    data: { userId: '12345' },
+    data: { promotionId: 'DISC20' },
   },
-};
-
-await firebaseChannel.send(message);
+});
 ```
 
----
-
-## Example
+### Advanced Notification Options
+You can pass custom parameters or notification categories through `channelOptions`:
 
 ```typescript
-try {
-  await firebaseChannel.send({
-    recipientId: 'DEVICE_FCM_TOKEN',
-    title: 'New Alert',
-    body: 'You have a new message.',
-    channelOptions: {
-      data: { type: 'message', messageId: 'abc123' },
+await notificationService.send(ChannelType.FIREBASE_FCM, {
+  recipientId: 'user_device_fcm_token_here',
+  title: 'New Chat Message',
+  body: 'You have a message from Sarah',
+  channelOptions: {
+    data: { senderId: 'Sarah', roomId: 'room_99' },
+    fcmOptions: {
+      android: {
+        priority: 'high',
+        notification: {
+          clickAction: 'OPEN_CHAT_ACTIVITY',
+          sound: 'default',
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            badge: 5,
+            sound: 'ping.aiff',
+          },
+        },
+      },
     },
-  });
-  console.log('Notification sent successfully.');
-} catch (error) {
-  console.error('Failed to send notification:', error);
-}
+  },
+});
 ```
 
 ---
 
-## Error Handling
+## Technical Details
 
-- If the Firebase Admin SDK fails to initialize, an error will be thrown:
-    
-    ```
-    Firebase initialization failed. Check service account path.
-    ```
-    
-- If the device token (`recipientId`) is missing:
-    
-    ```
-    FCM recipientId (device token) is required.
-    ```
-    
-- If sending the notification fails:
-    
-    ```
-    FCM send error: [error message]
-    ```
-    
-
-All errors are logged to the console for easier debugging.
-
----
-
-## Interface Details
-
-### FirebaseConfig
-
-```typescript
-interface FirebaseConfig {
-  serviceAccountPath: string;
-}
-```
-
-### NotificationMessage
-
-```typescript
-interface NotificationMessage {
-  recipientId: string; // Device FCM token
-  title?: string;
-  body: string;
-  channelOptions?: {
-    data?: Record<string, string>;
-    options?: Record<string, any>;
-  };
-}
-```
-
----
-
-## Notes
-
-- Only one Firebase app instance will be initialized even if multiple `FirebaseChannel` instances are created.
-    
-- The `recipientId` must be a valid FCM device token.
-    
-- `channelOptions.data` allows attaching additional custom data to the notification payload.
-    
-
----
-
-## License
-
-This module is part of the **@bts-soft/notifications** package and is distributed under the MIT License.
+- **Single Initialization**: The channel automatically guards the Firebase Admin SDK to ensure the Firebase App instance is initialized only once, even if multiple service classes instantiate this channel.
+- **FCM Token Validation**: The `recipientId` must be a valid client device FCM registration token.
+- **Error Mapping**: Standard Firebase Admin errors are mapped and handled; client token expiration errors are categorized so that background retry workers do not retry delivery for inactive registration tokens.

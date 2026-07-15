@@ -1,140 +1,69 @@
-# SmsChannel
+# SMS Notification Channel (Twilio Integration)
 
-The `SmsChannel` class provides an implementation of the `INotificationChannel` interface to send SMS messages using the **Twilio API**.  
-It allows you to integrate SMS notifications into your system by initializing a Twilio client and sending messages to recipients with optional parameters.
-
----
-
-## Overview
-
-The `SmsChannel` is responsible for sending text messages (SMS) using Twilio.  
-It accepts message details such as the recipient’s phone number, message body, and optional Twilio configuration options.
-
-This class is designed to be used as part of a multi-channel notification system (for example, together with Telegram, WhatsApp, Discord, etc.).
+The SMS notification channel integrates with the Twilio API to deliver text messages. It supports dynamic phone number formatting, dynamic credentials, and detailed error mapping.
 
 ---
 
-## Installation
+## Getting Your Credentials
 
-To use the `SmsChannel`, you must install the Twilio SDK:
+To send SMS messages, configure your Twilio account:
 
-```bash
-npm install twilio
-```
+1. **Twilio Account SID & Auth Token**:
+   - Log in to the [Twilio Console](https://www.twilio.com).
+   - Find your **Account SID** and **Auth Token** on your console homepage.
+
+2. **Twilio SMS Phone Number**:
+   - Navigate to **Phone Numbers > Manage > Active Numbers** in the console.
+   - If you do not own a phone number, select **Buy a Number**, check the **SMS** capability, and purchase a number.
+   - Copy the number in international E.164 format (e.g., `+1234567890`).
 
 ---
 
-## Configuration
+## Configuration Variables
 
-Before using the channel, ensure you have the following Twilio credentials:
+Set these credentials in your `.env` file:
 
-- **Account SID** – Found in your [Twilio Console](https://www.twilio.com/console)
-    
-- **Auth Token** – Used for authentication
-    
-- **Twilio Phone Number** – A number enabled to send SMS messages
-    
-
-You can store these values in your environment file:
-
-```bash
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
+```env
+TWILIO_ACCOUNT_SID=ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+TWILIO_AUTH_TOKEN=your_auth_token_here
 TWILIO_SMS_NUMBER=+1234567890
 ```
 
 ---
 
-## Usage
+## Code Example
 
-You can instantiate the `SmsChannel` and send messages as follows:
+```typescript
+import { NotificationService, ChannelType } from '@bts-soft/notifications';
 
-```ts
-import { SmsChannel } from './channels/SmsChannel';
-import { NotificationMessage } from './core/models/NotificationMessage.interface';
+await notificationService.send(ChannelType.SMS, {
+  recipientId: '+201001234567', // Recipient phone number
+  body: 'Your verification OTP is {{otp}}.',
+  context: { otp: '8872' },
+});
+```
 
-// Initialize SMS channel
-const smsChannel = new SmsChannel(
-  process.env.TWILIO_ACCOUNT_SID!,
-  process.env.TWILIO_AUTH_TOKEN!,
-  process.env.TWILIO_SMS_NUMBER!
-);
+### Dynamic Twilio Credentials
+You can override credentials dynamically for multi-tenant applications using `channelOptions`:
 
-// Create a message
-const message: NotificationMessage = {
-  recipientId: '+201234567890', // Recipient phone number
-  body: 'Your verification code is 123456',
-  channelOptions: {}, // Optional Twilio parameters
-};
-
-// Send the message
-smsChannel
-  .send(message)
-  .then(() => console.log('SMS sent successfully'))
-  .catch((err) => console.error('Error sending SMS:', err));
+```typescript
+await notificationService.send(ChannelType.SMS, {
+  recipientId: '+201001234567',
+  body: 'Hello User!',
+  channelOptions: {
+    accountSid: 'AC_CUSTOM_SID',
+    authToken: 'CUSTOM_AUTH_TOKEN',
+    from: '+19876543210',
+  }
+});
 ```
 
 ---
 
-## Example
+## Recipient Number Normalization
 
-Here’s an example log output for a successful message:
-
-```
-Sending SMS from +1234567890 to +201234567890: "Your verification code is 123456"
-SMS sent successfully to +201234567890
-```
-
-If an error occurs (e.g., invalid number or authentication failure), the error will be logged and rethrown for higher-level handling.
-
----
-
-## Error Handling
-
-If an error occurs while sending the SMS, it will:
-
-1. Log the error message and stack trace.
-    
-2. Throw a descriptive `Error` with Twilio’s response message.
-    
-
-Example:
-
-```
-Failed to send SMS message to +201234567890: Error: The 'To' number is not valid.
-```
-
----
-
-## Interface References
-
-### `INotificationChannel`
-
-Defines the contract for all notification channels.  
-Each channel must implement:
-
-```ts
-interface INotificationChannel {
-  name: string;
-  send(message: NotificationMessage): Promise<void>;
-}
-```
-
-### `NotificationMessage`
-
-Represents the structure of a notification message:
-
-```ts
-interface NotificationMessage {
-  recipientId: string;
-  body: string;
-  channelOptions?: Record<string, any>;
-}
-```
-
----
-
-## Summary
-
-The `SmsChannel` class offers a simple, reusable, and consistent way to send SMS notifications via Twilio.  
-It can be easily extended or combined with other channels such as WhatsApp, Telegram, Discord, or Email within your notification system.
+The SMS channel automatically normalizes the `recipientId` phone number before dispatching:
+- **Whitespace & Dashes**: All spaces and `-` characters are removed.
+- **Leading Double Zeros**: Converts prefix `00` to `+` (e.g., `0020...` becomes `+20...`).
+- **Egyptian Local Numbers**: Local 11-digit numbers starting with `01` are normalized to include the Egyptian country code (`+20`) (e.g. `01012345678` is normalized to `+201012345678`).
+- **Country Code Prefix**: Ensures the final string starts with a `+` symbol.

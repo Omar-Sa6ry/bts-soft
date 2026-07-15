@@ -12,7 +12,7 @@ The package is architected using the **Facade Pattern**. While developers primar
 
 | Service | Responsibility | Redis Commands |
 | :--- | :--- | :--- |
-| **Core** | Standard K/V with JSON support | `GET`, `SET`, `DEL`, `MSET` |
+| **Core** | Standard K/V with JSON support | `GET`, `SET`, `DEL`, `MSET`, `SETNX` |
 | **String** | Advanced string manipulation | `GETSET`, `STRLEN`, `APPEND`, `GETRANGE` |
 | **Number** | Atomic counters and increments | `INCR`, `DECR`, `INCRBYFLOAT` |
 | **Hash** | Object-like field-level storage | `HSET`, `HGETALL`, `HINCRBY` |
@@ -23,7 +23,7 @@ The package is architected using the **Facade Pattern**. While developers primar
 | **HLL** | Big-data unique count (12KB) | `PFADD`, `PFCOUNT`, `PFMERGE` |
 | **Locking** | Distributed concurrency control | `SET NX PX`, Lua Scripts |
 | **Pub/Sub** | High-speed event distribution | `PUBLISH`, `SUBSCRIBE`, `PSUBSCRIBE` |
-| **Transaction**| Atomic multi-command pipelines | `MULTI`, `EXEC`, `WATCH`, `DISCARD` |
+| **Transaction**| Atomic multi-command pipelines | `MULTI`, `EXEC`, `WATCH`, `DISCARD`, `EVAL` |
 | **Utility** | Key management and metadata | `EXISTS`, `EXPIRE`, `TTL` |
 
 ---
@@ -122,17 +122,27 @@ Store data that never expires (bypassing default TTLs).
 await this.redisService.setForever('system:config', { site_name: 'BTS Soft' });
 ```
 
+### 5. Atomic Key Creation (setNX)
+Ensure a key is only set if it does not already exist, returning `true` on success.
+
+```typescript
+const isUnique = await this.redisService.setNX('registration:lock:user_123', '1', 60);
+if (isUnique) {
+  // Safe to proceed with unique registration...
+}
+```
+
 ---
 
 ## 🛡 API Reference
 
 The `RedisService` facade implements `IRedisInterface`, providing a consistent API:
 
-- **Core**: `set`, `setForever`, `get<T>`, `del`, `mSet`
+- **Core**: `set`, `setForever`, `get<T>`, `del`, `mSet`, `setNX`
 - **String**: `getSet`, `strlen`, `append`, `getRange`, `mGet`
 - **Numeric**: `incr`, `incrBy`, `decr`, `decrBy`
 - **Lists**: `lPush`, `rPush`, `lPop`, `rPop`, `lTrim`
-- **Transactions**: `multiExecute`, `watch`, `withTransaction`
+- **Transactions & Scripting**: `multiExecute`, `watch`, `withTransaction`, `eval`
 
 ---
 

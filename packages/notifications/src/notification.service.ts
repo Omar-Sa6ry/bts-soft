@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject, Optional } from "@nestjs/common";
 import { Queue } from "bullmq";
-import { InjectQueue } from "@nestjs/bullmq";
+import { InjectQueue, getQueueToken } from "@nestjs/bullmq";
+import { ModuleRef } from "@nestjs/core";
 import { NotificationMessage } from "./core/models/NotificationMessage.interface";
 import { NotificationPriority } from "./core/enums/NotificationPriority.enum";
 import { ChannelType } from "./core/enums/ChannelType.enum";
@@ -40,7 +41,7 @@ export interface NotificationJobData {
 /**
  * Entry point for sending notifications.
  *
- * Runs pre-flight checks (expiry → deduplication → opt-out → rate limit),
+ * Runs pre-flight checks (expiry → opt-out → rate limit → deduplication),
  * then enqueues the job in BullMQ with the resolved per-channel retry policy.
  */
 @Injectable()
@@ -52,6 +53,8 @@ export class NotificationService {
   constructor(
     @InjectQueue(NOTIFICATION_QUEUE_NAME)
     private readonly notificationQueue: Queue<NotificationJobData>,
+
+    private readonly moduleRef: ModuleRef,
 
     @Optional()
     @Inject(NOTIFICATION_RETRY_CONFIG)
@@ -103,13 +106,6 @@ export class NotificationService {
       return true;
     }
 
-    if (message.idempotencyKey && this.dedupStore) {
-      if (await this.dedupStore.isDuplicate(message.idempotencyKey)) {
-        this.skip({ channel, recipientId: message.recipientId, reason: NotificationSkipReason.DUPLICATE, idempotencyKey: message.idempotencyKey, message });
-        return true;
-      }
-    }
-
     if (this.preferenceRepository) {
       if (await this.preferenceRepository.isOptedOut(message.recipientId, channel)) {
         this.skip({ channel, recipientId: message.recipientId, reason: NotificationSkipReason.OPTED_OUT, message });
@@ -124,14 +120,27 @@ export class NotificationService {
       }
     }
 
+    if (message.idempotencyKey && this.dedupStore) {
+      let ttlMs: number | undefined;
+      if (message.expiresAt) {
+        ttlMs = Math.max(0, message.expiresAt.getTime() - Date.now());
+      }
+      const isDuplicate = !(await this.dedupStore.acquireIdempotency(message.idempotencyKey, ttlMs));
+      if (isDuplicate) {
+        this.skip({ channel, recipientId: message.recipientId, reason: NotificationSkipReason.DUPLICATE, idempotencyKey: message.idempotencyKey, message });
+        return true;
+      }
+    }
+
     return false;
   }
 
   private async enqueue(channel: ChannelType, message: NotificationMessage): Promise<void> {
     const policy = this.resolvePolicy(channel);
     const priority = message.priority ?? NotificationPriority.NORMAL;
+    const queue = this.getQueue(channel);
 
-    const job = await this.notificationQueue.add(channel, { channel, message }, {
+    const job = await queue.add(channel, { channel, message }, {
       attempts: policy.attempts,
       backoff: { type: policy.backoffType === "fixed" ? "fixed" : "exponential", delay: policy.delay },
       removeOnComplete: policy.removeOnComplete,
@@ -140,10 +149,6 @@ export class NotificationService {
     });
 
     this.logger.log(`Queued [${channel}] Job=${job.id} Recipient=${message.recipientId} Priority=${priority}`);
-
-    if (message.idempotencyKey && this.dedupStore) {
-      await this.dedupStore.markSent(message.idempotencyKey);
-    }
 
     if (this.logRepository) {
       await this.logRepository.create({
@@ -157,6 +162,17 @@ export class NotificationService {
     }
 
     this.notifyObservers((obs) => obs.onQueued?.(job.id!, channel, message.recipientId));
+  }
+
+  private getQueue(channel: ChannelType): Queue<NotificationJobData> {
+    try {
+      const queueToken = getQueueToken(`send-notification-${channel}`);
+      const queue = this.moduleRef.get<Queue<NotificationJobData>>(queueToken, { strict: false });
+      if (queue) return queue;
+    } catch {
+      // Fallback to default queue if dynamic channel queue is not registered or resolved
+    }
+    return this.notificationQueue;
   }
 
   private skip(context: NotificationSkipContext): void {

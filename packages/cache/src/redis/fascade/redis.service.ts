@@ -599,4 +599,14 @@ export class RedisService implements IRedisInterface {
       timeoutMs,
     );
   }
+
+  // ===== Custom Atomic Operations =====
+
+  async setNX(key: string, value: any, ttlSeconds: number): Promise<boolean> {
+    return await this.coreRedisService.setNX(key, value, ttlSeconds);
+  }
+
+  async eval(script: string, keys: string[], args: string[]): Promise<any> {
+    return await this.utilityRedisService.eval(script, keys, args);
+  }
 }
