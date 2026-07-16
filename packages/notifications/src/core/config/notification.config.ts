@@ -39,6 +39,9 @@ class NotificationConfigDto {
   @IsString() @IsOptional() VONAGE_API_KEY?: string;
   @IsString() @IsOptional() VONAGE_API_SECRET?: string;
   @IsString() @IsOptional() VONAGE_SENDER?: string;
+  @IsString() @IsOptional() AWS_SES_ACCESS_KEY_ID?: string;
+  @IsString() @IsOptional() AWS_SES_SECRET_ACCESS_KEY?: string;
+  @IsString() @IsOptional() AWS_SES_REGION?: string;
 }
 
 @Injectable()
@@ -88,6 +91,9 @@ export class NotificationConfigService implements OnModuleInit {
         VONAGE_API_KEY: this.vonageApiKey,
         VONAGE_API_SECRET: this.vonageApiSecret,
         VONAGE_SENDER: this.vonageSender,
+        AWS_SES_ACCESS_KEY_ID: this.awsSesAccessKeyId,
+        AWS_SES_SECRET_ACCESS_KEY: this.awsSesSecretAccessKey,
+        AWS_SES_REGION: this.awsSesRegion,
     });
 
     const errors = validateSync(config);
@@ -240,5 +246,17 @@ export class NotificationConfigService implements OnModuleInit {
 
   get vonageSender(): string | undefined {
     return this.configService.get<string>("VONAGE_SENDER");
+  }
+
+  get awsSesAccessKeyId(): string | undefined {
+    return this.configService.get<string>("AWS_SES_ACCESS_KEY_ID");
+  }
+
+  get awsSesSecretAccessKey(): string | undefined {
+    return this.configService.get<string>("AWS_SES_SECRET_ACCESS_KEY");
+  }
+
+  get awsSesRegion(): string | undefined {
+    return this.configService.get<string>("AWS_SES_REGION");
   }
 }

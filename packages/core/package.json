@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/core",
-  "version": "2.9.7",
+  "version": "2.9.8",
   "author": "Omar Sabry",
   "description": "All bts-soft packages - meta-package bundling common, cache, validation, upload, and notifications for NestJS.",
   "main": "dist/index.js",
@@ -14,7 +14,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@bts-soft/notifications": "1.7.7",
+    "@bts-soft/notifications": "1.7.8",
     "@bts-soft/cache": "1.1.4",
     "@bts-soft/validation": "1.1.6",
     "@bts-soft/upload": "1.6.4",

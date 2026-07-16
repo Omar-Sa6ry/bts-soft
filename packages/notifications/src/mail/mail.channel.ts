@@ -5,12 +5,13 @@ import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
 import { NodemailerMailProvider } from "./providers/nodemailer.provider";
 import { TwilioMailProvider } from "./providers/twilio-mail.provider";
+import { SesMailProvider } from "./providers/ses-mail.provider";
 import { NotificationClientError } from "../core/errors/NotificationError";
 
 /**
  * EmailChannel
  * Acts as an orchestrator that switches between different mail providers
- * (Nodemailer or Twilio SendGrid) using the Strategy Pattern.
+ * (Nodemailer, Twilio SendGrid, or AWS SES) using the Strategy Pattern.
  */
 @Injectable()
 export class EmailChannel implements INotificationChannel, OnModuleInit {
@@ -22,6 +23,7 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
     private readonly registry: ChannelRegistry,
     private readonly nodemailerProvider: NodemailerMailProvider,
     private readonly twilioProvider: TwilioMailProvider,
+    private readonly sesProvider: SesMailProvider,
   ) {}
 
   onModuleInit() {
@@ -48,9 +50,12 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
 
     if (providerKey === "twilio" || providerKey === "sendgrid") {
       await this.twilioProvider.send(message, sender);
+    } else if (providerKey === "ses" || providerKey === "aws" || providerKey === "aws-ses") {
+      await this.sesProvider.send(message, sender);
     } else {
       // Default to nodemailer
       await this.nodemailerProvider.send(message, sender);
     }
   }
 }
+

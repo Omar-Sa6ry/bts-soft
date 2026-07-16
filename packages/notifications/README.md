@@ -6,7 +6,7 @@ A robust, multi-channel notification engine for NestJS applications. It supports
 
 ## Features
 
-- **Multi-Channel Dispatching**: Deliver messages via Email (SMTP & SendGrid), SMS & WhatsApp (Twilio, **SMS Misr**, and **Vonage**), Push Notifications (FCM, OneSignal, & **Native Web Push (VAPID)**), Telegram, Discord, Microsoft Teams, Facebook Messenger, Slack, and Webhooks.
+- **Multi-Channel Dispatching**: Deliver messages via Email (SMTP, SendGrid, and **Amazon SES**), SMS & WhatsApp (Twilio, **SMS Misr**, and **Vonage**), Push Notifications (FCM, OneSignal, & **Native Web Push (VAPID)**), Telegram, Discord, Microsoft Teams, Facebook Messenger, Slack, and Webhooks.
 - **Pre-flight pipeline**: Automatic validation including message expiry, rate-limiting, user channel opt-out preferences, and idempotency key checks.
 - **Queued Execution**: Background task processing powered by BullMQ and Redis with custom retry policies, exponential backoff, task prioritization, and multi-queue channel isolation to prevent cross-channel bottlenecks.
 - **Dynamic Templates & localization**: Integrates Handlebars for templating and `nestjs-i18n` for language localization.
@@ -108,8 +108,11 @@ Configure the following environment variables in your project's `.env` file:
 | `EMAIL_PORT` | `number` | Optional | SMTP connection port (e.g., 465, 587) | - |
 | `EMAIL_SERVICE` | `string` | Optional | Predefined Nodemailer service name | - |
 | `EMAIL_SENDER` | `string` | Optional | Outgoing "From" email address display | `EMAIL_USER` |
-| `EMAIL_PROVIDER` | `string` | Optional | Mail service provider (`nodemailer` or `twilio-mail`) | `nodemailer` |
+| `EMAIL_PROVIDER` | `string` | Optional | Mail service provider (`nodemailer`, `twilio-mail`, or `ses`) | `nodemailer` |
 | `SENDGRID_API_KEY` | `string` | Optional | SendGrid API authorization key | - |
+| `AWS_SES_ACCESS_KEY_ID` | `string` | Optional | AWS IAM Access Key for Amazon SES | - |
+| `AWS_SES_SECRET_ACCESS_KEY` | `string` | Optional | AWS IAM Secret Key for Amazon SES | - |
+| `AWS_SES_REGION` | `string` | Optional | Target AWS Region for SES (e.g. us-east-1) | - |
 | `SLACK_WEBHOOK_URL` | `string` | Optional | Default webhook URL for Slack channel | - |
 | `SLACK_BOT_TOKEN` | `string` | Optional | Bot OAuth token for Slack Web API | - |
 | `SLACK_DEFAULT_CHANNEL` | `string` | Optional | Default destination channel for Slack Bot | - |

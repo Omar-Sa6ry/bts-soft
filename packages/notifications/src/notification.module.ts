@@ -32,6 +32,7 @@ import { RedisUserPreferenceRepository } from "./core/preferences/RedisUserPrefe
 import { EmailChannel } from "./mail/mail.channel";
 import { NodemailerMailProvider } from "./mail/providers/nodemailer.provider";
 import { TwilioMailProvider } from "./mail/providers/twilio-mail.provider";
+import { SesMailProvider } from "./mail/providers/ses-mail.provider";
 import { SmsChannel } from "./sms/sms.channel";
 import { TwilioSmsProvider } from "./sms/providers/twilio-sms.provider";
 import { SmsMisrProvider } from "./sms/providers/smsmisr.provider";
@@ -97,6 +98,7 @@ import {
 
     NodemailerMailProvider,
     TwilioMailProvider,
+    SesMailProvider,
     EmailChannel,
     TwilioSmsProvider,
     SmsMisrProvider,

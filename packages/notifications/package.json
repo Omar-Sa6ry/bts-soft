@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/notifications",
-  "version": "1.7.7",
+  "version": "1.7.8",
   "author": "Omar Sabry",
   "description": "NestJS notifications module supporting email (Nodemailer), SMS (Twilio), push (Firebase), Telegram bot, and BullMQ queue integration.",
   "main": "dist/index.js",
@@ -35,6 +35,7 @@
     "testEnvironment": "node"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.1088.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/bullmq": "^11.0.4",
     "@onesignal/node-onesignal": "^5.7.0",

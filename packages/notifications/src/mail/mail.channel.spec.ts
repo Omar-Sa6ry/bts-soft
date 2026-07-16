@@ -4,12 +4,14 @@ import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
 import { NodemailerMailProvider } from "./providers/nodemailer.provider";
 import { TwilioMailProvider } from "./providers/twilio-mail.provider";
+import { SesMailProvider } from "./providers/ses-mail.provider";
 
 describe("EmailChannel", () => {
   let channel: EmailChannel;
   let configService: any;
   let nodemailerProvider: any;
   let twilioProvider: any;
+  let sesProvider: any;
 
   beforeEach(async () => {
     nodemailerProvider = {
@@ -17,6 +19,10 @@ describe("EmailChannel", () => {
     };
 
     twilioProvider = {
+      send: jest.fn().mockResolvedValue(undefined),
+    };
+
+    sesProvider = {
       send: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -32,6 +38,7 @@ describe("EmailChannel", () => {
         { provide: ChannelRegistry, useValue: { register: jest.fn() } },
         { provide: NodemailerMailProvider, useValue: nodemailerProvider },
         { provide: TwilioMailProvider, useValue: twilioProvider },
+        { provide: SesMailProvider, useValue: sesProvider },
       ],
     }).compile();
 
@@ -53,6 +60,7 @@ describe("EmailChannel", () => {
 
     expect(nodemailerProvider.send).toHaveBeenCalledWith(message, "default@test.com");
     expect(twilioProvider.send).not.toHaveBeenCalled();
+    expect(sesProvider.send).not.toHaveBeenCalled();
   });
 
   it("should route to TwilioMailProvider if global config is set to twilio", async () => {
@@ -67,6 +75,22 @@ describe("EmailChannel", () => {
 
     expect(twilioProvider.send).toHaveBeenCalledWith(message, "default@test.com");
     expect(nodemailerProvider.send).not.toHaveBeenCalled();
+    expect(sesProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("should route to SesMailProvider if global config is set to ses", async () => {
+    configService.emailProvider = "ses";
+    const message = {
+      recipientId: "user@test.com",
+      subject: "Test Subject",
+      body: "Hello",
+    };
+
+    await channel.send(message);
+
+    expect(sesProvider.send).toHaveBeenCalledWith(message, "default@test.com");
+    expect(nodemailerProvider.send).not.toHaveBeenCalled();
+    expect(twilioProvider.send).not.toHaveBeenCalled();
   });
 
   it("should route to TwilioMailProvider if provider is overridden in channelOptions", async () => {
@@ -81,5 +105,22 @@ describe("EmailChannel", () => {
 
     expect(twilioProvider.send).toHaveBeenCalledWith(message, "default@test.com");
     expect(nodemailerProvider.send).not.toHaveBeenCalled();
+    expect(sesProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("should route to SesMailProvider if provider is overridden to ses in channelOptions", async () => {
+    const message = {
+      recipientId: "user@test.com",
+      subject: "Test Subject",
+      body: "Hello",
+      channelOptions: { provider: "ses" },
+    };
+
+    await channel.send(message);
+
+    expect(sesProvider.send).toHaveBeenCalledWith(message, "default@test.com");
+    expect(nodemailerProvider.send).not.toHaveBeenCalled();
+    expect(twilioProvider.send).not.toHaveBeenCalled();
   });
 });
+
