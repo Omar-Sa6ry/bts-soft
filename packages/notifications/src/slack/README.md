@@ -30,7 +30,7 @@ Set up your credentials in your `.env` file:
 
 ```env
 # Optional: Default Webhook URL
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_WORKSPACE_ID/YOUR_CHANNEL_ID/YOUR_TOKEN
 
 # Optional: Bot OAuth Token & Default Channel
 SLACK_BOT_TOKEN=xoxb-your-slack-bot-token
