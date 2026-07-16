@@ -42,3 +42,8 @@ export class SlackProcessor extends NotificationProcessor {}
 @Processor(`send-notification-${ChannelType.WEBHOOK}`)
 @Injectable()
 export class WebhookProcessor extends NotificationProcessor {}
+
+@Processor(`send-notification-${ChannelType.ONESIGNAL}`)
+@Injectable()
+export class OneSignalProcessor extends NotificationProcessor {}
+

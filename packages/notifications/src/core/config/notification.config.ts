@@ -26,6 +26,8 @@ class NotificationConfigDto {
   @IsString() @IsOptional() SLACK_BOT_TOKEN?: string;
   @IsString() @IsOptional() SLACK_DEFAULT_CHANNEL?: string;
   @IsString() @IsOptional() WEBHOOK_DEFAULT_SIGNING_SECRET?: string;
+  @IsString() @IsOptional() ONESIGNAL_APP_ID?: string;
+  @IsString() @IsOptional() ONESIGNAL_REST_API_KEY?: string;
 }
 
 @Injectable()
@@ -62,6 +64,8 @@ export class NotificationConfigService implements OnModuleInit {
         SLACK_BOT_TOKEN: this.slackBotToken,
         SLACK_DEFAULT_CHANNEL: this.slackDefaultChannel,
         WEBHOOK_DEFAULT_SIGNING_SECRET: this.webhookDefaultSigningSecret,
+        ONESIGNAL_APP_ID: this.onesignalAppId,
+        ONESIGNAL_REST_API_KEY: this.onesignalRestApiKey,
     });
 
     const errors = validateSync(config);
@@ -161,5 +165,13 @@ export class NotificationConfigService implements OnModuleInit {
 
   get webhookDefaultSigningSecret(): string | undefined {
     return this.configService.get<string>("WEBHOOK_DEFAULT_SIGNING_SECRET");
+  }
+
+  get onesignalAppId(): string | undefined {
+    return this.configService.get<string>("ONESIGNAL_APP_ID");
+  }
+
+  get onesignalRestApiKey(): string | undefined {
+    return this.configService.get<string>("ONESIGNAL_REST_API_KEY");
   }
 }

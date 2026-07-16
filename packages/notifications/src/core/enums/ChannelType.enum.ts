@@ -9,4 +9,5 @@ export enum ChannelType {
   SMS = "sms",
   SLACK = "slack",
   WEBHOOK = "webhook",
+  ONESIGNAL = "onesignal",
 }
