@@ -1,6 +1,6 @@
 # SMS Notification Channel
 
-The SMS notification channel supports sending text messages. It acts as an orchestrator that switches between different providers (**Twilio** or **SMS Misr**) using the Strategy Pattern.
+The SMS notification channel supports sending text messages. It acts as an orchestrator that switches between different providers (**Twilio**, **SMS Misr**, or **Vonage**) using the Strategy Pattern.
 
 ---
 
@@ -16,6 +16,11 @@ The SMS notification channel supports sending text messages. It acts as an orche
 2. Obtain your **API Username** and **API Password** from the Developer API section.
 3. Register and obtain approval for your outgoing **Sender ID** (e.g. `TEST_SMS`).
 
+### C. Vonage (Global Integration)
+1. Sign up or log in to the [Vonage API Dashboard](https://dashboard.nexmo.com/).
+2. Copy your **API Key** and **API Secret** from the top of the dashboard.
+3. Register your outgoing **Sender ID** (e.g. `YourBrand`) or use a purchased virtual number as your sender.
+
 ---
 
 ## Configuration Variables
@@ -23,7 +28,7 @@ The SMS notification channel supports sending text messages. It acts as an orche
 Configure the following environment variables in your project's `.env` file:
 
 ```env
-# SMS Orchestration Config (Options: "twilio" or "smsmisr")
+# SMS Orchestration Config (Options: "twilio", "smsmisr", or "vonage")
 # Defaults to "twilio" if not specified.
 SMS_PROVIDER=twilio
 
@@ -36,6 +41,11 @@ TWILIO_SMS_NUMBER=+1234567890
 SMSMISR_USERNAME=your_smsmisr_username
 SMSMISR_PASSWORD=your_smsmisr_password
 SMSMISR_SENDER=APPROVED_SENDER_ID
+
+# Vonage Nexmo Settings
+VONAGE_API_KEY=your_vonage_api_key
+VONAGE_API_SECRET=your_vonage_api_secret
+VONAGE_SENDER=APPROVED_SENDER_ID
 ```
 
 ---
@@ -76,6 +86,15 @@ await notificationService.send(ChannelType.SMS, {
     provider: 'twilio',
   }
 });
+
+// Send via Vonage
+await notificationService.send(ChannelType.SMS, {
+  recipientId: '+201001234567',
+  body: 'Hello via Vonage!',
+  channelOptions: {
+    provider: 'vonage',
+  }
+});
 ```
 
 ### 3. SMS Misr Customizations & Language
@@ -98,6 +117,8 @@ await notificationService.send(ChannelType.SMS, {
 
 - **Number Normalization**: 
   - **Twilio** expects phone numbers to start with `+` in international E.164 format. The provider automatically normalizes recipient numbers to include a `+` prefix and country codes.
-  - **SMS Misr** expects phone numbers to be in pure digit format (e.g. `2010xxxxxxxx` without leading `+`). The provider automatically strips leading `+` signs before sending.
+  - **SMS Misr** and **Vonage** expect phone numbers in pure digit format without a leading `+` (e.g. `2010xxxxxxxx`). The provider automatically strips leading `+` signs before sending.
 - **Gone/Invalid Registration Handling**:
-  - SMS Misr response codes indicating invalid mobile numbers (`1905`, `8001`) or invalid message payloads (`1909`, `8002`) are thrown as `NotificationClientError` to prevent unnecessary queue worker retries. Authentication, server maintenance, or credit errors are mapped to `NotificationProviderError` to allow auto-retrying.
+  - SMS Misr response codes indicating invalid mobile numbers (`1905`, `8001`) or invalid message payloads (`1909`, `8002`) are thrown as `NotificationClientError`.
+  - Vonage response codes indicating bad params, invalid number, or facility not allowed (e.g. status codes `2`, `3`, `6`, `7`, `11`, `12`, `13`, `15`) are thrown as `NotificationClientError` to prevent unnecessary queue retries. Configuration or network issues are mapped to `NotificationProviderError` to allow retry.
+

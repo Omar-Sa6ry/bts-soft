@@ -35,6 +35,7 @@ import { TwilioMailProvider } from "./mail/providers/twilio-mail.provider";
 import { SmsChannel } from "./sms/sms.channel";
 import { TwilioSmsProvider } from "./sms/providers/twilio-sms.provider";
 import { SmsMisrProvider } from "./sms/providers/smsmisr.provider";
+import { VonageSmsProvider } from "./sms/providers/vonage-sms.provider";
 import { WhatsAppChannel } from "./whatsapp/channel/whatsapp.channel";
 import { TelegramChannel } from "./telegram/channels/Telegram.channel";
 import { FirebaseChannel } from "./firebase/firebase.channel";
@@ -99,6 +100,7 @@ import {
     EmailChannel,
     TwilioSmsProvider,
     SmsMisrProvider,
+    VonageSmsProvider,
     SmsChannel,
     WhatsAppChannel,
     TelegramChannel,

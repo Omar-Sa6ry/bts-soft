@@ -36,6 +36,9 @@ class NotificationConfigDto {
   @IsString() @IsOptional() SMSMISR_SENDER?: string;
   @IsString() @IsOptional() SMS_PROVIDER?: string;
   @IsString() @IsOptional() SMSMISR_ENVIRONMENT?: string;
+  @IsString() @IsOptional() VONAGE_API_KEY?: string;
+  @IsString() @IsOptional() VONAGE_API_SECRET?: string;
+  @IsString() @IsOptional() VONAGE_SENDER?: string;
 }
 
 @Injectable()
@@ -82,6 +85,9 @@ export class NotificationConfigService implements OnModuleInit {
         SMSMISR_SENDER: this.smsmisrSender,
         SMS_PROVIDER: this.smsProvider,
         SMSMISR_ENVIRONMENT: this.smsmisrEnvironment?.toString(),
+        VONAGE_API_KEY: this.vonageApiKey,
+        VONAGE_API_SECRET: this.vonageApiSecret,
+        VONAGE_SENDER: this.vonageSender,
     });
 
     const errors = validateSync(config);
@@ -222,5 +228,17 @@ export class NotificationConfigService implements OnModuleInit {
   get smsmisrEnvironment(): number {
     const env = this.configService.get<any>("SMSMISR_ENVIRONMENT");
     return env !== undefined ? Number(env) : 1;
+  }
+
+  get vonageApiKey(): string | undefined {
+    return this.configService.get<string>("VONAGE_API_KEY");
+  }
+
+  get vonageApiSecret(): string | undefined {
+    return this.configService.get<string>("VONAGE_API_SECRET");
+  }
+
+  get vonageSender(): string | undefined {
+    return this.configService.get<string>("VONAGE_SENDER");
   }
 }

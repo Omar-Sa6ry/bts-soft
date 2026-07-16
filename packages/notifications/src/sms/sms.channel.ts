@@ -5,6 +5,7 @@ import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
 import { TwilioSmsProvider } from "./providers/twilio-sms.provider";
 import { SmsMisrProvider } from "./providers/smsmisr.provider";
+import { VonageSmsProvider } from "./providers/vonage-sms.provider";
 
 @Injectable()
 export class SmsChannel implements INotificationChannel, OnModuleInit {
@@ -15,7 +16,8 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
     private readonly configService: NotificationConfigService,
     private readonly registry: ChannelRegistry,
     private readonly twilioProvider: TwilioSmsProvider,
-    private readonly smsmisrProvider: SmsMisrProvider
+    private readonly smsmisrProvider: SmsMisrProvider,
+    private readonly vonageProvider: VonageSmsProvider
   ) {}
 
   onModuleInit() {
@@ -31,9 +33,12 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
 
     if (providerKey === "smsmisr") {
       await this.smsmisrProvider.send(message);
+    } else if (providerKey === "vonage") {
+      await this.vonageProvider.send(message);
     } else {
       // Default to twilio
       await this.twilioProvider.send(message);
     }
   }
 }
+

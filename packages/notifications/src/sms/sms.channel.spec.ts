@@ -4,18 +4,23 @@ import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
 import { TwilioSmsProvider } from "./providers/twilio-sms.provider";
 import { SmsMisrProvider } from "./providers/smsmisr.provider";
+import { VonageSmsProvider } from "./providers/vonage-sms.provider";
 
 describe("SmsChannel (Orchestrator)", () => {
   let channel: SmsChannel;
   let configService: any;
   let mockTwilioProvider: any;
   let mockSmsMisrProvider: any;
+  let mockVonageProvider: any;
 
   beforeEach(async () => {
     mockTwilioProvider = {
       send: jest.fn().mockResolvedValue(undefined),
     };
     mockSmsMisrProvider = {
+      send: jest.fn().mockResolvedValue(undefined),
+    };
+    mockVonageProvider = {
       send: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -28,6 +33,7 @@ describe("SmsChannel (Orchestrator)", () => {
         SmsChannel,
         { provide: TwilioSmsProvider, useValue: mockTwilioProvider },
         { provide: SmsMisrProvider, useValue: mockSmsMisrProvider },
+        { provide: VonageSmsProvider, useValue: mockVonageProvider },
         { provide: NotificationConfigService, useValue: configService },
         { provide: ChannelRegistry, useValue: { register: jest.fn() } },
       ],
@@ -42,6 +48,7 @@ describe("SmsChannel (Orchestrator)", () => {
 
     expect(mockTwilioProvider.send).toHaveBeenCalledWith(message);
     expect(mockSmsMisrProvider.send).not.toHaveBeenCalled();
+    expect(mockVonageProvider.send).not.toHaveBeenCalled();
   });
 
   it("should route to SmsMisr provider when default config is set to smsmisr", async () => {
@@ -51,6 +58,17 @@ describe("SmsChannel (Orchestrator)", () => {
 
     expect(mockSmsMisrProvider.send).toHaveBeenCalledWith(message);
     expect(mockTwilioProvider.send).not.toHaveBeenCalled();
+    expect(mockVonageProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("should route to Vonage provider when default config is set to vonage", async () => {
+    configService.smsProvider = "vonage";
+    const message = { recipientId: "123", body: "test" };
+    await channel.send(message);
+
+    expect(mockVonageProvider.send).toHaveBeenCalledWith(message);
+    expect(mockTwilioProvider.send).not.toHaveBeenCalled();
+    expect(mockSmsMisrProvider.send).not.toHaveBeenCalled();
   });
 
   it("should route to SmsMisr provider when channelOptions.provider is smsmisr", async () => {
@@ -63,6 +81,20 @@ describe("SmsChannel (Orchestrator)", () => {
 
     expect(mockSmsMisrProvider.send).toHaveBeenCalledWith(message);
     expect(mockTwilioProvider.send).not.toHaveBeenCalled();
+    expect(mockVonageProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("should route to Vonage provider when channelOptions.provider is vonage", async () => {
+    const message = {
+      recipientId: "123",
+      body: "test",
+      channelOptions: { provider: "vonage" },
+    };
+    await channel.send(message);
+
+    expect(mockVonageProvider.send).toHaveBeenCalledWith(message);
+    expect(mockTwilioProvider.send).not.toHaveBeenCalled();
+    expect(mockSmsMisrProvider.send).not.toHaveBeenCalled();
   });
 
   it("should route to Twilio provider when channelOptions.provider is twilio even if default is smsmisr", async () => {
@@ -76,5 +108,7 @@ describe("SmsChannel (Orchestrator)", () => {
 
     expect(mockTwilioProvider.send).toHaveBeenCalledWith(message);
     expect(mockSmsMisrProvider.send).not.toHaveBeenCalled();
+    expect(mockVonageProvider.send).not.toHaveBeenCalled();
   });
 });
+
