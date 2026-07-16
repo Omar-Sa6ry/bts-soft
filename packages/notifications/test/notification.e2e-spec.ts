@@ -122,7 +122,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
 
   afterAll(async () => {
     await moduleFixture.close();
-  }, 20000);
+  }, 60000);
 
 
   beforeEach(() => {

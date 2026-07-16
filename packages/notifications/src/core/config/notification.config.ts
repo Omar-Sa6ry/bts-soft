@@ -31,6 +31,11 @@ class NotificationConfigDto {
   @IsString() @IsOptional() WEB_PUSH_PUBLIC_KEY?: string;
   @IsString() @IsOptional() WEB_PUSH_PRIVATE_KEY?: string;
   @IsString() @IsOptional() WEB_PUSH_SUBJECT?: string;
+  @IsString() @IsOptional() SMSMISR_USERNAME?: string;
+  @IsString() @IsOptional() SMSMISR_PASSWORD?: string;
+  @IsString() @IsOptional() SMSMISR_SENDER?: string;
+  @IsString() @IsOptional() SMS_PROVIDER?: string;
+  @IsString() @IsOptional() SMSMISR_ENVIRONMENT?: string;
 }
 
 @Injectable()
@@ -72,6 +77,11 @@ export class NotificationConfigService implements OnModuleInit {
         WEB_PUSH_PUBLIC_KEY: this.webPushPublicKey,
         WEB_PUSH_PRIVATE_KEY: this.webPushPrivateKey,
         WEB_PUSH_SUBJECT: this.webPushSubject,
+        SMSMISR_USERNAME: this.smsmisrUsername,
+        SMSMISR_PASSWORD: this.smsmisrPassword,
+        SMSMISR_SENDER: this.smsmisrSender,
+        SMS_PROVIDER: this.smsProvider,
+        SMSMISR_ENVIRONMENT: this.smsmisrEnvironment?.toString(),
     });
 
     const errors = validateSync(config);
@@ -191,5 +201,26 @@ export class NotificationConfigService implements OnModuleInit {
 
   get webPushSubject(): string | undefined {
     return this.configService.get<string>("WEB_PUSH_SUBJECT");
+  }
+
+  get smsmisrUsername(): string | undefined {
+    return this.configService.get<string>("SMSMISR_USERNAME");
+  }
+
+  get smsmisrPassword(): string | undefined {
+    return this.configService.get<string>("SMSMISR_PASSWORD");
+  }
+
+  get smsmisrSender(): string | undefined {
+    return this.configService.get<string>("SMSMISR_SENDER");
+  }
+
+  get smsProvider(): string {
+    return this.configService.get<string>("SMS_PROVIDER") || "twilio";
+  }
+
+  get smsmisrEnvironment(): number {
+    const env = this.configService.get<any>("SMSMISR_ENVIRONMENT");
+    return env !== undefined ? Number(env) : 1;
   }
 }

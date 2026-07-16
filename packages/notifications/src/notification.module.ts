@@ -33,6 +33,8 @@ import { EmailChannel } from "./mail/mail.channel";
 import { NodemailerMailProvider } from "./mail/providers/nodemailer.provider";
 import { TwilioMailProvider } from "./mail/providers/twilio-mail.provider";
 import { SmsChannel } from "./sms/sms.channel";
+import { TwilioSmsProvider } from "./sms/providers/twilio-sms.provider";
+import { SmsMisrProvider } from "./sms/providers/smsmisr.provider";
 import { WhatsAppChannel } from "./whatsapp/channel/whatsapp.channel";
 import { TelegramChannel } from "./telegram/channels/Telegram.channel";
 import { FirebaseChannel } from "./firebase/firebase.channel";
@@ -95,6 +97,8 @@ import {
     NodemailerMailProvider,
     TwilioMailProvider,
     EmailChannel,
+    TwilioSmsProvider,
+    SmsMisrProvider,
     SmsChannel,
     WhatsAppChannel,
     TelegramChannel,

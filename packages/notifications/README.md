@@ -6,7 +6,7 @@ A robust, multi-channel notification engine for NestJS applications. It supports
 
 ## Features
 
-- **Multi-Channel Dispatching**: Deliver messages via Email (SMTP & SendGrid), SMS & WhatsApp (Twilio), Push Notifications (FCM, OneSignal, & **Native Web Push (VAPID)**), Telegram, Discord, Microsoft Teams, Facebook Messenger, Slack, and Webhooks.
+- **Multi-Channel Dispatching**: Deliver messages via Email (SMTP & SendGrid), SMS & WhatsApp (Twilio & **SMS Misr**), Push Notifications (FCM, OneSignal, & **Native Web Push (VAPID)**), Telegram, Discord, Microsoft Teams, Facebook Messenger, Slack, and Webhooks.
 - **Pre-flight pipeline**: Automatic validation including message expiry, rate-limiting, user channel opt-out preferences, and idempotency key checks.
 - **Queued Execution**: Background task processing powered by BullMQ and Redis with custom retry policies, exponential backoff, task prioritization, and multi-queue channel isolation to prevent cross-channel bottlenecks.
 - **Dynamic Templates & localization**: Integrates Handlebars for templating and `nestjs-i18n` for language localization.
@@ -94,6 +94,10 @@ Configure the following environment variables in your project's `.env` file:
 | `TWILIO_AUTH_TOKEN` | `string` | Optional | Twilio Auth Token for SMS/WhatsApp | - |
 | `TWILIO_WHATSAPP_NUMBER` | `string` | Optional | WhatsApp-enabled sender phone number | - |
 | `TWILIO_SMS_NUMBER` | `string` | Optional | SMS-enabled sender phone number | - |
+| `SMS_PROVIDER` | `string` | Optional | Default SMS provider (`twilio` or `smsmisr`) | `twilio` |
+| `SMSMISR_USERNAME` | `string` | Optional | API Username for SMS Misr | - |
+| `SMSMISR_PASSWORD` | `string` | Optional | API Password for SMS Misr | - |
+| `SMSMISR_SENDER` | `string` | Optional | Approved Sender ID for SMS Misr | - |
 | `FIREBASE_SERVICE_ACCOUNT_PATH` | `string` | Optional | Path to Firebase credentials JSON file | - |
 | `EMAIL_USER` | `string` | Optional | SMTP username / credentials username | - |
 | `EMAIL_PASS` | `string` | Optional | SMTP password / credentials password | - |
