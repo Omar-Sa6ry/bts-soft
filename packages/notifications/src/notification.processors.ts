@@ -47,3 +47,8 @@ export class WebhookProcessor extends NotificationProcessor {}
 @Injectable()
 export class OneSignalProcessor extends NotificationProcessor {}
 
+@Processor(`send-notification-${ChannelType.WEB_PUSH}`)
+@Injectable()
+export class WebPushProcessor extends NotificationProcessor {}
+
+

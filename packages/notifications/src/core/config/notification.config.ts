@@ -28,6 +28,9 @@ class NotificationConfigDto {
   @IsString() @IsOptional() WEBHOOK_DEFAULT_SIGNING_SECRET?: string;
   @IsString() @IsOptional() ONESIGNAL_APP_ID?: string;
   @IsString() @IsOptional() ONESIGNAL_REST_API_KEY?: string;
+  @IsString() @IsOptional() WEB_PUSH_PUBLIC_KEY?: string;
+  @IsString() @IsOptional() WEB_PUSH_PRIVATE_KEY?: string;
+  @IsString() @IsOptional() WEB_PUSH_SUBJECT?: string;
 }
 
 @Injectable()
@@ -66,6 +69,9 @@ export class NotificationConfigService implements OnModuleInit {
         WEBHOOK_DEFAULT_SIGNING_SECRET: this.webhookDefaultSigningSecret,
         ONESIGNAL_APP_ID: this.onesignalAppId,
         ONESIGNAL_REST_API_KEY: this.onesignalRestApiKey,
+        WEB_PUSH_PUBLIC_KEY: this.webPushPublicKey,
+        WEB_PUSH_PRIVATE_KEY: this.webPushPrivateKey,
+        WEB_PUSH_SUBJECT: this.webPushSubject,
     });
 
     const errors = validateSync(config);
@@ -173,5 +179,17 @@ export class NotificationConfigService implements OnModuleInit {
 
   get onesignalRestApiKey(): string | undefined {
     return this.configService.get<string>("ONESIGNAL_REST_API_KEY");
+  }
+
+  get webPushPublicKey(): string | undefined {
+    return this.configService.get<string>("WEB_PUSH_PUBLIC_KEY");
+  }
+
+  get webPushPrivateKey(): string | undefined {
+    return this.configService.get<string>("WEB_PUSH_PRIVATE_KEY");
+  }
+
+  get webPushSubject(): string | undefined {
+    return this.configService.get<string>("WEB_PUSH_SUBJECT");
   }
 }

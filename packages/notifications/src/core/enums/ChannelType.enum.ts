@@ -10,4 +10,5 @@ export enum ChannelType {
   SLACK = "slack",
   WEBHOOK = "webhook",
   ONESIGNAL = "onesignal",
+  WEB_PUSH = "web_push",
 }

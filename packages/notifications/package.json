@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/notifications",
-  "version": "1.6.9",
+  "version": "1.7.0",
   "author": "Omar Sabry",
   "description": "NestJS notifications module supporting email (Nodemailer), SMS (Twilio), push (Firebase), Telegram bot, and BullMQ queue integration.",
   "main": "dist/index.js",
@@ -34,10 +34,10 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   },
-
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
     "@nestjs/bullmq": "^11.0.4",
+    "@onesignal/node-onesignal": "^5.7.0",
     "axios": "^1.12.0",
     "bullmq": "^5.0.0",
     "class-transformer": "^0.5.1",
@@ -45,13 +45,13 @@
     "dotenv": "^16.4.0",
     "firebase-admin": "^13.0.0",
     "handlebars": "^4.7.9",
+    "libphonenumber-js": "^1.11.1",
     "nestjs-i18n": "^10.0.0",
     "node-telegram-bot-api": "^0.66.0",
     "nodemailer": "^7.0.0",
     "rxjs": "^7.8.0",
     "twilio": "^5.0.0",
-    "libphonenumber-js": "^1.11.1",
-    "@onesignal/node-onesignal": "^5.7.0"
+    "web-push": "^3.6.7"
   },
   "peerDependencies": {
     "@bts-soft/cache": ">=1.1.4",
@@ -77,6 +77,7 @@
     "@types/node": "^24.0.0",
     "@types/node-telegram-bot-api": "^0.64.0",
     "@types/nodemailer": "^7.0.0",
+    "@types/web-push": "^3.6.4",
     "jest": "^30.3.0",
     "ts-jest": "^29.4.9",
     "typescript": "^5.5.0"

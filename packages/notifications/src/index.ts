@@ -57,6 +57,7 @@ export * from "./messenger/messenger.channel";
 export * from "./slack/slack.channel";
 export * from "./webhook/webhook.channel";
 export * from "./onesignal/onesignal.channel";
+export * from "./webpush/webpush.channel";
 
 
 // Module, service, processor

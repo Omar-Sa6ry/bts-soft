@@ -18,6 +18,7 @@ import {
   SlackProcessor,
   WebhookProcessor,
   OneSignalProcessor,
+  WebPushProcessor,
 } from "./notification.processors";
 import { NotificationConfigService } from "./core/config/notification.config";
 import { NotificationChannelFactory } from "./core/factories/NotificationChannel.factory";
@@ -41,6 +42,7 @@ import { FacebookMessengerChannel } from "./messenger/messenger.channel";
 import { SlackChannel } from "./slack/slack.channel";
 import { WebhookChannel } from "./webhook/webhook.channel";
 import { OneSignalChannel } from "./onesignal/onesignal.channel";
+import { WebPushChannel } from "./webpush/webpush.channel";
 import {
   NOTIFICATION_RATE_LIMITER,
   NOTIFICATION_DEDUP_STORE,
@@ -74,6 +76,7 @@ import {
     SlackProcessor,
     WebhookProcessor,
     OneSignalProcessor,
+    WebPushProcessor,
     NotificationChannelFactory,
     ChannelRegistry,
     TemplateService,
@@ -102,6 +105,7 @@ import {
     SlackChannel,
     WebhookChannel,
     OneSignalChannel,
+    WebPushChannel,
   ],
   exports: [
     NotificationService,

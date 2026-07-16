@@ -6,7 +6,7 @@ A robust, multi-channel notification engine for NestJS applications. It supports
 
 ## Features
 
-- **Multi-Channel Dispatching**: Deliver messages via Email (SMTP & SendGrid), SMS & WhatsApp (Twilio), Push Notifications (FCM & OneSignal), Telegram, Discord, Microsoft Teams, Facebook Messenger, Slack, and Webhooks.
+- **Multi-Channel Dispatching**: Deliver messages via Email (SMTP & SendGrid), SMS & WhatsApp (Twilio), Push Notifications (FCM, OneSignal, & **Native Web Push (VAPID)**), Telegram, Discord, Microsoft Teams, Facebook Messenger, Slack, and Webhooks.
 - **Pre-flight pipeline**: Automatic validation including message expiry, rate-limiting, user channel opt-out preferences, and idempotency key checks.
 - **Queued Execution**: Background task processing powered by BullMQ and Redis with custom retry policies, exponential backoff, task prioritization, and multi-queue channel isolation to prevent cross-channel bottlenecks.
 - **Dynamic Templates & localization**: Integrates Handlebars for templating and `nestjs-i18n` for language localization.
@@ -109,6 +109,9 @@ Configure the following environment variables in your project's `.env` file:
 | `WEBHOOK_DEFAULT_SIGNING_SECRET` | `string` | Optional | Default secret key for signing webhook payloads | - |
 | `ONESIGNAL_APP_ID` | `string` | Optional | OneSignal Application ID | - |
 | `ONESIGNAL_REST_API_KEY` | `string` | Optional | OneSignal REST API key for authorization | - |
+| `WEB_PUSH_PUBLIC_KEY` | `string` | Optional | Web Push VAPID Public Key | - |
+| `WEB_PUSH_PRIVATE_KEY` | `string` | Optional | Web Push VAPID Private Key | - |
+| `WEB_PUSH_SUBJECT` | `string` | Optional | VAPID Subject (mailto: email or site URL) | - |
 
 ---
 

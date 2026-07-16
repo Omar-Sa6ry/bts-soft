@@ -14,6 +14,7 @@ import {
   SlackProcessor,
   WebhookProcessor,
   OneSignalProcessor,
+  WebPushProcessor,
 } from '../src/notification.processors';
 import { NotificationChannelFactory } from '../src/core/factories/NotificationChannel.factory';
 import { TemplateService } from '../src/core/templates/template.service';
@@ -44,6 +45,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
     [ChannelType.SLACK]: { name: 'slack', send: jest.fn().mockResolvedValue(undefined) },
     [ChannelType.WEBHOOK]: { name: 'webhook', send: jest.fn().mockResolvedValue(undefined) },
     [ChannelType.ONESIGNAL]: { name: 'onesignal', send: jest.fn().mockResolvedValue(undefined) },
+    [ChannelType.WEB_PUSH]: { name: 'web_push', send: jest.fn().mockResolvedValue(undefined) },
   };
 
   beforeAll(async () => {
@@ -76,6 +78,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
         SlackProcessor,
         WebhookProcessor,
         OneSignalProcessor,
+        WebPushProcessor,
         TemplateService,
         {
           provide: NotificationChannelFactory,
@@ -150,6 +153,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
   it('should process SLACK notifications', () => testChannel(ChannelType.SLACK, 'https://hooks.slack.com/services/abc'));
   it('should process WEBHOOK notifications', () => testChannel(ChannelType.WEBHOOK, 'https://api.receiver.com/hook'));
   it('should process ONESIGNAL notifications', () => testChannel(ChannelType.ONESIGNAL, 'player_id_123'));
+  it('should process WEB_PUSH notifications', () => testChannel(ChannelType.WEB_PUSH, '{"endpoint":"http://endpoint","keys":{"auth":"auth","p256dh":"p256dh"}}'));
 
   it('should handle Provider failures and retries', async () => {
     mockChannels[ChannelType.EMAIL].send
