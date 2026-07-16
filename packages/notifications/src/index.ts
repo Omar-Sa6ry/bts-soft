@@ -20,6 +20,9 @@ export * from "./core/errors/NotificationError";
 export * from "./core/interfaces/INotificationChannel.interface";
 export * from "./core/interfaces/II18nService.interface";
 
+// Phone validation
+export * from "./core/validation/phone-validation.service";
+
 // Rate limiter
 export * from "./core/rate-limiter/IRateLimiter.interface";
 export * from "./core/rate-limiter/RateLimiterConfig.interface";

@@ -5,6 +5,7 @@ import { NotificationMessage } from "../core/models/NotificationMessage.interfac
 import { NotificationConfigService } from "../core/config/notification.config";
 import { ChannelRegistry } from "../core/registry/channel.registry";
 import { NotificationClientError, NotificationProviderError } from "../core/errors/NotificationError";
+import { PhoneValidationService } from "../core/validation/phone-validation.service";
 
 @Injectable()
 export class SmsChannel implements INotificationChannel, OnModuleInit {
@@ -14,7 +15,8 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
 
   constructor(
     private configService: NotificationConfigService,
-    private registry: ChannelRegistry
+    private registry: ChannelRegistry,
+    private phoneValidationService: PhoneValidationService
   ) {}
 
   onModuleInit() {
@@ -31,34 +33,6 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
     } else {
       this.logger.warn("Twilio credentials missing. SmsChannel will not function.");
     }
-  }
-
-  /**
-   * Normalize any phone number for SMS:
-   * e.g., 01012345678 -> +201012345678
-   */
-  private normalizePhoneNumber(phone: string): string {
-    let normalized = phone.trim();
-
-    // remove spaces & dashes
-    normalized = normalized.replace(/\s|-/g, "");
-
-    // Handle 00 prefix as +
-    if (normalized.startsWith("00")) {
-      normalized = "+" + normalized.slice(2);
-    }
-
-    // Egyptian numbers (01xxxxxxxxx -> +201xxxxxxxxx)
-    if (normalized.startsWith("01") && normalized.length === 11) {
-      normalized = "+20" + normalized.slice(1);
-    }
-
-    // Ensure it starts with + if it doesn't already
-    if (!normalized.startsWith("+")) {
-       normalized = "+" + normalized;
-    }
-
-    return normalized;
   }
 
   public async send(message: NotificationMessage): Promise<void> {
@@ -78,7 +52,7 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
     if (!clientToUse) throw new NotificationProviderError("Twilio client is not initialized and no dynamic credentials provided.");
     if (!to) throw new NotificationClientError("SMS recipientId (phone number) is required.");
 
-    const formattedTo = this.normalizePhoneNumber(to);
+    const formattedTo = this.phoneValidationService.normalizePhoneNumber(to);
 
     this.logger.log(`Sending SMS from ${from} to ${formattedTo}`);
 

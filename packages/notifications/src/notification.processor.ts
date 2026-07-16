@@ -55,8 +55,6 @@ export class NotificationProcessor extends WorkerHost {
     }
   }
 
-  // Main processing entry point
-
   async process(job: Job<NotificationJobData>): Promise<void> {
     const { channel } = job.data;
     let { message } = job.data;
@@ -74,10 +72,10 @@ export class NotificationProcessor extends WorkerHost {
     }
 
     try {
-      // Phase 1: Pre-process
+      // Pre-process
       message = await this.preProcess(channel, message);
 
-      // Phase 2: Send
+      // Send
       const notificationChannel = this.channelFactory.getChannel(channel);
       await notificationChannel.send(message);
 
@@ -85,7 +83,7 @@ export class NotificationProcessor extends WorkerHost {
         `Job ${job.id} (Channel: ${channel}) completed successfully.`,
       );
 
-      // Phase 3: Post-process — success
+      // Post-process — success
       if (this.logRepository) {
         await this.logRepository.updateByJobId(job.id!, {
           status: NotificationStatus.SENT,
@@ -103,7 +101,7 @@ export class NotificationProcessor extends WorkerHost {
         `Job ${job.id} (Channel: ${channel}) failed on attempt ${job.attemptsMade + 1}: ${err.message}`,
       );
 
-      // Phase 3: Post-process — failure
+      // Post-process — failure
       if (this.logRepository) {
         const status =
           error instanceof NotificationExpiredError

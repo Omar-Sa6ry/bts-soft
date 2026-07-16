@@ -73,6 +73,10 @@ Enables recipients to opt-out of specific communication channels. If a user opts
 
 The payload context is merged into the message body at runtime using **Handlebars** template parsing. In addition, BCP-47 language tags (e.g. `en`, `ar`) are resolved against `nestjs-i18n` translations if provided.
 
+### Phone Number Normalization & Validation
+
+For SMS and WhatsApp channels, recipient phone numbers are automatically normalized and validated to the E.164 international standard using **libphonenumber-js**. By default, if the number does not start with an international prefix, it is resolved assuming an Egyptian (`EG`) country code. If validation fails, it falls back to a legacy normalization algorithm (Egypt-centric) to prevent message delivery from failing.
+
 ---
 
 ## Configuration Variables

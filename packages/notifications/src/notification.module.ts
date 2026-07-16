@@ -22,6 +22,7 @@ import { NotificationConfigService } from "./core/config/notification.config";
 import { NotificationChannelFactory } from "./core/factories/NotificationChannel.factory";
 import { ChannelRegistry } from "./core/registry/channel.registry";
 import { TemplateService } from "./core/templates/template.service";
+import { PhoneValidationService } from "./core/validation/phone-validation.service";
 import { LoggingNotificationObserver } from "./core/observer/LoggingNotificationObserver";
 import { RedisRateLimiter } from "./core/rate-limiter/RedisRateLimiter.service";
 import { RedisDeduplicationStore } from "./core/deduplication/RedisDeduplicationStore";
@@ -74,6 +75,7 @@ import {
     ChannelRegistry,
     TemplateService,
     LoggingNotificationObserver,
+    PhoneValidationService,
 
     RedisRateLimiter,
     { provide: NOTIFICATION_RATE_LIMITER, useExisting: RedisRateLimiter },
@@ -103,6 +105,7 @@ import {
     NotificationChannelFactory,
     ChannelRegistry,
     TemplateService,
+    PhoneValidationService,
     NOTIFICATION_RATE_LIMITER,
     NOTIFICATION_DEDUP_STORE,
     USER_PREFERENCE_REPOSITORY,

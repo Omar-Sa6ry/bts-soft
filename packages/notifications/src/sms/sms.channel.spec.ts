@@ -4,6 +4,7 @@ import { NotificationConfigService } from '../core/config/notification.config';
 import { ChannelRegistry } from '../core/registry/channel.registry';
 import { Twilio } from 'twilio';
 import { NotificationClientError, NotificationProviderError } from '../core/errors/NotificationError';
+import { PhoneValidationService } from '../core/validation/phone-validation.service';
 
 
 jest.mock('twilio');
@@ -30,6 +31,7 @@ describe('SmsChannel', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SmsChannel,
+        PhoneValidationService,
         { provide: NotificationConfigService, useValue: configService },
         { provide: ChannelRegistry, useValue: { register: jest.fn() } },
       ],
@@ -41,7 +43,7 @@ describe('SmsChannel', () => {
 
   it('should send SMS with default number', async () => {
     const message = {
-      recipientId: '987654321',
+      recipientId: '+987654321',
       body: 'SMS Test',
     };
 
@@ -79,6 +81,7 @@ describe('SmsChannel', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SmsChannel,
+        PhoneValidationService,
         { provide: NotificationConfigService, useValue: configService },
         { provide: ChannelRegistry, useValue: { register: jest.fn() } },
       ],
