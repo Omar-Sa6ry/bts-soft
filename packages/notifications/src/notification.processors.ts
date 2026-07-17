@@ -51,4 +51,9 @@ export class OneSignalProcessor extends NotificationProcessor {}
 @Injectable()
 export class WebPushProcessor extends NotificationProcessor {}
 
+@Processor(`send-notification-${ChannelType.IN_APP}`)
+@Injectable()
+export class InAppProcessor extends NotificationProcessor {}
+
+
 

@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/notifications",
-  "version": "1.7.8",
+  "version": "1.7.9",
   "author": "Omar Sabry",
   "description": "NestJS notifications module supporting email (Nodemailer), SMS (Twilio), push (Firebase), Telegram bot, and BullMQ queue integration.",
   "main": "dist/index.js",
@@ -50,6 +50,7 @@
     "nestjs-i18n": "^10.0.0",
     "node-telegram-bot-api": "^0.66.0",
     "nodemailer": "^7.0.0",
+    "pusher": "^5.3.4",
     "rxjs": "^7.8.0",
     "twilio": "^5.0.0",
     "web-push": "^3.6.7"

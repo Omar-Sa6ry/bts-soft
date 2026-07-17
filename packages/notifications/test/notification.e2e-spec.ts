@@ -15,6 +15,7 @@ import {
   WebhookProcessor,
   OneSignalProcessor,
   WebPushProcessor,
+  InAppProcessor,
 } from '../src/notification.processors';
 import { NotificationChannelFactory } from '../src/core/factories/NotificationChannel.factory';
 import { TemplateService } from '../src/core/templates/template.service';
@@ -46,6 +47,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
     [ChannelType.WEBHOOK]: { name: 'webhook', send: jest.fn().mockResolvedValue(undefined) },
     [ChannelType.ONESIGNAL]: { name: 'onesignal', send: jest.fn().mockResolvedValue(undefined) },
     [ChannelType.WEB_PUSH]: { name: 'web_push', send: jest.fn().mockResolvedValue(undefined) },
+    [ChannelType.IN_APP]: { name: 'in_app', send: jest.fn().mockResolvedValue(undefined) },
   };
 
   beforeAll(async () => {
@@ -79,6 +81,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
         WebhookProcessor,
         OneSignalProcessor,
         WebPushProcessor,
+        InAppProcessor,
         TemplateService,
         {
           provide: NotificationChannelFactory,
@@ -154,6 +157,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
   it('should process WEBHOOK notifications', () => testChannel(ChannelType.WEBHOOK, 'https://api.receiver.com/hook'));
   it('should process ONESIGNAL notifications', () => testChannel(ChannelType.ONESIGNAL, 'player_id_123'));
   it('should process WEB_PUSH notifications', () => testChannel(ChannelType.WEB_PUSH, '{"endpoint":"http://endpoint","keys":{"auth":"auth","p256dh":"p256dh"}}'));
+  it('should process IN_APP notifications', () => testChannel(ChannelType.IN_APP, 'user-channel'));
 
   it('should handle Provider failures and retries', async () => {
     mockChannels[ChannelType.EMAIL].send

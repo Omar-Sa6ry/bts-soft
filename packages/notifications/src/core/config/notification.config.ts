@@ -42,6 +42,11 @@ class NotificationConfigDto {
   @IsString() @IsOptional() AWS_SES_ACCESS_KEY_ID?: string;
   @IsString() @IsOptional() AWS_SES_SECRET_ACCESS_KEY?: string;
   @IsString() @IsOptional() AWS_SES_REGION?: string;
+  @IsString() @IsOptional() IN_APP_PROVIDER?: string;
+  @IsString() @IsOptional() PUSHER_APP_ID?: string;
+  @IsString() @IsOptional() PUSHER_KEY?: string;
+  @IsString() @IsOptional() PUSHER_SECRET?: string;
+  @IsString() @IsOptional() PUSHER_CLUSTER?: string;
 }
 
 @Injectable()
@@ -94,6 +99,11 @@ export class NotificationConfigService implements OnModuleInit {
         AWS_SES_ACCESS_KEY_ID: this.awsSesAccessKeyId,
         AWS_SES_SECRET_ACCESS_KEY: this.awsSesSecretAccessKey,
         AWS_SES_REGION: this.awsSesRegion,
+        IN_APP_PROVIDER: this.inAppProvider,
+        PUSHER_APP_ID: this.pusherAppId,
+        PUSHER_KEY: this.pusherKey,
+        PUSHER_SECRET: this.pusherSecret,
+        PUSHER_CLUSTER: this.pusherCluster,
     });
 
     const errors = validateSync(config);
@@ -258,5 +268,25 @@ export class NotificationConfigService implements OnModuleInit {
 
   get awsSesRegion(): string | undefined {
     return this.configService.get<string>("AWS_SES_REGION");
+  }
+
+  get inAppProvider(): string {
+    return this.configService.get<string>("IN_APP_PROVIDER") || "pusher";
+  }
+
+  get pusherAppId(): string | undefined {
+    return this.configService.get<string>("PUSHER_APP_ID");
+  }
+
+  get pusherKey(): string | undefined {
+    return this.configService.get<string>("PUSHER_KEY");
+  }
+
+  get pusherSecret(): string | undefined {
+    return this.configService.get<string>("PUSHER_SECRET");
+  }
+
+  get pusherCluster(): string | undefined {
+    return this.configService.get<string>("PUSHER_CLUSTER");
   }
 }
