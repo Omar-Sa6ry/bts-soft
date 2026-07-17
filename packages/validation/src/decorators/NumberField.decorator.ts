@@ -1,6 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
 import { Field, Float, Int } from '@nestjs/graphql';
-import { IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
 
 /**
  * Composite decorator for a numeric field.
@@ -26,6 +26,11 @@ export function NumberField(
     IsOptional(),
     IsNumber({}, { message: `${text} must be a number` }),
   ];
+
+  if (isInt) {
+    decorators.push(IsInt({ message: `${text} must be an integer` }));
+  }
+
 
   if (min !== undefined) {
     decorators.push(Min(min, { message: `${text} must be at least ${min}` }));

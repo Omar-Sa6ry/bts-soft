@@ -24,8 +24,12 @@ describe('NumberField', () => {
 
   it('should handle isInt correctly', async () => {
     const obj = new TestNumber();
-    obj.score = 5.5;
-    const errors = await validate(obj);
+    obj.score = 5; // valid integer
+    let errors = await validate(obj);
     expect(errors.length).toBe(0);
+
+    obj.score = 5.5; // invalid (not an integer)
+    errors = await validate(obj);
+    expect(errors.find(e => e.property === 'score')).toBeDefined();
   });
 });

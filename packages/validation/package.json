@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/validation",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "A robust toolkit of flexible NestJS decorators for DTO validation, transformation, and security checks, compatible with both REST and GraphQL APIs.",
   "author": "Omar Sabry",
   "license": "MIT",
@@ -33,6 +33,7 @@
     "reflect-metadata": "^0.2.0"
   },
   "peerDependencies": {
+    "@bts-soft/cache": ">=1.1.4",
     "@nestjs/common": ">=11.0.0",
     "@nestjs/core": ">=11.0.0",
     "@nestjs/graphql": ">=13.0.0"
@@ -40,9 +41,14 @@
   "peerDependenciesMeta": {
     "@nestjs/graphql": {
       "optional": true
+    },
+    "@bts-soft/cache": {
+      "optional": true
     }
   },
   "devDependencies": {
+    "@bts-soft/cache": "^1.1.4",
+
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/graphql": "^13.0.0",
