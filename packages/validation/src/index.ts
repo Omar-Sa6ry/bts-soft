@@ -19,4 +19,7 @@ export * from './decorators/UsernameField.decorator';
 export * from './decorators/EnumField.decorator';
 
 // --- Utility Functions & Constants ---
-export * from './utility/WordsTransform.decorator';
+export * from './utility/WordsTransform.decorator';
+
+// --- Custom Validation Pipe & Exceptions ---
+export * from './pipe/validation.pipe';

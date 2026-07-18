@@ -17,7 +17,8 @@ Additionally, the package includes a highly customizable rate-limiting suite imp
    - [Contact & Web Decorators](#contact--web-decorators)
    - [Primitive & Logical Decorators](#primitive--logical-decorators)
    - [Utility Transformations](#utility-transformations)
-5. [Rate Limiting Suite](#rate-limiting-suite)
+5. [Validation Pipeline Error Formatting](#validation-pipeline-error-formatting)
+6. [Rate Limiting Suite](#rate-limiting-suite)
    - [Architectural Flow](#architectural-flow)
    - [Storage Backends](#storage-backends)
    - [Detailed Algorithm Implementations](#detailed-algorithm-implementations)
@@ -26,9 +27,9 @@ Additionally, the package includes a highly customizable rate-limiting suite imp
    - [GraphQL Integration](#graphql-integration)
    - [Client IP Extraction Strategy](#client-ip-extraction-strategy)
    - [Response Headers](#response-headers)
-6. [SQL Injection Prevention](#sql-injection-prevention)
-7. [Testing and Verification](#testing-and-verification)
-8. [License](#license)
+7. [SQL Injection Prevention](#sql-injection-prevention)
+8. [Testing and Verification](#testing-and-verification)
+9. [License](#license)
 
 ---
 
@@ -446,6 +447,15 @@ The package exports two utility functions representing the core string transform
 
 ---
 
+## Validation Pipeline Error Formatting
+
+The validation package automatically monkey-patches the standard NestJS `@nestjs/common` `ValidationPipe` upon import. This ensures that any instance of `ValidationPipe` configured in the host application automatically formats validation exceptions to align GraphQL and REST response formats.
+
+- REST API format: Exception responses maintain the standard RFC structure, returning validation messages inside the `message` array property.
+- GraphQL API format: The exception's `message` property is overridden dynamically with the joined string of validation messages. This allows Apollo Server's default exception formatter to output detailed error constraints in the top-level GraphQL error `message` field, instead of returning the generic `"Bad Request Exception"` string.
+
+---
+
 ## Rate Limiting Suite
 
 The rate limiter feature in `@bts-soft/validation` implements the five core rate-limiting patterns described in Alex Xu's *System Design Interview* book. It works out of the box for both REST controllers and GraphQL resolvers, automatically applying standard rate-limiting headers.
@@ -718,6 +728,7 @@ npm run test:e2e
 - Decorators are validated against both positive scenarios (valid formatted structures) and negative scenarios (SQLi injections, wrong formatting, length violations).
 - Rate limiter algorithms are validated in fast-forward Jest contexts verifying exact remaining token offsets, timestamp purges, queue structures, and counter updates.
 - Storage classes (`InMemoryStore` and `RedisStore`) are fully tested to confirm TTL expiration behavior and fallback behavior when connections drop.
+- Validation pipeline monkey-patching is verified using both unit specs (mapping validation errors and asserting correct property overrides on the exception instance) and E2E specs (sending invalid payloads to a mock NestJS application and verifying that response structures are formatted properly).
 
 ---
 
