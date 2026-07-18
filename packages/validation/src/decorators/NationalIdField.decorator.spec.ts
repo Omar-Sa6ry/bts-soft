@@ -1,10 +1,15 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { NationalIdField } from './nationalId.decorator';
+import { NationalIdField } from './NationalIdField.decorator';
 import 'reflect-metadata';
 
 class TestNid {
   @NationalIdField()
+  nid?: string;
+}
+
+class TestRequiredNid {
+  @NationalIdField(false, true, false)
   nid: string;
 }
 
@@ -24,5 +29,17 @@ describe('NationalIdField', () => {
     const raw = { nid: '299-0101-12345-67' };
     const instance = plainToInstance(TestNid, raw);
     expect(instance.nid).toBe('29901011234567');
+  });
+
+  it('should support optional behavior by default', async () => {
+    const obj = new TestNid();
+    const errors = await validate(obj);
+    expect(errors.length).toBe(0);
+  });
+
+  it('should support required behavior when optional is false', async () => {
+    const obj = new TestRequiredNid();
+    const errors = await validate(obj);
+    expect(errors.length).toBeGreaterThan(0);
   });
 });

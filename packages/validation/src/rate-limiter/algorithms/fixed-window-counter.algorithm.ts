@@ -77,4 +77,10 @@ export class FixedWindowCounterAlgorithm implements IRateLimiterAlgorithm {
   async clear(): Promise<void> {
     await this.store.clear();
   }
+
+  async destroy(): Promise<void> {
+    if (typeof this.store.destroy === 'function') {
+      await this.store.destroy();
+    }
+  }
 }

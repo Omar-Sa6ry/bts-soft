@@ -8,29 +8,44 @@ import { SlidingWindowCounterAlgorithm } from './sliding-window-counter.algorith
 
 describe('createAlgorithm factory', () => {
   const base = { limit: 10, windowMs: 1_000 };
+  const instances: any[] = [];
+
+  function track<T>(algo: T): T {
+    instances.push(algo);
+    return algo;
+  }
+
+  afterEach(async () => {
+    for (const inst of instances) {
+      if (inst && typeof inst.destroy === 'function') {
+        await inst.destroy();
+      }
+    }
+    instances.length = 0;
+  });
 
   it('creates a TokenBucketAlgorithm', () => {
-    const algo = createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.TOKEN_BUCKET });
+    const algo = track(createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.TOKEN_BUCKET }));
     expect(algo).toBeInstanceOf(TokenBucketAlgorithm);
   });
 
   it('creates a LeakingBucketAlgorithm', () => {
-    const algo = createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.LEAKING_BUCKET });
+    const algo = track(createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.LEAKING_BUCKET }));
     expect(algo).toBeInstanceOf(LeakingBucketAlgorithm);
   });
 
   it('creates a FixedWindowCounterAlgorithm', () => {
-    const algo = createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.FIXED_WINDOW_COUNTER });
+    const algo = track(createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.FIXED_WINDOW_COUNTER }));
     expect(algo).toBeInstanceOf(FixedWindowCounterAlgorithm);
   });
 
   it('creates a SlidingWindowLogAlgorithm', () => {
-    const algo = createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.SLIDING_WINDOW_LOG });
+    const algo = track(createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.SLIDING_WINDOW_LOG }));
     expect(algo).toBeInstanceOf(SlidingWindowLogAlgorithm);
   });
 
   it('creates a SlidingWindowCounterAlgorithm', () => {
-    const algo = createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.SLIDING_WINDOW_COUNTER });
+    const algo = track(createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.SLIDING_WINDOW_COUNTER }));
     expect(algo).toBeInstanceOf(SlidingWindowCounterAlgorithm);
   });
 
@@ -41,7 +56,7 @@ describe('createAlgorithm factory', () => {
   });
 
   it('produced algorithm can consume and return a valid result', async () => {
-    const algo = createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.FIXED_WINDOW_COUNTER });
+    const algo = track(createAlgorithm({ ...base, algorithm: RateLimiterAlgorithm.FIXED_WINDOW_COUNTER }));
     const result = await algo.consume('test-key');
     expect(typeof result.allowed).toBe('boolean');
     expect(result.limit).toBe(10);

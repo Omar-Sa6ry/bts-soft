@@ -21,9 +21,10 @@ export function NumberField(
   isInt = false,
   nullable: boolean = false,
   isGraphql: boolean = true,
+  optional: boolean = true,
 ): PropertyDecorator {
   const decorators = [
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     IsNumber({}, { message: `${text} must be a number` }),
   ];
 

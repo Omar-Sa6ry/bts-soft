@@ -17,6 +17,7 @@ export function IdField(
   length: number = 26, // Flexible length parameter
   nullable: boolean = false,
   isGraphql: boolean = true,
+  optional: boolean = true,
 ): PropertyDecorator {
   const message = `${id} ID must be exactly ${length} characters`;
 
@@ -31,7 +32,7 @@ export function IdField(
     ...graphQLDecorators, 
     
     // Common validation rules (apply to both REST and GraphQL)
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     IsString({ message }),
     
     // Enforce the custom length

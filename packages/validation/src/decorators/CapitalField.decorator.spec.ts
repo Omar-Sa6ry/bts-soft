@@ -8,6 +8,16 @@ class TestCapital {
   city: string;
 }
 
+class TestRequiredCapital {
+  @CapitalTextField('City', 1, 255, false, true, false)
+  city: string;
+}
+
+class TestNoSqlCheckCapital {
+  @CapitalTextField('City', 1, 255, false, true, true, false)
+  city: string;
+}
+
 describe('CapitalTextField', () => {
   it('should validate letters and spaces only', async () => {
     const obj = new TestCapital();
@@ -22,7 +32,7 @@ describe('CapitalTextField', () => {
 
   it('should validate Arabic words successfully', async () => {
     const obj = new TestCapital();
-    obj.city = 'القاهرة';
+    obj.city = '\u0627\u0644\u0642\u0627\u0647\u0631\u0629';
     const errors = await validate(obj);
     expect(errors.length).toBe(0);
   });
@@ -38,5 +48,24 @@ describe('CapitalTextField', () => {
     obj.city = 'SELECT * FROM users';
     const errors = await validate(obj);
     expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('should support optional behavior by default', async () => {
+    const obj = new TestCapital();
+    const errors = await validate(obj);
+    expect(errors.length).toBe(0);
+  });
+
+  it('should support required behavior when optional is false', async () => {
+    const obj = new TestRequiredCapital();
+    const errors = await validate(obj);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('should skip SQL injection check when checkSql is false', async () => {
+    const obj = new TestNoSqlCheckCapital();
+    obj.city = 'SELECT fields FROM users';
+    const errors = await validate(obj);
+    expect(errors.length).toBe(0);
   });
 });

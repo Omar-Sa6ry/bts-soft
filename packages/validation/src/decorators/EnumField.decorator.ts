@@ -16,6 +16,7 @@ export function EnumField(
   name: string,
   nullable: boolean = false,
   isGraphql: boolean = true,
+  optional: boolean = true,
 ): PropertyDecorator {
   const graphQLDecorators = isGraphql
     ? [Field(() => String, { nullable, description: `Enum: ${name}` })] 
@@ -23,7 +24,7 @@ export function EnumField(
 
   return applyDecorators(
     ...graphQLDecorators, 
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     IsEnum(enumType, { message: `Must be a valid ${name}` }),
   );
 }

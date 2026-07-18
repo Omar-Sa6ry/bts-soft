@@ -1,4 +1,4 @@
-import { Matches, IsString, Length } from 'class-validator';
+import { Matches, IsString, Length, IsOptional } from 'class-validator';
 import { applyDecorators } from '@nestjs/common';
 import { Field } from '@nestjs/graphql';
 import { SQL_INJECTION_REGEX } from '../regex/SQL_INJECTION_REGEX';
@@ -60,6 +60,8 @@ export function PasswordField(
     complexity: PasswordComplexity = PasswordComplexity.ALPHANUMERIC,
     nullable: boolean = false,
     isGraphql: boolean = true,
+    optional: boolean = false,
+    checkSql: boolean = true,
 ): PropertyDecorator {
     
   const graphQLDecorators = isGraphql
@@ -69,15 +71,17 @@ export function PasswordField(
   return applyDecorators(
     ...graphQLDecorators, 
     
+    ...(optional ? [IsOptional()] : []),
     IsString(),
     Length(min, max, { message: `Password must be between ${min} and ${max} characters` }),
     password(complexity),
 
-    Matches(
-        SQL_INJECTION_REGEX,
-        {
-             message: 'Password contains forbidden SQL keywords or patterns',
-        },
-    ),
+    ...(checkSql
+      ? [
+          Matches(SQL_INJECTION_REGEX, {
+            message: 'Password contains forbidden SQL keywords or patterns',
+          }),
+        ]
+      : []),
   );
 }

@@ -109,6 +109,11 @@ export interface IRateLimiterAlgorithm {
    * Clears all stored state. Intended for testing.
    */
   clear(): Promise<void>;
+
+  /**
+   * Clean up resources, connections, or background timers.
+   */
+  destroy?(): Promise<void> | void;
 }
 
 /**

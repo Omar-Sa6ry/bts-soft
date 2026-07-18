@@ -12,6 +12,7 @@ import { IsBoolean, IsOptional } from 'class-validator';
 export function BooleanField(
   nullable: boolean = false,
   isGraphql: boolean = true,
+  optional: boolean = true,
 ): PropertyDecorator {
   const graphQLDecorators = isGraphql
     ? [Field(() => Boolean, { nullable })] 
@@ -19,7 +20,7 @@ export function BooleanField(
 
   return applyDecorators(
     ...graphQLDecorators, 
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     IsBoolean({ message: 'Must be a boolean value' }),
   );
 }

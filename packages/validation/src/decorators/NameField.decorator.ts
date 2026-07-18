@@ -22,6 +22,8 @@ export function NameField(
   max = 100,
   nullable: boolean = false,
   isGraphql: boolean = true,
+  optional: boolean = true,
+  checkSql: boolean = true,
 ): PropertyDecorator {
   const message = `${text} must be between ${min} and ${max} characters`;
 
@@ -32,7 +34,7 @@ export function NameField(
   return applyDecorators(
     ...graphQLDecorators, 
     
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     IsString({ message }),
     Matches(/^[A-Za-z\s\u0600-\u06FF]+$/, {
       message: `${text} must contain only letters and spaces`,
@@ -40,12 +42,13 @@ export function NameField(
     Length(min, max, {
       message,
     }),
-    Matches(
-      SQL_INJECTION_REGEX,
-      {
-        message: `${text} contains forbidden SQL keywords or patterns`,
-      },
-    ),
+    ...(checkSql
+      ? [
+          Matches(SQL_INJECTION_REGEX, {
+            message: `${text} contains forbidden SQL keywords or patterns`,
+          }),
+        ]
+      : []),
     Transform(({ value }) => CapitalizeWords(value)),
   );
 }

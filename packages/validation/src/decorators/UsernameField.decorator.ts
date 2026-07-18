@@ -14,6 +14,8 @@ import { SQL_INJECTION_REGEX } from '../regex/SQL_INJECTION_REGEX';
 export function UsernameField(
   nullable: boolean = false,
   isGraphql: boolean = true,
+  optional: boolean = true,
+  checkSql: boolean = true,
 ): PropertyDecorator {
   const graphQLDecorators = isGraphql
     ? [Field(() => String, { nullable })] 
@@ -21,18 +23,19 @@ export function UsernameField(
 
   return applyDecorators(
     ...graphQLDecorators, 
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     IsString({ message: 'Username must be a string' }),
     Length(3, 30, { message: 'Username must be between 3 and 30 characters' }),
     // Alphanumeric, starts with a letter
     Matches(/^[A-Za-z][A-Za-z0-9_]*$/, {
       message: 'Username must start with a letter and contain only letters, numbers, or underscores',
     }),
-    Matches(
-      SQL_INJECTION_REGEX,
-      {
-        message: 'Username contains forbidden SQL keywords or patterns',
-      },
-    ),
+    ...(checkSql
+      ? [
+          Matches(SQL_INJECTION_REGEX, {
+            message: 'Username contains forbidden SQL keywords or patterns',
+          }),
+        ]
+      : []),
   );
 }

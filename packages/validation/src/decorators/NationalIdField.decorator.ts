@@ -15,13 +15,16 @@ export function ValidateNationalId() {
 /**
  * Composite decorator for validating an Egyptian National ID field.
  * Ensures the value is exactly 14 digits and starts with the valid prefix (2 or 3).
- * * @param nullable Whether the field is nullable (for GraphQL).
+ * 
+ * @param nullable Whether the field is nullable (for GraphQL).
  * @param isGraphql Set to false to exclude the @Field() decorator for REST DTOs (Default: true).
+ * @param optional Whether the field is optional (Default: true).
  * @returns PropertyDecorator
  */
 export function NationalIdField(
-    nullable: boolean = false,
-    isGraphql: boolean = true, // REST/GraphQL switch
+  nullable: boolean = false,
+  isGraphql: boolean = true, // REST/GraphQL switch
+  optional: boolean = true,
 ): PropertyDecorator {
     
   // 1. Conditionally define the GraphQL-specific decorators
@@ -34,7 +37,7 @@ export function NationalIdField(
     ...graphQLDecorators, 
     
     // Common validation rules
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     // Transformation: Ensures only digits are kept before validation checks
     Transform(({ value }) => typeof value === 'string' ? value.replace(/\D/g, '') : value), 
     

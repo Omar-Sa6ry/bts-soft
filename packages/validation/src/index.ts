@@ -9,7 +9,7 @@ export * from './decorators/EmailField.decorator';
 export * from './decorators/PasswordField.decorator';
 export * from './decorators/PhoneField.decorator';
 export * from './decorators/UrlField.decorator';
-export * from './decorators/nationalId.decorator';
+export * from './decorators/NationalIdField.decorator';
 export * from './decorators/NameField.decorator';
 export * from './decorators/DescriptionField.decorator';
 export * from './decorators/NumberField.decorator';

@@ -16,6 +16,7 @@ export function DateField(
   text: string,
   nullable: boolean = false,
   isGraphql: boolean = true,
+  optional: boolean = true,
 ): PropertyDecorator {
   const graphQLDecorators = isGraphql
     ? [Field(() => Date, { nullable })] 
@@ -23,7 +24,7 @@ export function DateField(
 
   return applyDecorators(
     ...graphQLDecorators, 
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     Type(() => Date),
     IsDate({ message: `${text} must be a valid date` }),
   );

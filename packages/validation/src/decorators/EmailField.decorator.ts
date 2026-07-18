@@ -20,6 +20,7 @@ import { SQL_INJECTION_REGEX } from '../regex/SQL_INJECTION_REGEX';
 export function EmailField(
   nullable: boolean = false,
   isGraphql: boolean = true, // REST/GraphQL switch
+  optional: boolean = true,
 ): PropertyDecorator {
 
   // 1. Conditionally define the GraphQL-specific decorators
@@ -32,7 +33,7 @@ export function EmailField(
     ...graphQLDecorators, 
     
     // Common validation rules
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     // Standard validation: Checks for basic email structure (e.g., user@domain.com)
     IsEmail({}, { message: 'Must be a valid email address' }), 
     

@@ -6,6 +6,7 @@ import {
   Logger,
   mixin,
   Type,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { RateLimiterConfig, RateLimiterResult } from './interfaces/rate-limiter.interface';
 import { createAlgorithm } from './algorithms/algorithm.factory';
@@ -80,12 +81,18 @@ export function RateLimiter(config: RateLimiterConfig): Type<CanActivate> {
   const skipIntrospection = config.skipIntrospection !== false; // default true
 
   @Injectable()
-  class RateLimiterGuard implements CanActivate {
+  class RateLimiterGuard implements CanActivate, OnModuleDestroy {
     private readonly logger = new Logger('RateLimiterGuard');
     private readonly algorithm: IRateLimiterAlgorithm;
 
     constructor() {
       this.algorithm = createAlgorithm(config);
+    }
+
+    async onModuleDestroy(): Promise<void> {
+      if (typeof this.algorithm.destroy === 'function') {
+        await this.algorithm.destroy();
+      }
     }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {

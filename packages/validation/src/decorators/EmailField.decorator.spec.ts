@@ -8,6 +8,11 @@ class TestEmail {
   email: string;
 }
 
+class TestRequiredEmail {
+  @EmailField(false, true, false)
+  email: string;
+}
+
 describe('EmailField', () => {
   it('should validate email format correctly', async () => {
     const obj = new TestEmail();
@@ -29,6 +34,18 @@ describe('EmailField', () => {
   it('should fail on SQL injection', async () => {
     const obj = new TestEmail();
     obj.email = 'admin@example.com; DROP TABLE users';
+    const errors = await validate(obj);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('should support optional behavior by default', async () => {
+    const obj = new TestEmail();
+    const errors = await validate(obj);
+    expect(errors.length).toBe(0);
+  });
+
+  it('should support required behavior when optional is false', async () => {
+    const obj = new TestRequiredEmail();
     const errors = await validate(obj);
     expect(errors.length).toBeGreaterThan(0);
   });

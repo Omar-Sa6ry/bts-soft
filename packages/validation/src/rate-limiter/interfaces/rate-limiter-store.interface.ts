@@ -31,4 +31,9 @@ export interface IRateLimiterStore {
    * Primarily used by the test suite to reset state between runs.
    */
   clear(): Promise<void>;
+
+  /**
+   * Clean up store resources or background tasks.
+   */
+  destroy?(): Promise<void> | void;
 }

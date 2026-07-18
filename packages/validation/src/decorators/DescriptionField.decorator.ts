@@ -22,6 +22,8 @@ export function DescriptionField(
   max = 2000,
   nullable: boolean = false,
   isGraphql: boolean = true,
+  optional: boolean = true,
+  checkSql: boolean = true,
 ): PropertyDecorator {
   const message = `${text} must be between ${min} and ${max} characters`;
 
@@ -32,7 +34,7 @@ export function DescriptionField(
   return applyDecorators(
     ...graphQLDecorators, 
     
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     IsString({ message }),
     // Allows letters, numbers, spaces, and a wider range of punctuation including newlines.
     Matches(/^[A-Za-z0-9\s.,!?( )\-_\n\r\u0600-\u06FF]+$/, {
@@ -42,12 +44,13 @@ export function DescriptionField(
       message,
     }),
     // SQL Injection Check
-    Matches(
-      SQL_INJECTION_REGEX,
-      {
-        message: `${text} contains forbidden SQL keywords or patterns`,
-      },
-    ),
+    ...(checkSql
+      ? [
+          Matches(SQL_INJECTION_REGEX, {
+            message: `${text} contains forbidden SQL keywords or patterns`,
+          }),
+        ]
+      : []),
     Transform(({ value }) => LowerWords(value)),
   );
 }

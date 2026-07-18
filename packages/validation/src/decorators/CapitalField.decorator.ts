@@ -24,6 +24,8 @@ export function CapitalTextField(
   max = 255, // Flexible max length
   nullable: boolean = false,
   isGraphql: boolean = true, // REST/GraphQL switch
+  optional: boolean = true,
+  checkSql: boolean = true,
 ): PropertyDecorator {
   const message = `${text} must be between ${min} and ${max} characters`;
 
@@ -37,7 +39,7 @@ export function CapitalTextField(
     ...graphQLDecorators, 
     
     // Common validation rules
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     IsString({ message }),
     Matches(/^[A-Za-z\s\u0600-\u06FF]+$/, {
       message: `${text} must contain only letters (no numbers or symbols)`,
@@ -45,12 +47,13 @@ export function CapitalTextField(
     Length(min, max, { // Use flexible min/max
       message,
     }),
-    Matches(
-      SQL_INJECTION_REGEX,
-      {
-        message: `${text} contains forbidden SQL keywords or patterns`,
-      },
-    ),
+    ...(checkSql
+      ? [
+          Matches(SQL_INJECTION_REGEX, {
+            message: `${text} contains forbidden SQL keywords or patterns`,
+          }),
+        ]
+      : []),
     // Transformation: Capitalize the words
     Transform(({ value }) => CapitalizeWords(value)),
   );

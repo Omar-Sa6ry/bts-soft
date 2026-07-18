@@ -22,6 +22,8 @@ export function TextField(
   max = 255, // Flexible max length
   nullable: boolean = false,
   isGraphql: boolean = true, // REST/GraphQL switch
+  optional: boolean = true,
+  checkSql: boolean = true,
 ): PropertyDecorator {
   const message = `${text} must be between ${min} and ${max} characters`;
 
@@ -35,7 +37,7 @@ export function TextField(
     ...graphQLDecorators, 
     
     // Common validation rules
-    IsOptional(),
+    ...(optional ? [IsOptional()] : []),
     IsString({ message }),
     Matches(/^[A-Za-z0-9\s.,\u0600-\u06FF-]+$/, {
       message: `${text} must contain only letters, numbers, spaces, or basic symbols (.,-)`,
@@ -43,12 +45,13 @@ export function TextField(
     Length(min, max, { // Use flexible min/max
       message,
     }),
-    Matches(
-      SQL_INJECTION_REGEX,
-      {
-        message: `${text} contains forbidden SQL keywords or patterns`,
-      },
-    ),
+    ...(checkSql
+      ? [
+          Matches(SQL_INJECTION_REGEX, {
+            message: `${text} contains forbidden SQL keywords or patterns`,
+          }),
+        ]
+      : []),
     // Transformation: Convert the text to lowercase
     Transform(({ value }) => LowerWords(value)),
   );

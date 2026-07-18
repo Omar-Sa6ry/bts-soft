@@ -17,6 +17,11 @@ class TestComprehensive {
   pass: string;
 }
 
+class TestOptionalPassword {
+  @PasswordField(8, 16, PasswordComplexity.ALPHANUMERIC, false, true, true)
+  pass?: string;
+}
+
 describe('PasswordField Decorator', () => {
   describe('Alphanumeric Scenario (Default)', () => {
     it('should pass with valid alphanumeric password', async () => {
@@ -83,6 +88,18 @@ describe('PasswordField Decorator', () => {
       obj.pass = 'Valid123Valid123Valid123';
       const errors = await validate(obj);
       expect(errors.length).toBeGreaterThan(0);
+    });
+
+    it('should fail when missing (required by default)', async () => {
+      const obj = new TestAlphanumeric();
+      const errors = await validate(obj);
+      expect(errors.length).toBeGreaterThan(0);
+    });
+
+    it('should pass when missing if optional is set to true', async () => {
+      const obj = new TestOptionalPassword();
+      const errors = await validate(obj);
+      expect(errors.length).toBe(0);
     });
   });
 });
