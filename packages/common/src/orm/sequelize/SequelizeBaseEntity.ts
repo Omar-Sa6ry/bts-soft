@@ -1,34 +1,25 @@
-// @ts-ignore
 import { Table, Column, Model, PrimaryKey, DataType, CreatedAt, UpdatedAt } from 'sequelize-typescript';
-import { ulid } from 'ulid';
+import { IdGenerator, IdStrategy } from '../../utils/id-generator';
 
 /**
- * SequelizeBaseEntity
- * 
- * A specialized base class for Sequelize models.
- * Integrates ULID as primary key and standard timestamps.
- * 
- * Note: Requires 'sequelize' and 'sequelize-typescript' to be installed.
+ * Base model class for Sequelize entities supporting configurable ID strategies.
  */
-// @ts-ignore
 @Table({ timestamps: true })
-// @ts-ignore
-export abstract class SequelizeBaseEntity<T = any, K = any> extends Model<T, K> {
-  // @ts-ignore
+export abstract class SequelizeBaseEntity<T extends object = any, K extends object = any> extends Model<T, K> {
   @PrimaryKey
-  // @ts-ignore
   @Column({
-    // @ts-ignore
-    type: DataType.STRING(26),
-    defaultValue: () => ulid(),
+    type: DataType.STRING(36),
+    defaultValue: () => IdGenerator.generate(),
   })
   id: string;
 
-  // @ts-ignore
   @CreatedAt
   createdAt: Date;
 
-  // @ts-ignore
   @UpdatedAt
   updatedAt: Date;
+
+  protected generateId(strategy?: IdStrategy): string {
+    return IdGenerator.generate(strategy);
+  }
 }

@@ -1,28 +1,24 @@
-import { ulid } from 'ulid';
+import { IdGenerator, IdStrategy } from '../../utils/id-generator';
 
 /**
- * PrismaBase
- * 
- * Since Prisma models are auto-generated, this class serves as a 
- * template/interface for DTOs and Logic that interact with Prisma models.
- * 
- * Provides utility methods for ULID generation and structure matching.
+ * Base utility and structural interface for Prisma model integrations.
+ * Supports configurable ID generation strategies (ULID, UUID, Snowflake, CUID).
  */
 export abstract class PrismaBase {
-  /** 
-   * Helper to generate a ULID for Prisma's @default(cuid()) or manual id fields.
+  /**
+   * Generate a unique ID using specified strategy or global default.
    */
-  static generateId(): string {
-    return ulid();
+  static generateId(strategy?: IdStrategy): string {
+    return IdGenerator.generate(strategy);
   }
 
-  id: string;
-  createdAt: Date;
-  updatedAt: Date;
+  id: string = IdGenerator.generate();
+  createdAt: Date = new Date();
+  updatedAt: Date = new Date();
 }
 
 /**
- * Interface to ensure Prisma models match the system's core entity structure.
+ * Interface ensuring Prisma models match the system's entity structural contract.
  */
 export interface IPrismaEntity {
   id: string;

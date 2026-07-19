@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/common",
-  "version": "1.4.4",
+  "version": "1.5.0",
   "description": "Shared NestJS utilities (modules, guards, interceptors, decorators, DTOs, and entities) for all @bts-soft packages.",
   "author": "Omar Sabry",
   "license": "MIT",
@@ -9,10 +9,10 @@
   "exports": {
     ".": "./dist/index.js",
     "./core": "./dist/core/bases/AgnosticEntity.js",
-    "./typeorm": "./dist/orm/typeorm/TypeOrmBaseEntity.js",
-    "./sequelize": "./dist/orm/sequelize/SequelizeBaseEntity.js",
-    "./mongoose": "./dist/orm/mongoose/MongooseBaseEntity.js",
-    "./prisma": "./dist/orm/prisma/PrismaBase.js",
+    "./typeorm": "./dist/orm/typeorm/index.js",
+    "./sequelize": "./dist/orm/sequelize/index.js",
+    "./mongoose": "./dist/orm/mongoose/index.js",
+    "./prisma": "./dist/orm/prisma/index.js",
     "./graphql": "./dist/graphql/bases/GraphqlBaseEntity.js",
     "./interceptors": "./dist/interceptors/generalResponse.interceptor.js",
     "./filters": "./dist/filters/rest-exception.filter.js",
@@ -64,29 +64,29 @@
     "prisma"
   ],
   "dependencies": {
+    "@apollo/server": "^4.0.0",
+    "@nestjs/apollo": "^13.0.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/graphql": "^13.0.0",
+    "@nestjs/throttler": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "graphql": "^16.0.0",
+    "graphql-upload-minimal": "^1.6.0",
+    "nestjs-i18n": "^10.4.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
     "ulid": "^3.0.0"
   },
   "peerDependencies": {
-    "@apollo/server": ">=4.0.0",
-    "@nestjs/apollo": ">=13.0.0",
-    "@nestjs/common": ">=11.0.0",
-    "@nestjs/config": ">=4.0.0",
-    "@nestjs/core": ">=11.0.0",
-    "@nestjs/graphql": ">=13.0.0",
     "@nestjs/mongoose": ">=10.0.0",
-    "@nestjs/throttler": ">=6.0.0",
     "@prisma/client": ">=5.0.0",
-    "graphql": ">=16.0.0",
     "mongoose": ">=7.0.0",
-    "nestjs-i18n": ">=10.0.0",
     "sequelize": ">=6.0.0",
     "sequelize-typescript": ">=2.0.0",
-    "typeorm": ">=0.3.0",
-    "graphql-upload-minimal": ">=1.6.0"
+    "typeorm": ">=0.3.0"
   },
   "peerDependenciesMeta": {
     "@apollo/server": {

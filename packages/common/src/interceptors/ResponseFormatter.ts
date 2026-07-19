@@ -6,6 +6,8 @@
 export class ResponseFormatter {
   static formatSuccess(data: any) {
     const isArray = Array.isArray(data);
+    const isEnvelope = data && typeof data === 'object' && !isArray && 'success' in data && 'statusCode' in data;
+
     const items = Array.isArray(data?.items)
       ? data.items
       : Array.isArray(data?.data?.items)
@@ -14,19 +16,13 @@ export class ResponseFormatter {
 
     return {
       success: true,
-      statusCode: data?.statusCode || 200,
-      message: data?.message || "Request successful",
+      statusCode: isEnvelope ? data.statusCode : 200,
+      message: isEnvelope ? data.message : "Request successful",
       timeStamp: new Date().toISOString(),
       pagination: data?.pagination,
       url: data?.url,
       items,
-      data: isArray
-        ? data
-        : typeof data?.data === "number" || typeof data?.data === "string"
-        ? data.data
-        : typeof data?.data === "object"
-        ? data.data
-        : data ?? null,
+      data: isEnvelope ? data.data : (data ?? null),
     };
   }
 

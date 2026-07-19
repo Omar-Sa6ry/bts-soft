@@ -1,27 +1,21 @@
-// @ts-ignore
 import { Prop, Schema } from '@nestjs/mongoose';
-import { ulid } from 'ulid';
+import { IdGenerator, IdStrategy } from '../../utils/id-generator';
 
 /**
- * MongooseBaseEntity
- * 
- * A specialized base class for Mongoose schemas.
- * Provides ULID support and standardized timestamps for MongoDB documents.
- * 
- * Note: Requires '@nestjs/mongoose' and 'mongoose' to be installed.
+ * Base schema class for Mongoose entities supporting configurable ID strategies.
  */
-// @ts-ignore
 @Schema({ timestamps: true })
 export abstract class MongooseBaseEntity {
-  // @ts-ignore
-  @Prop({ type: String, default: () => ulid() })
-  _id: string = ulid();
+  @Prop({ type: String, default: () => IdGenerator.generate() })
+  _id: string = IdGenerator.generate();
 
-  // @ts-ignore
   @Prop()
   createdAt: Date;
 
-  // @ts-ignore
   @Prop()
   updatedAt: Date;
+
+  protected generateId(strategy?: IdStrategy): string {
+    return IdGenerator.generate(strategy);
+  }
 }

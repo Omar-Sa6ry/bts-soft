@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { TypeOrmBaseEntity } from './TypeOrmBaseEntity';
 
 class TestTypeOrmEntity extends TypeOrmBaseEntity {}
@@ -9,19 +10,19 @@ describe('TypeOrmBaseEntity', () => {
     expect(entity.id.length).toBe(26);
   });
 
-  it('should log insert, update and remove', () => {
+  it('should log insert, update and remove using Logger', () => {
     const entity = new TestTypeOrmEntity();
-    const logSpy = jest.spyOn(console, 'log').mockImplementation();
+    const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation();
     
     entity.logInsert();
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Inserted'));
+    expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Inserted'));
     
     entity.logUpdate();
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Updated'));
+    expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Updated'));
     
     entity.logRemove();
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Removed'));
+    expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Removed'));
     
-    logSpy.mockRestore();
+    debugSpy.mockRestore();
   });
 });

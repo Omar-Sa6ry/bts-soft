@@ -4,11 +4,11 @@ export * from "./core/bases/AgnosticResponse";
 export * from "./bases/BaseResponse";
 export * from "./bases/BaseEntity";
 
-// ========== ORM Specific Bases (Agnostic - Safe to keep Prisma as it has no external imports) ==========
+// ========== ORM Specific Bases ==========
 export * from "./orm/prisma/PrismaBase";
 
 // NOTE: TypeORM, Sequelize, and Mongoose bases are excluded from the main entry point
-// to prevent mandatory peer dependency requirements. 
+// to prevent mandatory peer dependency requirements.
 // Import them via sub-paths: @bts-soft/common/typeorm, @bts-soft/common/sequelize, etc.
 
 // ========== API Specific (GraphQL) ==========
@@ -16,7 +16,6 @@ export * from "./graphql/bases/GraphqlBaseEntity";
 export * from "./graphql/bases/GraphqlBaseResponse";
 export * from "./graphql/graphql.module";
 export * from "./graphql/errorHandling.filter";
-
 
 // ========== Filters & Interceptors ==========
 export * from "./interceptors/ResponseFormatter";
@@ -28,10 +27,11 @@ export * from "./filters/rest-exception.filter";
 // ========== Decorators ==========
 export * from "./decorators/currentUser.decorator";
 export * from "./decorators/public.decorator";
+export * from "./decorators/skip-sql-check.decorator";
 
 // ========== DTOs ==========
 export * from "./dtos/currentUser.dto";
-export * from "./dtos/pagintion";
+export * from "./dtos/pagination";
 
 // ========== Logging ==========
 export * from "./logger/logger.service";
@@ -43,3 +43,4 @@ export * from "./translation/translation.module";
 
 // ========== Utilities ==========
 export * from "./production/displayConsoles";
+export * from "./utils/id-generator";

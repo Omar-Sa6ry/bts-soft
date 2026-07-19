@@ -20,6 +20,7 @@ export class CurrentUserDto {
   email: string;
 
   /** User roles */
+  @Field(() => [String], { description: 'Assigned roles for authorization context' })
   @Expose()
   roles: string[];
 }

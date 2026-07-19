@@ -27,7 +27,7 @@ export class RestExceptionFilter implements ExceptionFilter {
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : exception?.statusCode || exception?.status || HttpStatus.INTERNAL_SERVER_ERROR;
 
     const errorResponse = ResponseFormatter.formatError(exception);
 

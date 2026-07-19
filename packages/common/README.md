@@ -1,59 +1,165 @@
 # @bts-soft/common
 
-The foundational Standard Library for the BTS Soft ecosystem. A technology-agnostic, production-hardened collection of utilities, base classes, and infrastructure modules for NestJS applications.
+Production-grade foundational standard library for NestJS enterprise services within the BTS Soft ecosystem. Implements core system design architectural patterns including distributed rate limiting, uniform API response envelopes, deep WAF payload security inspection, multi-ORM abstraction adapters, configurable ID generation strategies, and context-aware internationalization.
 
 ---
 
-## Key Features
+## Architectural & Design Overview
 
-- **Technology Agnostic**: Core logic is decoupled from specific ORMs or API protocols.
-- **Multi-ORM Support**: Pre-configured bases for TypeORM, Sequelize, Mongoose, Prisma, and Agnostic foundations.
-- **Standardized Communication**: Unified response structure and exception handling for both REST and GraphQL.
-- **Robust Rate Limiting**: Global throttling support with automatic handling for REST and GraphQL contexts.
-- **Security by Default**: Integrated SQL Injection protection and sensitive data filtering.
-- **Enterprise Internationalization**: Built-in support for multi-language applications (Arabic/English).
-- **Centralized Logging**: Consistent observability with specialized logger services.
+```mermaid
+graph TD
+    Client[Client Request] --> TG[CommonThrottlerGuard]
+    TG --> SQ[SqlInjectionInterceptor]
+    SQ --> Auth[Guards / Authentication]
+    Auth --> Handler[Controller / GraphQL Resolver]
+    Handler --> RF[ResponseFormatter]
+    RF --> ClientResponse[Formatted JSON / GraphQL Payload]
 
----
+    Handler -. Exception .-> EF[RestExceptionFilter / GqlHttpExceptionFilter]
+    EF --> ClientError[Normalized Standard Error Envelope]
+```
 
-## Installation
+### Request Lifecycle Execution Flow
 
-```bash
-npm install @bts-soft/common
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant G as CommonThrottlerGuard
+    participant I as SqlInjectionInterceptor
+    participant H as Handler (Controller/Resolver)
+    participant F as ResponseFormatter / ExceptionFilter
+
+    C->>G: Incoming HTTP / GraphQL Request
+    alt Rate limit exceeded
+        G-->>C: 429 Too Many Requests (Rate Limit Exception)
+    else Rate limit within threshold
+        G->>I: Pass Request Context
+    end
+
+    alt Malicious payload pattern detected
+        I-->>C: 400 Bad Request (Suspicious SQL Pattern Detected)
+    else Payload valid
+        I->>H: Execute Target Handler Method
+    end
+
+    alt Operation Succeeded
+        H->>F: Return Controller Response Object
+        F-->>C: 200 OK (Unified API Envelope)
+    else Operation Threw Exception
+        H->>F: Catch Exception
+        F-->>C: Standard Error Envelope (Masked Stack Trace)
+    end
+```
+
+### Configurable ID Generation Strategy Flow
+
+```mermaid
+graph LR
+    Entity[Base Entity / ORM Base] --> Generator[IdGenerator.generate]
+    Generator --> Choice{Strategy Selected}
+    Choice -->|ULID| ULID[128-bit Sortable ULID]
+    Choice -->|UUID| UUID[RFC4122 v4 UUID]
+    Choice -->|Snowflake| SF[64-bit Twitter Snowflake]
+    Choice -->|CUID| CUID[CUID2 Sortable ID]
 ```
 
 ---
 
-## Core Infrastructure Modules
+## Design Patterns Reference Matrix
 
-### 1. Throttling Module
-Provides global rate limiting with a robust guard that automatically detects and handles both HTTP and GraphQL requests.
+| Design Pattern | Implementation Class / Component | Engineering Purpose |
+| :--- | :--- | :--- |
+| **Strategy Pattern** | `IdGenerator` | Decouples ID generation algorithms (ULID, UUID, Snowflake, CUID2) from entity definitions. |
+| **Strategy Pattern** | `TranslationModule` | Dynamically selects locale resolution strategies (`HeaderResolver`, `AcceptLanguageResolver`). |
+| **Adapter Pattern** | `TypeOrmBaseEntity`, `MongooseBaseEntity`, `SequelizeBaseEntity`, `PrismaBase` | Adapts agnostic domain entities to specific ORMs without altering core interfaces. |
+| **Chain of Responsibility** | `setupInterceptors()` | Chains interceptors (`ClassSerializer`, `SqlInjection`, `GeneralResponse`) sequentially. |
+| **Decorator Pattern** | `@CurrentUser()`, `@Public()`, `@SkipSqlCheck()` | Annotates metadata declaratively onto NestJS route handlers and method parameters. |
+| **Exception Filter Pattern** | `RestExceptionFilter`, `HttpExceptionFilter` | Catches and normalizes runtime exceptions into standardized JSON responses. |
+| **Factory Pattern** | `ConfigModule.forRoot()`, `ThrottlingModule.forRoot()`, `GraphqlModule.forRoot()`, `TranslationModule.forRoot()` | Encapsulates complex dynamic module instantiation and provider registration. |
+| **Observer / Pub-Sub** | `GraphqlModule` (WebSockets) | Listens for real-time GraphQL events via `graphql-ws` and `subscriptions-transport-ws`. |
+| **Builder / Formatter** | `ResponseFormatter` | Assembles unified success and error response payload envelopes. |
+| **Transient Service** | `CommonLoggerService` | Manages logger context isolation dynamically per module instantiation (`Scope.TRANSIENT`). |
+
+---
+
+## System Design Interview Concept Mapping
+
+### 1. Rate Limiting & Throttling (Volume 1 - Chapter 4)
+- **Token Bucket / Sliding Window Counter**: `ThrottlingModule` and `CommonThrottlerGuard` provide tiered sliding rate limit windows (Short, Medium, Long) to protect downstream microservices against noisy neighbors and Denial-of-Service (DoS) attacks.
+- **Protocol Dual Context Extraction**: `CommonThrottlerGuard` dynamically inspects execution context types to resolve IP addresses and request objects for standard HTTP Express requests and Apollo GraphQL execution contexts.
+
+### 2. Distributed Unique ID Generators (Volume 1 - Chapter 7)
+- **B-Tree Indexing Optimization**: Random UUID v4 values cause B-Tree index fragmentation and page splits in database engines. `IdGenerator` defaults to lexicographically sortable 128-bit ULIDs (48-bit timestamp + 80-bit randomness) to maintain sequential primary key ordering and high database write throughput.
+- **Twitter Snowflake Support**: Supports 64-bit Twitter Snowflake IDs combining millisecond timestamps, worker/machine IDs (0-1023), and sequence counters (0-4095) for distributed microservice node coordination.
+
+### 3. API Gateway Response Enveloping & Contracts (Volume 1 - Chapter 1)
+- **Unified API Contract**: `ResponseFormatter` and `GeneralResponseInterceptor` enforce a deterministic JSON response envelope across REST controllers and GraphQL resolvers, ensuring predictable client consuming contracts.
+- **Security Information Leakage Mitigation**: `RestExceptionFilter` and `HttpExceptionFilter` catch unhandled errors and strip stack traces and internal system details in production environments.
+
+### 4. WAF Payload Security Scanning & Resource Protection
+- **Deep Payload Inspection**: `SqlInjectionInterceptor` recursively parses body payloads, query strings, and path parameters to block logic bypasses (`' OR '1'='1`), `UNION SELECT` extractions, stacked queries, time-delay attacks (`WAITFOR DELAY`, `pg_sleep`), and system command executions (`xp_cmdshell`).
+- **Resource Exhaustion Prevention**: Implements a maximum recursion depth limit of 10 to prevent stack overflow attacks caused by circular JSON payloads, and resets stateful regex `lastIndex` pointers before pattern evaluation.
+
+### 5. Multi-Region Internationalization & Localization
+- **Context Routing**: `TranslationModule` inspects incoming request headers (`x-lang` and `Accept-Language`) to deliver localized error messages and content across multi-region deployments.
+
+---
+
+## Module and Component Breakdown
+
+### 1. Core & Agnostic Foundations
+
+#### `AgnosticEntity` (`src/core/bases/AgnosticEntity.ts`)
+Pure TypeScript base entity independent of ORMs or framework decorators. Instantiates `id` using `IdGenerator.generate()` and maintains `createdAt` and `updatedAt` timestamps.
+
+#### `BaseEntity` (`src/bases/BaseEntity.ts`)
+Agnostic base entity integrated with `class-transformer` (`@Expose()`) for serialization.
+
+#### `BaseResponse` (`src/bases/BaseResponse.ts`)
+Standard response model containing default properties when instantiated without arguments:
+- `message`: Defaults to `"Operation executed successfully"`
+- `success`: Defaults to `true`
+- `timeStamp`: Defaults to current ISO timestamp
+- `statusCode`: Defaults to `200`
+
+---
+
+### 2. Distributed ID Generator (`src/utils/id-generator.ts`)
+
+Centralized strategy engine supporting 4 unique ID generation strategies:
 
 ```typescript
-import { ThrottlingModule } from '@bts-soft/common';
+import { IdGenerator } from '@bts-soft/common';
 
-@Module({
-  imports: [
-    ThrottlingModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 3 },
-      { name: 'medium', ttl: 10000, limit: 20 }
-    ]),
-  ],
-})
-export class AppModule {}
+// Set global strategy across the entire application
+IdGenerator.setDefaultStrategy('snowflake'); // Options: 'ulid' | 'uuid' | 'snowflake' | 'cuid'
+
+// Configure worker node ID for Twitter Snowflake
+IdGenerator.setWorkerId(12);
+
+// Generate ID on demand
+const customId = IdGenerator.generate('cuid');
 ```
-
-### 2. Translation Module
-Integrated internationalization using `nestjs-i18n` with support for header-based and accept-language based language resolution.
-
-### 3. GraphQL Module
-A standardized Apollo Server configuration with custom error filters that bridge the gap between GraphQL errors and standard HTTP status codes.
 
 ---
 
-## Security & Interceptors
+### 3. Multi-ORM Base Adapters
 
-Activate the global security and response formatting suite in your `main.ts`:
+- **TypeORM (`@bts-soft/common/typeorm`)**: `TypeOrmBaseEntity` extends TypeORM's `BaseEntity` with `@PrimaryColumn`, `@CreateDateColumn`, `@UpdateDateColumn`, and lifecycle hooks (`@AfterInsert`, `@AfterUpdate`, `@BeforeRemove`) using NestJS `Logger`.
+- **Mongoose (`@bts-soft/common/mongoose`)**: `MongooseBaseEntity` decorates schemas with `@Schema({ timestamps: true })` and `@Prop()` for `_id` and timestamps.
+- **Sequelize (`@bts-soft/common/sequelize`)**: `SequelizeBaseEntity` decorates models with `@Table({ timestamps: true })`, `@PrimaryKey`, `@Column`, `@CreatedAt`, and `@UpdatedAt`.
+- **Prisma (`@bts-soft/common/prisma`)**: `PrismaBase` provides helper method `PrismaBase.generateId(strategy?)` and `IPrismaEntity` interface.
+
+---
+
+### 4. Security & Interceptors (`src/interceptors/`)
+
+#### `SqlInjectionInterceptor`
+Scans incoming request payloads for SQL injection vectors. Endpoints handling trusted raw SQL can bypass scanning using `@SkipSqlCheck()`.
+
+#### `setupInterceptors(app)`
+Helper function to activate global application interceptors:
 
 ```typescript
 import { setupInterceptors } from '@bts-soft/common';
@@ -65,55 +171,77 @@ async function bootstrap() {
 }
 ```
 
-### Included Interceptors:
-- **SqlInjectionInterceptor**: Scans all incoming payloads (Body, Query, Params) for malicious patterns.
-- **GeneralResponseInterceptor**: Wraps all REST responses in a standardized success/error envelope.
-- **ClassSerializerInterceptor**: Filters sensitive fields marked with `@Exclude()`.
+---
+
+### 5. Infrastructure Modules
+
+#### `ThrottlingModule` (`src/throttler/throttling.module.ts`)
+Provides rate limiting via `CommonThrottlerGuard`, supporting both REST HTTP and Apollo GraphQL context extraction.
+
+```typescript
+@Module({
+  imports: [
+    ThrottlingModule.forRoot([
+      { name: 'short', ttl: 1000, limit: 10 },
+      { name: 'medium', ttl: 10000, limit: 50 },
+      { name: 'long', ttl: 60000, limit: 250 },
+    ]),
+  ],
+})
+export class AppModule {}
+```
+
+#### `GraphqlModule` (`src/graphql/graphql.module.ts`)
+Standardized Apollo GraphQL module supporting WebSockets (`graphql-ws`), file uploads (`GraphQLUpload`), CSRF prevention, and Apollo Federation.
+
+```typescript
+@Module({
+  imports: [
+    GraphqlModule.forRoot({
+      autoSchemaFile: true,
+      playground: true,
+      federation: true, // Enables ApolloFederationDriver for microservices
+      webSocket: { enabled: true, path: '/graphql', keepAlive: 10000 },
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+#### `TranslationModule` (`src/translation/translation.module.ts`)
+Integrates `nestjs-i18n` with automated path resolution for locales.
 
 ---
 
-## Base Entities
+## Sub-Path Export Matrix
 
-Choose the persistence foundation that matches your stack:
-
-- **Agnostic**: `BaseEntity` (ULID based)
-- **TypeORM**: `TypeOrmBaseEntity`
-- **Mongoose**: `MongooseBaseEntity`
-- **Sequelize**: `SequelizeBaseEntity`
-- **Prisma**: `PrismaBase`
-- **GraphQL**: `GraphqlBaseEntity`
-
----
-
-## API Reference: Decorators
-
-| Decorator | Description | Context |
+| Sub-Path Export | Exported Components | Description |
 | :--- | :--- | :--- |
-| `@CurrentUser()` | Safely extracts the authenticated user from the request. | REST & GraphQL |
-| `@Public()` | Bypasses global authentication guards for specific endpoints. | REST & GraphQL |
+| `@bts-soft/common` | Core Bases, Decorators, DTOs, Filters, Interceptors, IdGenerator, Modules | Main entry point containing framework agnostic logic |
+| `@bts-soft/common/typeorm` | `TypeOrmBaseEntity` | TypeORM model base adapter |
+| `@bts-soft/common/sequelize` | `SequelizeBaseEntity` | Sequelize model base adapter |
+| `@bts-soft/common/mongoose` | `MongooseBaseEntity` | Mongoose schema base adapter |
+| `@bts-soft/common/prisma` | `PrismaBase`, `IPrismaEntity` | Prisma integration base and interface |
 
 ---
 
-## Testing
+## Testing & Quality Assurance
 
-The package includes a comprehensive test suite with 100% pass rate for both Unit and End-to-End (E2E) tests.
-
-### Running Tests
-Ensure you have Docker installed for database-dependent tests:
+The package includes comprehensive unit and integration test suites:
 
 ```bash
-# Run all tests (Unit + E2E)
-npm run test:all
+# Run unit test suite
+npm run test
 
-# Run unit tests with coverage
-npm run test:cov
-
-# Run E2E tests
+# Run end-to-end integration tests
 npm run test:e2e
+
+# Collect code coverage
+npm run test:cov
 ```
 
 ---
 
 ## License
 
-MIT © 2025 BTS Soft - Developed by Omar Sabry.
+MIT License. Developed by Omar Sabry for BTS Soft Infrastructure.

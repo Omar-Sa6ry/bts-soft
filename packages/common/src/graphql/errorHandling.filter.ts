@@ -1,25 +1,21 @@
-import { ArgumentsHost, Catch, HttpException } from '@nestjs/common';
+import { ArgumentsHost, Catch, HttpException, Logger } from '@nestjs/common';
 import { GqlExceptionFilter } from '@nestjs/graphql';
 import { GraphQLError } from 'graphql';
 
 /**
- * Global exception filter to handle and format all errors thrown in GraphQL resolvers.
- * 
- * This filter ensures that any exception (HTTP or otherwise) is converted into a
- * structured GraphQL error response that matches the application's error format.
+ * Global GraphQL exception filter.
+ * Converts HTTP and internal exceptions into structured GraphQL error responses.
  */
 @Catch()
 export class HttpExceptionFilter implements GqlExceptionFilter {
-  /**
-   * Catches any exception thrown in a GraphQL resolver or middleware.
-   * 
-   * @param exception - The exception thrown during request execution.
-   * @param host - Provides access to the context of the current request (REST or GraphQL).
-   * @returns A formatted GraphQL error with a consistent structure.
-   */
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: any, host: ArgumentsHost) {
-    // Log the raw exception for debugging or server logs
-    console.log(exception);
+    if (exception instanceof Error) {
+      this.logger.error(`GraphQL Exception: ${exception.message}`, exception.stack);
+    } else {
+      this.logger.error('GraphQL Exception', JSON.stringify(exception));
+    }
 
     let statusCode = exception.extensions?.statusCode || 500;
     let message = exception.message;
