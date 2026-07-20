@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Postgres for TypeORM, Sequelize, and Prisma testing
   common-postgres-test:

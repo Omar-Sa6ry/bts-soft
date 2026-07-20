@@ -1,6 +1,6 @@
 # @bts-soft/common
 
-Production-grade foundational standard library for NestJS enterprise services within the BTS Soft ecosystem. Implements core system design architectural patterns including distributed rate limiting, uniform API response envelopes, deep WAF payload security inspection, multi-ORM abstraction adapters, configurable ID generation strategies, and context-aware internationalization.
+Production-grade foundational standard library for NestJS enterprise services within the BTS Soft ecosystem. Implements core system design architectural patterns including distributed rate limiting, uniform API response envelopes, deep WAF payload security inspection, multi-ORM abstraction adapters, configurable ID generation strategies, idempotency request deduplication, distributed locking, and context-aware internationalization.
 
 ---
 
@@ -10,7 +10,8 @@ Production-grade foundational standard library for NestJS enterprise services wi
 graph TD
     Client[Client Request] --> TG[CommonThrottlerGuard]
     TG --> SQ[SqlInjectionInterceptor]
-    SQ --> Auth[Guards / Authentication]
+    SQ --> Idem[IdempotencyInterceptor]
+    Idem --> Auth[Guards / Authentication]
     Auth --> Handler[Controller / GraphQL Resolver]
     Handler --> RF[ResponseFormatter]
     RF --> ClientResponse[Formatted JSON / GraphQL Payload]
@@ -27,6 +28,7 @@ sequenceDiagram
     participant C as Client
     participant G as CommonThrottlerGuard
     participant I as SqlInjectionInterceptor
+    participant Id as IdempotencyInterceptor
     participant H as Handler (Controller/Resolver)
     participant F as ResponseFormatter / ExceptionFilter
 
@@ -40,7 +42,13 @@ sequenceDiagram
     alt Malicious payload pattern detected
         I-->>C: 400 Bad Request (Suspicious SQL Pattern Detected)
     else Payload valid
-        I->>H: Execute Target Handler Method
+        I->>Id: Evaluate Idempotency Header / Key
+    end
+
+    alt Idempotent payload cached in Redis / Memory
+        Id-->>C: Return Cached Response Immediately
+    else Payload new
+        Id->>H: Execute Target Handler Method
     end
 
     alt Operation Succeeded
@@ -74,11 +82,11 @@ graph LR
 | **Strategy Pattern** | `TranslationModule` | Dynamically selects locale resolution strategies (`HeaderResolver`, `AcceptLanguageResolver`). |
 | **Adapter Pattern** | `TypeOrmBaseEntity`, `MongooseBaseEntity`, `SequelizeBaseEntity`, `PrismaBase` | Adapts agnostic domain entities to specific ORMs without altering core interfaces. |
 | **Chain of Responsibility** | `setupInterceptors()` | Chains interceptors (`ClassSerializer`, `SqlInjection`, `GeneralResponse`) sequentially. |
-| **Decorator Pattern** | `@CurrentUser()`, `@Public()`, `@SkipSqlCheck()` | Annotates metadata declaratively onto NestJS route handlers and method parameters. |
+| **Decorator Pattern** | `@CurrentUser()`, `@Public()`, `@SkipSqlCheck()`, `@Idempotent()`, `@DistributedLock()` | Annotates metadata declaratively onto NestJS route handlers and service methods. |
+| **Proxy / Deduplication** | `IdempotencyInterceptor` | Intercepts duplicate payload executions using Redis cached responses (`@bts-soft/cache`). |
+| **Distributed Lock** | `DistributedLockService` | Coordinates critical section executions across replicas using Redis distributed lock keys (`@bts-soft/cache`). |
 | **Exception Filter Pattern** | `RestExceptionFilter`, `HttpExceptionFilter` | Catches and normalizes runtime exceptions into standardized JSON responses. |
-| **Factory Pattern** | `ConfigModule.forRoot()`, `ThrottlingModule.forRoot()`, `GraphqlModule.forRoot()`, `TranslationModule.forRoot()` | Encapsulates complex dynamic module instantiation and provider registration. |
-| **Observer / Pub-Sub** | `GraphqlModule` (WebSockets) | Listens for real-time GraphQL events via `graphql-ws` and `subscriptions-transport-ws`. |
-| **Builder / Formatter** | `ResponseFormatter` | Assembles unified success and error response payload envelopes. |
+| **Factory Pattern** | `ConfigModule.forRoot()`, `ThrottlingModule.forRoot()`, `ResilienceModule.forRoot()` | Encapsulates complex dynamic module instantiation and provider registration. |
 | **Transient Service** | `CommonLoggerService` | Manages logger context isolation dynamically per module instantiation (`Scope.TRANSIENT`). |
 
 ---
@@ -97,11 +105,15 @@ graph LR
 - **Unified API Contract**: `ResponseFormatter` and `GeneralResponseInterceptor` enforce a deterministic JSON response envelope across REST controllers and GraphQL resolvers, ensuring predictable client consuming contracts.
 - **Security Information Leakage Mitigation**: `RestExceptionFilter` and `HttpExceptionFilter` catch unhandled errors and strip stack traces and internal system details in production environments.
 
-### 4. WAF Payload Security Scanning & Resource Protection
+### 4. Idempotency & Distributed Locking (Volume 1 - Chapter 1 & Distributed Systems)
+- **Request Deduplication**: `IdempotencyInterceptor` leverages `RedisService` from `@bts-soft/cache` (or in-memory cache) to prevent duplicate processing of financial or critical mutating requests using `X-Idempotency-Key` headers.
+- **Distributed Concurrency Control**: `@DistributedLock()` and `DistributedLockService` use `RedisService` from `@bts-soft/cache` (`acquireLock` / `releaseLock`) to ensure single-replica execution of critical business logic.
+
+### 5. WAF Payload Security Scanning & Resource Protection
 - **Deep Payload Inspection**: `SqlInjectionInterceptor` recursively parses body payloads, query strings, and path parameters to block logic bypasses (`' OR '1'='1`), `UNION SELECT` extractions, stacked queries, time-delay attacks (`WAITFOR DELAY`, `pg_sleep`), and system command executions (`xp_cmdshell`).
 - **Resource Exhaustion Prevention**: Implements a maximum recursion depth limit of 10 to prevent stack overflow attacks caused by circular JSON payloads, and resets stateful regex `lastIndex` pointers before pattern evaluation.
 
-### 5. Multi-Region Internationalization & Localization
+### 6. Multi-Region Internationalization & Localization
 - **Context Routing**: `TranslationModule` inspects incoming request headers (`x-lang` and `Accept-Language`) to deliver localized error messages and content across multi-region deployments.
 
 ---
@@ -173,7 +185,36 @@ async function bootstrap() {
 
 ---
 
-### 5. Infrastructure Modules
+### 5. Resilience: Idempotency & Distributed Locking (`@bts-soft/common/resilience`)
+
+Provides idempotency request deduplication and distributed locking using `RedisService` from `@bts-soft/cache`:
+
+```typescript
+import { Controller, Post, Body, UseInterceptors } from '@nestjs/common';
+import { Idempotent, IdempotencyInterceptor, DistributedLock, DistributedLockService } from '@bts-soft/common/resilience';
+
+@Controller('payments')
+export class PaymentController {
+  constructor(private readonly distributedLockService: DistributedLockService) {}
+
+  @Post('charge')
+  @UseInterceptors(IdempotencyInterceptor)
+  @Idempotent({ ttl: 60, headerName: 'x-idempotency-key' })
+  async chargeUser(@Body() body: any) {
+    return { status: 'processed', transactionId: 'tx_123' };
+  }
+
+  @Post('transfer')
+  @DistributedLock((body) => `lock:user:${body.userId}`, { ttlMs: 5000 })
+  async transferFunds(@Body() body: any) {
+    return { status: 'transferred' };
+  }
+}
+```
+
+---
+
+### 6. Infrastructure Modules
 
 #### `ThrottlingModule` (`src/throttler/throttling.module.ts`)
 Provides rate limiting via `CommonThrottlerGuard`, supporting both REST HTTP and Apollo GraphQL context extraction.
@@ -222,6 +263,7 @@ Integrates `nestjs-i18n` with automated path resolution for locales.
 | `@bts-soft/common/sequelize` | `SequelizeBaseEntity` | Sequelize model base adapter |
 | `@bts-soft/common/mongoose` | `MongooseBaseEntity` | Mongoose schema base adapter |
 | `@bts-soft/common/prisma` | `PrismaBase`, `IPrismaEntity` | Prisma integration base and interface |
+| `@bts-soft/common/resilience` | `ResilienceModule`, `IdempotencyInterceptor`, `@Idempotent()`, `@DistributedLock()`, `DistributedLockService` | Request deduplication and Redis distributed locking |
 
 ---
 

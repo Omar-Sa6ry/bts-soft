@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/common",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Shared NestJS utilities (modules, guards, interceptors, decorators, DTOs, and entities) for all @bts-soft packages.",
   "author": "Omar Sabry",
   "license": "MIT",
@@ -16,7 +16,7 @@
     "./graphql": "./dist/graphql/bases/GraphqlBaseEntity.js",
     "./interceptors": "./dist/interceptors/generalResponse.interceptor.js",
     "./filters": "./dist/filters/rest-exception.filter.js",
-    "./decorators": "./dist/decorators/currentUser.decorator.js"
+    "./resilience": "./dist/resilience/index.js"
   },
   "files": [
     "dist"
@@ -24,11 +24,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepublishOnly": "npm run build",
-    "test": "docker-compose -f docker-compose.test.yml up -d && npx jest --passWithNoTests && docker-compose -f docker-compose.test.yml down",
+    "test": "docker-compose -f docker-compose.test.yml down --remove-orphans && docker-compose -f docker-compose.test.yml up -d && npx jest --passWithNoTests && docker-compose -f docker-compose.test.yml down",
     "test:watch": "npx jest --watch",
-    "test:cov": "docker-compose -f docker-compose.test.yml up -d && npx jest --collectCoverage && docker-compose -f docker-compose.test.yml down",
-    "test:e2e": "docker-compose -f docker-compose.test.yml up -d && npx jest --config test/e2e/jest-e2e.json && docker-compose -f docker-compose.test.yml down",
-    "test:all": "docker-compose -f docker-compose.test.yml up -d && npx jest && npx jest --config test/e2e/jest-e2e.json && docker-compose -f docker-compose.test.yml down"
+    "test:cov": "docker-compose -f docker-compose.test.yml down --remove-orphans && docker-compose -f docker-compose.test.yml up -d && npx jest --collectCoverage && docker-compose -f docker-compose.test.yml down",
+    "test:e2e": "docker-compose -f docker-compose.test.yml down --remove-orphans && docker-compose -f docker-compose.test.yml up -d && npx jest --config test/e2e/jest-e2e.json && docker-compose -f docker-compose.test.yml down",
+    "test:all": "docker-compose -f docker-compose.test.yml down --remove-orphans && docker-compose -f docker-compose.test.yml up -d && npx jest && npx jest --config test/e2e/jest-e2e.json && docker-compose -f docker-compose.test.yml down"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -45,7 +45,10 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@bts-soft/cache$": "<rootDir>/../../cache/src"
+    }
   },
   "keywords": [
     "nestjs",
@@ -81,6 +84,7 @@
     "ulid": "^3.0.0"
   },
   "peerDependencies": {
+    "@bts-soft/cache": ">=1.1.0",
     "@nestjs/mongoose": ">=10.0.0",
     "@prisma/client": ">=5.0.0",
     "mongoose": ">=7.0.0",
@@ -89,6 +93,9 @@
     "typeorm": ">=0.3.0"
   },
   "peerDependenciesMeta": {
+    "@bts-soft/cache": {
+      "optional": true
+    },
     "@apollo/server": {
       "optional": true
     },

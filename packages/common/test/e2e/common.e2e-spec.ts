@@ -7,6 +7,8 @@ import { setupInterceptors } from '../../src/interceptors/main.interceptor';
 describe('Common Package (e2e)', () => {
   let app: INestApplication;
 
+  jest.setTimeout(60000);
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [TestAppModule],
@@ -130,6 +132,30 @@ describe('Common Package (e2e)', () => {
       return request(server)
         .get(endpoint)
         .expect(429);
+    });
+  });
+
+
+  describe('Resilience (Idempotency) Integration', () => {
+    it('/test/idempotent (POST) - should cache response for identical idempotency key', async () => {
+      const server = app.getHttpServer();
+      const idempotencyKey = `e2e-test-${Date.now()}`;
+
+      const res1 = await request(server)
+        .post('/test/idempotent')
+        .set('x-idempotency-key', idempotencyKey)
+        .send({ amount: 100 });
+
+      expect(res1.status).toBe(201);
+      const firstTime = res1.body.data.time;
+
+      const res2 = await request(server)
+        .post('/test/idempotent')
+        .set('x-idempotency-key', idempotencyKey)
+        .send({ amount: 100 });
+
+      expect(res2.status).toBe(201);
+      expect(res2.body.data.time).toBe(firstTime);
     });
   });
 });

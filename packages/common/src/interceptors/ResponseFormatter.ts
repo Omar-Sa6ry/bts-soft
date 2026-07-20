@@ -17,12 +17,12 @@ export class ResponseFormatter {
     return {
       success: true,
       statusCode: isEnvelope ? data.statusCode : 200,
-      message: isEnvelope ? data.message : "Request successful",
+      message: isEnvelope ? data.message : (data?.message || "Request successful"),
       timeStamp: new Date().toISOString(),
       pagination: data?.pagination,
       url: data?.url,
       items,
-      data: isEnvelope ? data.data : (data ?? null),
+      data: isEnvelope ? data.data : (data?.data !== undefined ? data.data : (data ?? null)),
     };
   }
 

@@ -12,6 +12,7 @@ import {
   SqlInjectionInterceptor,
   GraphqlBaseResponse
 } from '../../src';
+import { ResilienceModule, Idempotent, IdempotencyInterceptor, DistributedLockService } from '../../src/resilience';
 import { I18nService } from 'nestjs-i18n';
 import * as path from 'path';
 import { GraphQLUpload } from 'graphql-upload-minimal';
@@ -64,6 +65,14 @@ export class TestController {
   @Public()
   throttleMe() {
     return { ok: true };
+  }
+
+  @Post('idempotent')
+  @Public()
+  @UseInterceptors(IdempotencyInterceptor)
+  @Idempotent({ ttl: 10 })
+  testIdempotent(@Body() body: any) {
+    return { processed: true, time: Date.now(), data: body };
   }
 }
 
@@ -122,6 +131,7 @@ export class UploadScalar implements CustomScalar<any, any> {
       autoSchemaFile: true,
       playground: false,
     }),
+    ResilienceModule.forRoot(),
   ],
   controllers: [TestController],
   providers: [TestResolver, UploadScalar],

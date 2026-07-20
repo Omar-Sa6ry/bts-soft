@@ -40,7 +40,9 @@ export * from "./logger/logger.service";
 export * from "./config/config.module";
 export * from "./throttler/throttling.module";
 export * from "./translation/translation.module";
+export * from "./resilience";
 
 // ========== Utilities ==========
 export * from "./production/displayConsoles";
 export * from "./utils/id-generator";
+
