@@ -9,14 +9,14 @@ export class StringRedisService {
     @Inject("REDIS_CLIENT") private redisClient: RedisClientType,
   ) {}
 
-  async getSet(key: string, value: any): Promise<string | null> {
+  async getSet<T = unknown>(key: string, value: T): Promise<string | null> {
     try {
       const stringValue =
         typeof value === "string" ? value : JSON.stringify(value);
       const oldValue = await this.redisClient.getSet(key, stringValue);
       return oldValue;
     } catch (error) {
-      this.logger.error(`Error in getSet for key ${key}`, error.stack);
+      this.logger.error(`Error in getSet for key ${key}`, (error as Error).stack);
       throw error;
     }
   }
@@ -27,7 +27,7 @@ export class StringRedisService {
     } catch (error) {
       this.logger.error(
         `Error getting string length for key ${key}`,
-        error.stack,
+        (error as Error).stack,
       );
       throw error;
     }
@@ -37,7 +37,7 @@ export class StringRedisService {
     try {
       return await this.redisClient.append(key, value);
     } catch (error) {
-      this.logger.error(`Error appending to key ${key}`, error.stack);
+      this.logger.error(`Error appending to key ${key}`, (error as Error).stack);
       throw error;
     }
   }
@@ -46,7 +46,7 @@ export class StringRedisService {
     try {
       return await this.redisClient.getRange(key, start, end);
     } catch (error) {
-      this.logger.error(`Error getting range for key ${key}`, error.stack);
+      this.logger.error(`Error getting range for key ${key}`, (error as Error).stack);
       throw error;
     }
   }
@@ -55,7 +55,7 @@ export class StringRedisService {
     try {
       return await this.redisClient.setRange(key, offset, value);
     } catch (error) {
-      this.logger.error(`Error setting range for key ${key}`, error.stack);
+      this.logger.error(`Error setting range for key ${key}`, (error as Error).stack);
       throw error;
     }
   }
@@ -66,7 +66,7 @@ export class StringRedisService {
     } catch (error) {
       this.logger.error(
         `Error in mGet for keys ${keys.join(",")}`,
-        error.stack,
+        (error as Error).stack,
       );
       throw error;
     }

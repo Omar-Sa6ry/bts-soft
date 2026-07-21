@@ -116,7 +116,7 @@ describe("RedisService (Facade)", () => {
     });
 
     it("should delegate transaction operations", async () => {
-      const cmds: Array<[string, ...any[]]> = [["GET", "k"]];
+      const cmds: Array<[string, ...unknown[]]> = [["GET", "k"]];
       await service.multiExecute(cmds);
       expect(mocks.transaction.multiExecute).toHaveBeenCalledWith(cmds);
     });

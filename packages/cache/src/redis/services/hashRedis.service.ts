@@ -14,7 +14,7 @@ export class HashRedisService {
    * @param value - Value to store
    * @returns 1 if new field, 0 if updated existing field
    */
-  async hSet(key: string, field: string, value: any): Promise<number> {
+  async hSet<T = unknown>(key: string, field: string, value: T): Promise<number> {
     return this.redisClient.hSet(key, field, JSON.stringify(value));
   }
 
@@ -24,7 +24,7 @@ export class HashRedisService {
    * @param field - Field name
    * @returns Parsed value or null if field doesn't exist
    */
-  async hGet<T = any>(key: string, field: string): Promise<T | null> {
+  async hGet<T = unknown>(key: string, field: string): Promise<T | null> {
     const value = await this.redisClient.hGet(key, field);
     return value ? JSON.parse(value) : null;
   }
@@ -34,11 +34,11 @@ export class HashRedisService {
    * @param key - Hash key
    * @returns Object with all field-value pairs
    */
-  async hGetAll(key: string): Promise<Record<string, any>> {
+  async hGetAll<T = unknown>(key: string): Promise<Record<string, T>> {
     const result = await this.redisClient.hGetAll(key);
     return Object.fromEntries(
-      Object.entries(result).map(([k, v]) => [k, v ? JSON.parse(v) : null]),
-    );
+      Object.entries(result).map(([k, v]) => [k, v ? (JSON.parse(v) as T) : null]),
+    ) as Record<string, T>;
   }
 
   /**
@@ -75,9 +75,9 @@ export class HashRedisService {
    * @param key - Hash key
    * @returns Array of parsed values
    */
-  async hVals(key: string): Promise<any[]> {
+  async hVals<T = unknown>(key: string): Promise<T[]> {
     const values = await this.redisClient.hVals(key);
-    return values.map((v) => (v ? JSON.parse(v) : null));
+    return values.map((v) => (v ? (JSON.parse(v) as T) : (null as unknown as T)));
   }
 
   /**
@@ -126,7 +126,7 @@ export class HashRedisService {
    * @param value - Value to set
    * @returns true if field was set, false if field already existed
    */
-  async hSetNX(key: string, field: string, value: any): Promise<boolean> {
+  async hSetNX<T = unknown>(key: string, field: string, value: T): Promise<boolean> {
     return this.redisClient.hSetNX(key, field, JSON.stringify(value));
   }
 }

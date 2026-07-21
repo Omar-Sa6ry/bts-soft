@@ -84,7 +84,7 @@ describe('ListORedisService', () => {
     it('should insert around pivot', async () => {
       const key = 'mylist';
       await service.rPush(key, 'a', 'c');
-      await service.lInsert(key, 'a', 'b', 'AFTER' as any);
+      await service.lInsert(key, 'a', 'b', 'AFTER');
       
       const res = await service.lRange(key, 0, -1);
       expect(res).toEqual(['a', 'b', 'c']);

@@ -17,7 +17,7 @@ export class UtilityRedisService {
       const count = await this.redisClient.exists(key);
       return count === 1;
     } catch (error) {
-      this.logger.error(`Error checking existence of key ${key}`, error.stack);
+      this.logger.error(`Error checking existence of key ${key}`, (error as Error).stack);
       throw error;
     }
   }
@@ -32,7 +32,7 @@ export class UtilityRedisService {
     try {
       return await this.redisClient.expire(key, seconds);
     } catch (error) {
-      this.logger.error(`Error setting expire for key ${key}`, error.stack);
+      this.logger.error(`Error setting expire for key ${key}`, (error as Error).stack);
       throw error;
     }
   }
@@ -58,12 +58,13 @@ export class UtilityRedisService {
    * @param args - The ARGV argument array
    * @returns Script evaluation result
    */
-  async eval(script: string, keys: string[], args: string[]): Promise<any> {
+  async eval<T = unknown>(script: string, keys: string[], args: string[]): Promise<T> {
     try {
-      return await this.redisClient.eval(script, {
+      const result = await this.redisClient.eval(script, {
         keys,
         arguments: args,
       });
+      return result as unknown as T;
     } catch (error) {
       this.logger.error(`Error executing eval script`, (error as Error).stack);
       throw error;

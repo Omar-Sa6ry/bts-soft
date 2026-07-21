@@ -28,7 +28,7 @@ export class LockRedisService {
    * @param expectedValue - Expected current lock value (must match to release)
    * @returns 1 if lock released, 0 if lock wasn't owned by expected value
    */
-  async releaseLock(lockKey: string, expectedValue: string): Promise<any> {
+  async releaseLock(lockKey: string, expectedValue: string): Promise<number> {
     const script = `
     if redis.call("GET", KEYS[1]) == ARGV[1] then
       return redis.call("DEL", KEYS[1])
@@ -36,10 +36,11 @@ export class LockRedisService {
       return 0
     end
   `;
-    return this.redisClient.eval(script, {
+    const result = await this.redisClient.eval(script, {
       keys: [lockKey],
       arguments: [expectedValue],
     });
+    return result as unknown as number;
   }
 
   /**
@@ -53,7 +54,7 @@ export class LockRedisService {
     lockKey: string,
     value: string,
     additionalTtlMs: number,
-  ): Promise<any> {
+  ): Promise<number> {
     const script = `
     if redis.call("GET", KEYS[1]) == ARGV[1] then
       return redis.call("PEXPIRE", KEYS[1], ARGV[2])
@@ -61,10 +62,11 @@ export class LockRedisService {
       return 0
     end
   `;
-    return this.redisClient.eval(script, {
+    const result = await this.redisClient.eval(script, {
       keys: [lockKey],
       arguments: [value, additionalTtlMs.toString()],
     });
+    return result as unknown as number;
   }
 
   /**

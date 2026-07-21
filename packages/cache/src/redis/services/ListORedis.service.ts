@@ -12,7 +12,7 @@ export class ListORedisService {
    * @param values - Values to insert (automatically stringified)
    * @returns New length of the list
    */
-  async lPush(key: string, ...values: any[]): Promise<number> {
+  async lPush(key: string, ...values: unknown[]): Promise<number> {
     const stringValues = values.map((v) => JSON.stringify(v));
     return this.redisClient.lPush(key, stringValues);
   }
@@ -23,7 +23,7 @@ export class ListORedisService {
    * @param values - Values to append (automatically stringified)
    * @returns New length of the list
    */
-  async rPush(key: string, ...values: any[]): Promise<number> {
+  async rPush(key: string, ...values: unknown[]): Promise<number> {
     const stringValues = values.map((v) => JSON.stringify(v));
     return this.redisClient.rPush(key, stringValues);
   }
@@ -33,9 +33,9 @@ export class ListORedisService {
    * @param key - List key
    * @returns The popped element (parsed from JSON) or null if list empty
    */
-  async lPop(key: string): Promise<number> {
+  async lPop<T = unknown>(key: string): Promise<T | null> {
     const result = await this.redisClient.lPop(key);
-    return result ? JSON.parse(result) : null;
+    return result ? (JSON.parse(result) as T) : null;
   }
 
   /**
@@ -43,9 +43,9 @@ export class ListORedisService {
    * @param key - List key
    * @returns The popped element (parsed from JSON) or null if list empty
    */
-  async rPop(key: string): Promise<number> {
+  async rPop<T = unknown>(key: string): Promise<T | null> {
     const result = await this.redisClient.rPop(key);
-    return result ? JSON.parse(result) : null;
+    return result ? (JSON.parse(result) as T) : null;
   }
 
   /**
@@ -55,13 +55,13 @@ export class ListORedisService {
    * @param stop - Stop index (0-based, -1 for all remaining)
    * @returns Array of elements in the range
    */
-  async lRange(key: string, start: number, stop: number): Promise<any[]> {
+  async lRange<T = unknown>(key: string, start: number, stop: number): Promise<T[]> {
     const result = await this.redisClient.lRange(key, start, stop);
     return result.map((item) => {
       try {
-        return JSON.parse(item);
+        return JSON.parse(item) as T;
       } catch {
-        return item;
+        return item as unknown as T;
       }
     });
   }
@@ -81,9 +81,9 @@ export class ListORedisService {
    * @param index - Index position (0-based, -1 for last element)
    * @returns The element at index or null if out of range
    */
-  async lIndex(key: string, index: number): Promise<number> {
+  async lIndex<T = unknown>(key: string, index: number): Promise<T | null> {
     const result = await this.redisClient.lIndex(key, index);
-    return result ? JSON.parse(result) : null;
+    return result ? (JSON.parse(result) as T) : null;
   }
 
   /**
@@ -94,10 +94,10 @@ export class ListORedisService {
    * @param position - 'BEFORE' or 'AFTER' the pivot
    * @returns New length of list or -1 if pivot not found
    */
-  async lInsert(
+  async lInsert<T = unknown, U = unknown>(
     key: string,
-    pivot: any,
-    value: any,
+    pivot: T,
+    value: U,
     position: ListConstant,
   ): Promise<number> {
     const stringPivot = JSON.stringify(pivot);
@@ -115,7 +115,7 @@ export class ListORedisService {
    * @param value - Value to remove
    * @returns Number of elements removed
    */
-  async lRem(key: string, count: number, value: any): Promise<number> {
+  async lRem<T = unknown>(key: string, count: number, value: T): Promise<number> {
     const stringValue = JSON.stringify(value);
     return this.redisClient.lRem(key, count, stringValue);
   }
@@ -138,9 +138,9 @@ export class ListORedisService {
    * @param destination - Destination list key
    * @returns The moved element (parsed from JSON)
    */
-  async rPopLPush(source: string, destination: string): Promise<number> {
+  async rPopLPush<T = unknown>(source: string, destination: string): Promise<T | null> {
     const result = await this.redisClient.rPopLPush(source, destination);
-    return result ? JSON.parse(result) : null;
+    return result ? (JSON.parse(result) as T) : null;
   }
 
   /**
@@ -150,7 +150,7 @@ export class ListORedisService {
    * @param value - New value
    * @returns 'OK' on success
    */
-  async lSet(key: string, index: number, value: any): Promise<string> {
+  async lSet<T = unknown>(key: string, index: number, value: T): Promise<string> {
     const stringValue = JSON.stringify(value);
     return this.redisClient.lSet(key, index, stringValue);
   }
@@ -162,9 +162,9 @@ export class ListORedisService {
    * @param options - Search options: RANK (which occurrence), COUNT (max matches), MAXLEN (scan limit)
    * @returns Index position or null if not found
    */
-  async lPos(
+  async lPos<T = unknown>(
     key: string,
-    value: any,
+    value: T,
     options?: { RANK?: number; COUNT?: number; MAXLEN?: number },
   ): Promise<number> {
     const stringValue = JSON.stringify(value);

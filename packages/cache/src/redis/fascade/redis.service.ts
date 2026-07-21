@@ -15,7 +15,7 @@
  * consistent error handling and logging.
  */
 
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { RedisClientType } from "redis";
 import { ListConstant } from "../constant/redis.constant";
 import { IRedisInterface } from "../interface/redis.interface";
@@ -53,33 +53,33 @@ export class RedisService implements IRedisInterface {
 
   // =================== Core Key-Value Operations ===================
 
-  async set(key: string, value: any, ttl: number = 3600): Promise<void> {
+  async set<T = unknown>(key: string, value: T, ttl: number = 3600): Promise<void> {
     return await this.coreRedisService.set(key, value, ttl);
   }
 
-  async setForever(key: string, value: any): Promise<void> {
+  async setForever<T = unknown>(key: string, value: T): Promise<void> {
     return await this.coreRedisService.setForever(key, value);
   }
 
-  async update(key: string, value: any, ttl: number = 3600): Promise<void> {
+  async update<T = unknown>(key: string, value: T, ttl: number = 3600): Promise<void> {
     return await this.coreRedisService.update(key, value, ttl);
   }
 
-  async get<T = any>(key: string): Promise<T | null> {
-    return await this.coreRedisService.get(key);
+  async get<T = unknown>(key: string): Promise<T | null> {
+    return await this.coreRedisService.get<T>(key);
   }
 
   async del(key: string): Promise<void> {
     return await this.coreRedisService.del(key);
   }
 
-  async mSet(data: Record<string, any>): Promise<void> {
+  async mSet<T = unknown>(data: Record<string, T>): Promise<void> {
     return await this.coreRedisService.mSet(data);
   }
 
   // =================== String Operations ===================
 
-  async getSet(key: string, value: any): Promise<string | null> {
+  async getSet<T = unknown>(key: string, value: T): Promise<string | null> {
     return await this.stringRedisService.getSet(key, value);
   }
 
@@ -141,16 +141,16 @@ export class RedisService implements IRedisInterface {
 
   // ===== Hash Operations =====
 
-  async hSet(key: string, field: string, value: any): Promise<number> {
+  async hSet<T = unknown>(key: string, field: string, value: T): Promise<number> {
     return await this.hashRedisService.hSet(key, field, value);
   }
 
-  async hGet<T = any>(key: string, field: string): Promise<T | null> {
-    return await this.hashRedisService.hGet(key, field);
+  async hGet<T = unknown>(key: string, field: string): Promise<T | null> {
+    return await this.hashRedisService.hGet<T>(key, field);
   }
 
-  async hGetAll(key: string): Promise<Record<string, any>> {
-    return await this.hashRedisService.hGetAll(key);
+  async hGetAll<T = unknown>(key: string): Promise<Record<string, T>> {
+    return await this.hashRedisService.hGetAll<T>(key);
   }
 
   async hDel(key: string, field: string): Promise<number> {
@@ -165,8 +165,8 @@ export class RedisService implements IRedisInterface {
     return await this.hashRedisService.hKeys(key);
   }
 
-  async hVals(key: string): Promise<any[]> {
-    return await this.hashRedisService.hVals(key);
+  async hVals<T = unknown>(key: string): Promise<T[]> {
+    return await this.hashRedisService.hVals<T>(key);
   }
 
   async hLen(key: string): Promise<number> {
@@ -189,7 +189,7 @@ export class RedisService implements IRedisInterface {
     return await this.hashRedisService.hIncrByFloat(key, field, increment);
   }
 
-  async hSetNX(key: string, field: string, value: any): Promise<boolean> {
+  async hSetNX<T = unknown>(key: string, field: string, value: T): Promise<boolean> {
     return await this.hashRedisService.hSetNX(key, field, value);
   }
 
@@ -240,7 +240,7 @@ export class RedisService implements IRedisInterface {
   }
 
   async sInterStore(destination: string, ...keys: string[]): Promise<string[]> {
-    return await this.operationRedisService.sInter(destination, ...keys);
+    return await this.operationRedisService.sInterStore(destination, ...keys);
   }
 
   async sUnion(...keys: string[]): Promise<string[]> {
@@ -352,44 +352,44 @@ export class RedisService implements IRedisInterface {
 
   // ===== List Operations =====
 
-  async lPush(key: string, ...values: any[]): Promise<number> {
+  async lPush(key: string, ...values: unknown[]): Promise<number> {
     return await this.listORedisService.lPush(key, ...values);
   }
 
-  async rPush(key: string, ...values: any[]): Promise<number> {
+  async rPush(key: string, ...values: unknown[]): Promise<number> {
     return await this.listORedisService.rPush(key, ...values);
   }
 
-  async lPop(key: string): Promise<number> {
-    return await this.listORedisService.lPop(key);
+  async lPop<T = unknown>(key: string): Promise<T | null> {
+    return await this.listORedisService.lPop<T>(key);
   }
 
-  async rPop(key: string): Promise<number> {
-    return await this.listORedisService.rPop(key);
+  async rPop<T = unknown>(key: string): Promise<T | null> {
+    return await this.listORedisService.rPop<T>(key);
   }
 
-  async lRange(key: string, start: number, stop: number): Promise<any[]> {
-    return await this.listORedisService.lRange(key, start, stop);
+  async lRange<T = unknown>(key: string, start: number, stop: number): Promise<T[]> {
+    return await this.listORedisService.lRange<T>(key, start, stop);
   }
 
   async lLen(key: string): Promise<number> {
     return await this.listORedisService.lLen(key);
   }
 
-  async lIndex(key: string, index: number): Promise<number> {
-    return await this.listORedisService.lIndex(key, index);
+  async lIndex<T = unknown>(key: string, index: number): Promise<T | null> {
+    return await this.listORedisService.lIndex<T>(key, index);
   }
 
-  async lInsert(
+  async lInsert<T = unknown, U = unknown>(
     key: string,
-    pivot: any,
-    value: any,
+    pivot: T,
+    value: U,
     position: ListConstant,
   ): Promise<number> {
     return await this.listORedisService.lInsert(key, pivot, value, position);
   }
 
-  async lRem(key: string, count: number, value: any): Promise<number> {
+  async lRem<T = unknown>(key: string, count: number, value: T): Promise<number> {
     return await this.listORedisService.lRem(key, count, value);
   }
 
@@ -397,17 +397,17 @@ export class RedisService implements IRedisInterface {
     return await this.listORedisService.lTrim(key, start, stop);
   }
 
-  async rPopLPush(source: string, destination: string): Promise<number> {
-    return await this.listORedisService.rPopLPush(source, destination);
+  async rPopLPush<T = unknown>(source: string, destination: string): Promise<T | null> {
+    return await this.listORedisService.rPopLPush<T>(source, destination);
   }
 
-  async lSet(key: string, index: number, value: any): Promise<string> {
+  async lSet<T = unknown>(key: string, index: number, value: T): Promise<string> {
     return await this.listORedisService.lSet(key, index, value);
   }
 
-  async lPos(
+  async lPos<T = unknown>(
     key: string,
-    value: any,
+    value: T,
     options?: { RANK?: number; COUNT?: number; MAXLEN?: number },
   ): Promise<number> {
     return await this.listORedisService.lPos(key, value, options);
@@ -472,7 +472,7 @@ export class RedisService implements IRedisInterface {
 
   // ===== Transaction Operations =====
 
-  async multiExecute(commands: Array<[string, ...any[]]>): Promise<any[]> {
+  async multiExecute(commands: Array<[string, ...unknown[]]>): Promise<unknown[]> {
     return await this.transactionRedisService.multiExecute(commands);
   }
 
@@ -488,7 +488,7 @@ export class RedisService implements IRedisInterface {
     keysToWatch: string[],
     transactionFn: (multi: ReturnType<RedisClientType["multi"]>) => void,
     maxRetries = 3,
-  ): Promise<any[]> {
+  ): Promise<unknown[]> {
     return await this.transactionRedisService.withTransaction(
       keysToWatch,
       transactionFn,
@@ -500,13 +500,13 @@ export class RedisService implements IRedisInterface {
     return await this.transactionRedisService.discard();
   }
 
-  async transactionGetSet(key: string, value: any): Promise<any[]> {
+  async transactionGetSet<T = unknown>(key: string, value: T): Promise<unknown[]> {
     return await this.transactionRedisService.transactionGetSet(key, value);
   }
 
   // ===== Pub/Sub Operations =====
 
-  async publish(channel: string, message: any): Promise<number> {
+  async publish<T = unknown>(channel: string, message: T): Promise<number> {
     return await this.pubSubRedisService.publish(channel, message);
   }
 
@@ -544,10 +544,10 @@ export class RedisService implements IRedisInterface {
     return await this.pubSubRedisService.getSubCount(...channels);
   }
 
-  async createMessageHandler(
-    handler: (parsed: any, raw: string, channel: string) => void,
+  async createMessageHandler<T = unknown>(
+    handler: (parsed: T, raw: string, channel: string) => void,
   ): Promise<(rawMessage: string, channel: string) => void> {
-    return await this.pubSubRedisService.createMessageHandler(handler);
+    return await this.pubSubRedisService.createMessageHandler<T>(handler);
   }
 
   // ===== Distributed Locking =====
@@ -560,7 +560,7 @@ export class RedisService implements IRedisInterface {
     return await this.lockRedisService.acquireLock(lockKey, value, ttlMs);
   }
 
-  async releaseLock(lockKey: string, expectedValue: string): Promise<any> {
+  async releaseLock(lockKey: string, expectedValue: string): Promise<number> {
     return await this.lockRedisService.releaseLock(lockKey, expectedValue);
   }
 
@@ -568,7 +568,7 @@ export class RedisService implements IRedisInterface {
     lockKey: string,
     value: string,
     additionalTtlMs: number,
-  ): Promise<any> {
+  ): Promise<number> {
     return await this.lockRedisService.extendLock(
       lockKey,
       value,
@@ -602,11 +602,11 @@ export class RedisService implements IRedisInterface {
 
   // ===== Custom Atomic Operations =====
 
-  async setNX(key: string, value: any, ttlSeconds: number): Promise<boolean> {
+  async setNX<T = unknown>(key: string, value: T, ttlSeconds: number): Promise<boolean> {
     return await this.coreRedisService.setNX(key, value, ttlSeconds);
   }
 
-  async eval(script: string, keys: string[], args: string[]): Promise<any> {
-    return await this.utilityRedisService.eval(script, keys, args);
+  async eval<T = unknown>(script: string, keys: string[], args: string[]): Promise<T> {
+    return await this.utilityRedisService.eval<T>(script, keys, args);
   }
 }

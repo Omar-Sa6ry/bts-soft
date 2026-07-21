@@ -16,10 +16,13 @@ export class TransactionRedisService {
    *   ['INCR', 'counter']
    * ]);
    */
-  async multiExecute(commands: Array<[string, ...any[]]>): Promise<any[]> {
+  async multiExecute(commands: Array<[string, ...unknown[]]>): Promise<unknown[]> {
     const multi = this.redisClient.multi();
     commands.forEach(([cmd, ...args]) => {
-      multi[cmd.toLowerCase()](...args);
+      const targetFn = (multi as unknown as Record<string, (...args: unknown[]) => void>)[cmd.toLowerCase()];
+      if (typeof targetFn === "function") {
+        targetFn.apply(multi, args);
+      }
     });
 
     return multi.exec();
@@ -55,7 +58,7 @@ export class TransactionRedisService {
     keysToWatch: string[],
     transactionFn: (multi: ReturnType<RedisClientType["multi"]>) => void,
     maxRetries = 3,
-  ): Promise<any[]> {
+  ): Promise<unknown[]> {
     let attempts = 0;
     while (attempts < maxRetries) {
       try {
@@ -75,6 +78,8 @@ export class TransactionRedisService {
         if (attempts >= maxRetries) throw error;
       }
     }
+
+    return [];
   }
 
   /**
@@ -82,7 +87,7 @@ export class TransactionRedisService {
    * @returns 'OK' on success
    */
   async discard(): Promise<string> {
-    return this.redisClient.sendCommand(["DISCARD"]);
+    return this.redisClient.sendCommand(["DISCARD"]) as Promise<string>;
   }
 
   /**
@@ -91,7 +96,7 @@ export class TransactionRedisService {
    * @param value - New value to set
    * @returns [oldValue, setResult] from transaction
    */
-  async transactionGetSet(key: string, value: any): Promise<any[]> {
+  async transactionGetSet<T = unknown>(key: string, value: T): Promise<unknown[]> {
     return this.withTransaction([key], (multi) => {
       multi.get(key);
       multi.set(key, JSON.stringify(value));

@@ -13,14 +13,14 @@ import { ListConstant } from "../constant/redis.constant";
  */
 export interface IRedisInterface {
   // =================== Core Key-Value Operations ===================
-  set(key: string, value: any, ttl?: number): Promise<void>;
-  setForever(key: string, value: any): Promise<void>;
-  get<T = any>(key: string): Promise<T | null>;
+  set<T = unknown>(key: string, value: T, ttl?: number): Promise<void>;
+  setForever<T = unknown>(key: string, value: T): Promise<void>;
+  get<T = unknown>(key: string): Promise<T | null>;
   del(key: string): Promise<void>;
-  mSet(data: Record<string, any>): Promise<void>;
+  mSet<T = unknown>(data: Record<string, T>): Promise<void>;
 
   // =================== String Operations ===================
-  getSet(key: string, value: any): Promise<string | null>;
+  getSet<T = unknown>(key: string, value: T): Promise<string | null>;
   strlen(key: string): Promise<number>;
   append(key: string, value: string): Promise<number>;
   getRange(key: string, start: number, end: number): Promise<string>;
@@ -40,17 +40,17 @@ export interface IRedisInterface {
   ttl(key: string): Promise<number>;
 
   // ===== Hash Operations =====
-  hSet(key: string, field: string, value: any): Promise<number>;
-  hGet<T = any>(key: string, field: string): Promise<T | null>;
-  hGetAll(key: string): Promise<Record<string, any>>;
+  hSet<T = unknown>(key: string, field: string, value: T): Promise<number>;
+  hGet<T = unknown>(key: string, field: string): Promise<T | null>;
+  hGetAll<T = unknown>(key: string): Promise<Record<string, T>>;
   hDel(key: string, field: string): Promise<number>;
   hExists(key: string, field: string): Promise<boolean>;
   hKeys(key: string): Promise<string[]>;
-  hVals(key: string): Promise<any[]>;
+  hVals<T = unknown>(key: string): Promise<T[]>;
   hLen(key: string): Promise<number>;
   hIncrBy(key: string, field: string, increment: number): Promise<number>;
   hIncrByFloat(key: string, field: string, increment: number): Promise<number>;
-  hSetNX(key: string, field: string, value: any): Promise<boolean>;
+  hSetNX<T = unknown>(key: string, field: string, value: T): Promise<boolean>;
 
   // ===== Set Operations =====
   sAdd(key: string, ...members: string[]): Promise<number>;
@@ -85,19 +85,19 @@ export interface IRedisInterface {
   zInterStore(destKey: string, sourceKeys: string[]): Promise<number>;
 
   // ===== List Operations =====
-  lPush(key: string, ...values: any[]): Promise<number>;
-  rPush(key: string, ...values: any[]): Promise<number>;
-  lPop(key: string): Promise<number>;
-  rPop(key: string): Promise<number>;
-  lRange(key: string, start: number, stop: number): Promise<any[]>;
+  lPush(key: string, ...values: unknown[]): Promise<number>;
+  rPush(key: string, ...values: unknown[]): Promise<number>;
+  lPop<T = unknown>(key: string): Promise<T | null>;
+  rPop<T = unknown>(key: string): Promise<T | null>;
+  lRange<T = unknown>(key: string, start: number, stop: number): Promise<T[]>;
   lLen(key: string): Promise<number>;
-  lIndex(key: string, index: number): Promise<number>;
-  lInsert(key: string, pivot: any, value: any, position: ListConstant): Promise<number>;
-  lRem(key: string, count: number, value: any): Promise<number>;
+  lIndex<T = unknown>(key: string, index: number): Promise<T | null>;
+  lInsert<T = unknown, U = unknown>(key: string, pivot: T, value: U, position: ListConstant): Promise<number>;
+  lRem<T = unknown>(key: string, count: number, value: T): Promise<number>;
   lTrim(key: string, start: number, stop: number): Promise<string>;
-  rPopLPush(source: string, destination: string): Promise<number>;
-  lSet(key: string, index: number, value: any): Promise<string>;
-  lPos(key: string, value: any, options?: { RANK?: number; COUNT?: number; MAXLEN?: number }): Promise<number>;
+  rPopLPush<T = unknown>(source: string, destination: string): Promise<T | null>;
+  lSet<T = unknown>(key: string, index: number, value: T): Promise<string>;
+  lPos<T = unknown>(key: string, value: T, options?: { RANK?: number; COUNT?: number; MAXLEN?: number }): Promise<number>;
 
   // ===== HyperLogLog Operations =====
   pfAdd(key: string, ...elements: string[]): Promise<boolean>;
@@ -114,15 +114,15 @@ export interface IRedisInterface {
   geoRemove(key: string, member: string): Promise<number>;
 
   // ===== Transactions =====
-  multiExecute(commands: Array<[string, ...any[]]>): Promise<any[]>;
+  multiExecute(commands: Array<[string, ...unknown[]]>): Promise<unknown[]>;
   watch(keys: string[]): Promise<string>;
   unwatch(): Promise<string>;
-  withTransaction(keysToWatch: string[], transactionFn: (multi: any) => void, maxRetries?: number): Promise<any[]>;
+  withTransaction(keysToWatch: string[], transactionFn: (multi: unknown) => void, maxRetries?: number): Promise<unknown[]>;
   discard(): Promise<string>;
-  transactionGetSet(key: string, value: any): Promise<any[]>;
+  transactionGetSet<T = unknown>(key: string, value: T): Promise<unknown[]>;
 
   // ===== Pub/Sub =====
-  publish(channel: string, message: any): Promise<number>;
+  publish<T = unknown>(channel: string, message: T): Promise<number>;
   subscribe(channel: string, callback: (message: string, channel: string) => void): Promise<void>;
   pSubscribe(pattern: string, callback: (message: string, channel: string) => void): Promise<void>;
   unsubscribe(channel: string): Promise<void>;
@@ -130,17 +130,17 @@ export interface IRedisInterface {
   getSubscriptions(): Promise<void>;
   getChannels(pattern?: string): Promise<void>;
   getSubCount(...channels: string[]): Promise<void>;
-  createMessageHandler(handler: (parsed: any, raw: string, channel: string) => void): Promise<(rawMessage: string, channel: string) => void>;
+  createMessageHandler<T = unknown>(handler: (parsed: T, raw: string, channel: string) => void): Promise<(rawMessage: string, channel: string) => void>;
 
   // ===== Locking =====
   acquireLock(lockKey: string, value?: string, ttlMs?: number): Promise<string>;
-  releaseLock(lockKey: string, expectedValue: string): Promise<any>;
-  extendLock(lockKey: string, value: string, additionalTtlMs: number): Promise<any>;
+  releaseLock(lockKey: string, expectedValue: string): Promise<number>;
+  extendLock(lockKey: string, value: string, additionalTtlMs: number): Promise<number>;
   isLocked(lockKey: string): Promise<boolean>;
   getLockValue(lockKey: string): Promise<string>;
   waitForLock(lockKey: string, value?: string, ttlMs?: number, retryIntervalMs?: number, timeoutMs?: number): Promise<boolean>;
 
   // ===== Custom Atomic Operations =====
-  setNX(key: string, value: any, ttlSeconds: number): Promise<boolean>;
-  eval(script: string, keys: string[], args: string[]): Promise<any>;
+  setNX<T = unknown>(key: string, value: T, ttlSeconds: number): Promise<boolean>;
+  eval<T = unknown>(script: string, keys: string[], args: string[]): Promise<T>;
 }

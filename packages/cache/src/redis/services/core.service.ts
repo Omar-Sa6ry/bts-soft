@@ -12,36 +12,36 @@ export class CoreRedisService {
     @Inject("REDIS_CLIENT") private redisClient: RedisClientType,
   ) {}
 
-  async set(key: string, value: any, ttl: number = 3600): Promise<void> {
+  async set<T = unknown>(key: string, value: T, ttl: number = 3600): Promise<void> {
     try {
       await this.cacheManager.set(key, value, ttl);
     } catch (error) {
-      this.logger.error(`Error setting key ${key}`, error.stack);
+      this.logger.error(`Error setting key ${key}`, (error as Error).stack);
       throw error;
     }
   }
 
-  async setForever(key: string, value: any): Promise<void> {
+  async setForever<T = unknown>(key: string, value: T): Promise<void> {
     try {
       await this.redisClient.set(key, JSON.stringify(value));
     } catch (error) {
-      this.logger.error(`Error setting key ${key}`, error.stack);
+      this.logger.error(`Error setting key ${key}`, (error as Error).stack);
       throw error;
     }
   }
 
-  async update(key: string, value: any, ttl: number = 3600): Promise<void> {
+  async update<T = unknown>(key: string, value: T, ttl: number = 3600): Promise<void> {
     await this.del(key);
-    this.set(key, value, ttl);
+    await this.set(key, value, ttl);
   }
 
-  async get<T = any>(key: string): Promise<T | null> {
+  async get<T = unknown>(key: string): Promise<T | null> {
     try {
       const value = await this.cacheManager.get<T>(key);
       if (value === undefined || value === null) return null;
       return value;
     } catch (error) {
-      this.logger.error(`Error getting key ${key}`, error.stack);
+      this.logger.error(`Error getting key ${key}`, (error as Error).stack);
       throw error;
     }
   }
@@ -50,7 +50,7 @@ export class CoreRedisService {
     try {
       await this.cacheManager.del(key);
     } catch (error) {
-      this.logger.error(`Error deleting key ${key}`, error.stack);
+      this.logger.error(`Error deleting key ${key}`, (error as Error).stack);
       throw error;
     }
   }
@@ -64,7 +64,7 @@ export class CoreRedisService {
    *   'user:2': { name: 'Bob' }
    * });
    */
-  async mSet(data: Record<string, any>): Promise<void> {
+  async mSet<T = unknown>(data: Record<string, T>): Promise<void> {
     try {
       const pipeline = this.redisClient.multi();
       for (const [key, value] of Object.entries(data)) {
@@ -84,7 +84,7 @@ export class CoreRedisService {
    * @param ttlSeconds - Time to live in seconds
    * @returns true if key was set, false if it already existed
    */
-  async setNX(key: string, value: any, ttlSeconds: number): Promise<boolean> {
+  async setNX<T = unknown>(key: string, value: T, ttlSeconds: number): Promise<boolean> {
     try {
       const stringValue = typeof value === "string" ? value : JSON.stringify(value);
       const result = await this.redisClient.set(key, stringValue, { NX: true, EX: ttlSeconds });

@@ -25,11 +25,12 @@ export const createRedisClient = async (): Promise<RedisClientType> => {
     },
   });
 
-  client.on('error', (err: any) => {
-    if (err.code === 'ECONNREFUSED') {
+  client.on('error', (err: unknown) => {
+    const errorObj = err as { code?: string; message?: string };
+    if (errorObj?.code === 'ECONNREFUSED') {
       logger.error('Redis connection refused - is Redis running?');
     } else {
-      logger.error(`Redis error: ${err.message}`);
+      logger.error(`Redis error: ${errorObj?.message ?? String(err)}`);
     }
   });
 

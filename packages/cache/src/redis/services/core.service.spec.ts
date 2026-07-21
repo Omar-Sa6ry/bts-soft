@@ -102,11 +102,50 @@ describe("CoreRedisService", () => {
     });
   });
 
+  describe("setForever", () => {
+    it("should set a key-value pair without expiration", async () => {
+      const key = "forever-key";
+      const value = { role: "admin" };
+      await service.setForever(key, value);
+
+      const saved = await redisClient.get(key);
+      expect(JSON.parse(saved)).toEqual(value);
+    });
+
+    it("should throw and log error when setForever fails", async () => {
+      const loggerSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
+      jest.spyOn(redisClient, "set").mockRejectedValueOnce(new Error("Redis write failure"));
+
+      await expect(service.setForever("k", "v")).rejects.toThrow("Redis write failure");
+      expect(loggerSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe("update", () => {
+    it("should delete existing key and set new value", async () => {
+      const key = "update-key";
+      const value = "new-value";
+
+      await service.update(key, value, 1800);
+
+      expect(cacheManager.del).toHaveBeenCalledWith(key);
+      expect(cacheManager.set).toHaveBeenCalledWith(key, value, 1800);
+    });
+  });
+
   describe("del", () => {
     it("should delete a key", async () => {
       const key = "test-key";
       await service.del(key);
       expect(cacheManager.del).toHaveBeenCalledWith(key);
+    });
+
+    it("should log error and throw when del fails", async () => {
+      const loggerSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
+      cacheManager.del.mockRejectedValueOnce(new Error("Del failure"));
+
+      await expect(service.del("k")).rejects.toThrow("Del failure");
+      expect(loggerSpy).toHaveBeenCalled();
     });
   });
 
@@ -124,5 +163,40 @@ describe("CoreRedisService", () => {
       expect(JSON.parse(val1)).toBe("val1");
       expect(JSON.parse(val2)).toEqual({ a: 1 });
     });
+
+    it("should log error and throw when mSet fails", async () => {
+      const loggerSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
+      jest.spyOn(redisClient, "multi").mockImplementationOnce(() => {
+        throw new Error("Pipeline failure");
+      });
+
+      await expect(service.mSet({ k: "v" })).rejects.toThrow("Pipeline failure");
+      expect(loggerSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe("setNX", () => {
+    it("should return true when key is set successfully", async () => {
+      jest.spyOn(redisClient, "set").mockResolvedValueOnce("OK");
+
+      const result = await service.setNX("nx-key", { value: 123 }, 60);
+      expect(result).toBe(true);
+    });
+
+    it("should return false when key already exists", async () => {
+      jest.spyOn(redisClient, "set").mockResolvedValueOnce(null);
+
+      const result = await service.setNX("nx-key", "string-val", 60);
+      expect(result).toBe(false);
+    });
+
+    it("should log error and throw when setNX fails", async () => {
+      const loggerSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
+      jest.spyOn(redisClient, "set").mockRejectedValueOnce(new Error("setNX error"));
+
+      await expect(service.setNX("k", "v", 60)).rejects.toThrow("setNX error");
+      expect(loggerSpy).toHaveBeenCalled();
+    });
   });
 });
+

@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from "@nestjs/common";
+import { Injectable, Inject } from "@nestjs/common";
 import { RedisClientType } from "redis";
 import { SCORE } from "../constant/redis.constant";
 
@@ -30,10 +30,10 @@ export class SortedORedisService {
     start: number,
     stop: number,
     withScores = false,
-  ): Promise<any[]> {
-    const options: any = {};
+  ): Promise<string[]> {
+    const options: { WITHSCORES?: true } = {};
     if (withScores) options.WITHSCORES = true;
-    return this.redisClient.zRange(key, start, stop, options);
+    return this.redisClient.zRange(key, start, stop, options as never) as unknown as string[];
   }
 
   /**
@@ -69,10 +69,10 @@ export class SortedORedisService {
     start: number,
     stop: number,
     withScores = false,
-  ): Promise<any[]> {
-    const options: any = { REV: true };
+  ): Promise<string[]> {
+    const options: { REV: true; WITHSCORES?: true } = { REV: true };
     if (withScores) options.WITHSCORES = true;
-    return this.redisClient.zRange(key, start, stop, options);
+    return this.redisClient.zRange(key, start, stop, options as never) as unknown as string[];
   }
 
   /**

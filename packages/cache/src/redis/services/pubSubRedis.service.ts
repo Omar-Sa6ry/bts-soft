@@ -20,7 +20,8 @@ export class PubSubRedisService implements OnModuleDestroy {
       try {
         await this.subscriberClient.connect();
       } catch (error) {
-        if (!error.message?.includes("already connecting") && !error.message?.includes("already connected")) {
+        const errMessage = (error as Error).message;
+        if (!errMessage?.includes("already connecting") && !errMessage?.includes("already connected")) {
           throw error;
         }
       }
@@ -34,7 +35,7 @@ export class PubSubRedisService implements OnModuleDestroy {
    * @param message - Message to publish (any serializable data)
    * @returns Number of clients that received the message
    */
-  async publish(channel: string, message: any): Promise<number> {
+  async publish<T = unknown>(channel: string, message: T): Promise<number> {
     return this.redisClient.publish(channel, JSON.stringify(message));
   }
 
@@ -125,14 +126,14 @@ export class PubSubRedisService implements OnModuleDestroy {
    * @param handler - Custom handler function for parsed messages
    * @returns Message handler function ready for subscription
    */
-  async createMessageHandler(
-    handler: (parsed: any, raw: string, channel: string) => void,
+  async createMessageHandler<T = unknown>(
+    handler: (parsed: T, raw: string, channel: string) => void,
   ): Promise<(rawMessage: string, channel: string) => void> {
     return (rawMessage: string, channel: string) => {
       try {
-        handler(JSON.parse(rawMessage), rawMessage, channel);
+        handler(JSON.parse(rawMessage) as T, rawMessage, channel);
       } catch {
-        handler(rawMessage, rawMessage, channel);
+        handler(rawMessage as unknown as T, rawMessage, channel);
       }
     };
   }
