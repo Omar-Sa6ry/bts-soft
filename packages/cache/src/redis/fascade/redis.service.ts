@@ -33,6 +33,9 @@ import { TransactionRedisService } from "../services/transactionRedis.service";
 import { PubSubRedisService } from "../services/pubSubRedis.service";
 import { LockRedisService } from "../services/lockRedis.service";
 
+import { StreamRedisService } from "../services/streamRedis.service";
+import { BitmapRedisService } from "../services/bitmapRedis.service";
+
 @Injectable()
 export class RedisService implements IRedisInterface {
   constructor(
@@ -49,6 +52,8 @@ export class RedisService implements IRedisInterface {
     private readonly transactionRedisService: TransactionRedisService,
     private readonly pubSubRedisService: PubSubRedisService,
     private readonly lockRedisService: LockRedisService,
+    private readonly streamRedisService: StreamRedisService,
+    private readonly bitmapRedisService: BitmapRedisService,
   ) {}
 
   // =================== Core Key-Value Operations ===================
@@ -67,6 +72,14 @@ export class RedisService implements IRedisInterface {
 
   async get<T = unknown>(key: string): Promise<T | null> {
     return await this.coreRedisService.get<T>(key);
+  }
+
+  async getOrSet<T = unknown>(
+    key: string,
+    factoryFn: () => Promise<T>,
+    ttlSeconds?: number,
+  ): Promise<T> {
+    return await this.coreRedisService.getOrSet<T>(key, factoryFn, ttlSeconds);
   }
 
   async del(key: string): Promise<void> {
@@ -137,6 +150,18 @@ export class RedisService implements IRedisInterface {
 
   async ttl(key: string): Promise<number> {
     return await this.utilityRedisService.ttl(key);
+  }
+
+  async persist(key: string): Promise<boolean> {
+    return await this.utilityRedisService.persist(key);
+  }
+
+  async pttl(key: string): Promise<number> {
+    return await this.utilityRedisService.pttl(key);
+  }
+
+  async delByPattern(pattern: string): Promise<number> {
+    return await this.utilityRedisService.delByPattern(pattern);
   }
 
   // ===== Hash Operations =====
@@ -608,5 +633,68 @@ export class RedisService implements IRedisInterface {
 
   async eval<T = unknown>(script: string, keys: string[], args: string[]): Promise<T> {
     return await this.utilityRedisService.eval<T>(script, keys, args);
+  }
+
+  // ===== Streams Operations =====
+
+  async xAdd<T = unknown>(stream: string, message: Record<string, T>, id?: string): Promise<string> {
+    return await this.streamRedisService.xAdd<T>(stream, message, id);
+  }
+
+  async xRead<T = unknown>(
+    streams: { key: string; id: string }[],
+    count?: number,
+    blockMs?: number,
+  ): Promise<Record<string, Array<{ id: string; message: Record<string, T> }>> | null> {
+    return await this.streamRedisService.xRead<T>(streams, count, blockMs);
+  }
+
+  async xGroupCreate(
+    stream: string,
+    groupName: string,
+    startId?: string,
+    makeStream?: boolean,
+  ): Promise<string> {
+    return await this.streamRedisService.xGroupCreate(stream, groupName, startId, makeStream);
+  }
+
+  async xReadGroup<T = unknown>(
+    groupName: string,
+    consumerName: string,
+    streams: { key: string; id: string }[],
+    count?: number,
+    blockMs?: number,
+  ): Promise<Record<string, Array<{ id: string; message: Record<string, T> }>> | null> {
+    return await this.streamRedisService.xReadGroup<T>(groupName, consumerName, streams, count, blockMs);
+  }
+
+  async xAck(stream: string, groupName: string, ...ids: string[]): Promise<number> {
+    return await this.streamRedisService.xAck(stream, groupName, ...ids);
+  }
+
+  async xLen(stream: string): Promise<number> {
+    return await this.streamRedisService.xLen(stream);
+  }
+
+  // ===== Bitmap Operations =====
+
+  async setBit(key: string, offset: number, value: 0 | 1): Promise<number> {
+    return await this.bitmapRedisService.setBit(key, offset, value);
+  }
+
+  async getBit(key: string, offset: number): Promise<number> {
+    return await this.bitmapRedisService.getBit(key, offset);
+  }
+
+  async bitCount(key: string, start?: number, end?: number): Promise<number> {
+    return await this.bitmapRedisService.bitCount(key, start, end);
+  }
+
+  async bitOp(
+    operation: "AND" | "OR" | "XOR" | "NOT",
+    destKey: string,
+    ...srcKeys: string[]
+  ): Promise<number> {
+    return await this.bitmapRedisService.bitOp(operation, destKey, ...srcKeys);
   }
 }

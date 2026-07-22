@@ -19,6 +19,9 @@ import { TransactionRedisService } from "./services/transactionRedis.service";
 import { PubSubRedisService } from "./services/pubSubRedis.service";
 import { LockRedisService } from "./services/lockRedis.service";
 
+import { StreamRedisService } from "./services/streamRedis.service";
+import { BitmapRedisService } from "./services/bitmapRedis.service";
+
 /**
  * RedisModule
  *
@@ -62,6 +65,8 @@ import { LockRedisService } from "./services/lockRedis.service";
     TransactionRedisService,
     PubSubRedisService,
     LockRedisService,
+    StreamRedisService,
+    BitmapRedisService,
   ],
   // Expose these providers for other modules to use
   exports: [RedisService, RedisServiceProvider],

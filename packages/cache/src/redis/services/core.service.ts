@@ -46,9 +46,37 @@ export class CoreRedisService {
     }
   }
 
+  /**
+   * Cache-Aside pattern: fetch from cache, if miss, execute factory, store result, and return
+   * @param key - The cache key
+   * @param factoryFn - Function that retrieves the data if cache miss
+   * @param ttlSeconds - Cache TTL in seconds (default: 3600)
+   * @returns The cached or newly fetched data
+   */
+  async getOrSet<T = unknown>(
+    key: string,
+    factoryFn: () => Promise<T>,
+    ttlSeconds: number = 3600,
+  ): Promise<T> {
+    try {
+      const cachedValue = await this.get<T>(key);
+      if (cachedValue !== null) {
+        return cachedValue;
+      }
+
+      const freshValue = await factoryFn();
+      await this.set(key, freshValue, ttlSeconds);
+      return freshValue;
+    } catch (error) {
+      this.logger.error(`Error in getOrSet for key ${key}`, (error as Error).stack);
+      throw error;
+    }
+  }
+
   async del(key: string): Promise<void> {
     try {
       await this.cacheManager.del(key);
+      await this.redisClient.del(key);
     } catch (error) {
       this.logger.error(`Error deleting key ${key}`, (error as Error).stack);
       throw error;

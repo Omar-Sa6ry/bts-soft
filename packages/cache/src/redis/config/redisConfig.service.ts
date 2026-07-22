@@ -11,6 +11,7 @@ export class RedisConfigService implements CacheOptionsFactory {
       host: process.env.REDIS_HOST || "localhost",
       port: parseInt(process.env.REDIS_PORT || "6379", 10),
       password: process.env.REDIS_PASSWORD || undefined,
+      db: process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : 0,
       tls:
         process.env.REDIS_TLS === "true" || process.env.REDISTLS === "true"
           ? { rejectUnauthorized: false }

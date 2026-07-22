@@ -14,7 +14,7 @@ describe('System Mechanics (PubSub, Transactions, Locks) (E2E)', () => {
   let redisClient: RedisClientType;
 
   beforeAll(async () => {
-    const setup = await createE2EApp();
+    const setup = await createE2EApp(7);
     module = setup.module;
     pubsub = module.get<PubSubRedisService>(PubSubRedisService);
     transaction = module.get<TransactionRedisService>(TransactionRedisService);

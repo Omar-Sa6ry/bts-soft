@@ -9,6 +9,8 @@ describe('UtilityRedisService', () => {
 
   beforeEach(async () => {
     redisClient = new RedisMock();
+    // ioredis-mock uses pttl, but node-redis uses pTTL. Map the alias for testing.
+    redisClient.pTTL = redisClient.pttl.bind(redisClient);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -60,6 +62,46 @@ describe('UtilityRedisService', () => {
       await redisClient.expire(key, 100);
       const result = await service.ttl(key);
       expect(result).toBeGreaterThan(0);
+    });
+  });
+
+  describe('persist', () => {
+    it('should persist a key', async () => {
+      const key = 'test-key';
+      await redisClient.set(key, 'val');
+      await redisClient.expire(key, 100);
+      expect(!!(await service.persist(key))).toBe(true);
+      expect(await service.ttl(key)).toBe(-1);
+    });
+  });
+
+  describe('pttl', () => {
+    it('should return pTTL for a key', async () => {
+      const key = 'test-key';
+      await redisClient.set(key, 'val');
+      await redisClient.pexpire(key, 100000);
+      const result = await service.pttl(key);
+      expect(result).toBeGreaterThan(0);
+    });
+  });
+
+  describe('delByPattern', () => {
+    it('should delete keys matching pattern', async () => {
+      await redisClient.set('user:1', 'val');
+      await redisClient.set('user:2', 'val');
+      await redisClient.set('other:1', 'val');
+      
+      // ioredis-mock does not support node-redis v4 scan object arguments natively in tests.
+      // We will mock the driver method specifically for this test
+      jest.spyOn(redisClient, 'scan').mockResolvedValueOnce({
+        cursor: 0,
+        keys: ['user:1', 'user:2']
+      } as any);
+      
+      const count = await service.delByPattern('user:*');
+      expect(count).toBe(2);
+      expect(await redisClient.exists('user:1')).toBe(0);
+      expect(await redisClient.exists('other:1')).toBe(1);
     });
   });
 });

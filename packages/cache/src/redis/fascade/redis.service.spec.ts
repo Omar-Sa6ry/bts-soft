@@ -14,14 +14,17 @@ import { TransactionRedisService } from "../services/transactionRedis.service";
 import { PubSubRedisService } from "../services/pubSubRedis.service";
 import { LockRedisService } from "../services/lockRedis.service";
 
+import { StreamRedisService } from "../services/streamRedis.service";
+import { BitmapRedisService } from "../services/bitmapRedis.service";
+
 describe("RedisService (Facade)", () => {
   let service: RedisService;
 
   const mocks = {
-    core: { set: jest.fn(), get: jest.fn(), del: jest.fn() },
+    core: { set: jest.fn(), get: jest.fn(), del: jest.fn(), getOrSet: jest.fn() },
     string: { getSet: jest.fn(), strlen: jest.fn() },
     number: { incr: jest.fn(), decr: jest.fn() },
-    utility: { exists: jest.fn(), expire: jest.fn() },
+    utility: { exists: jest.fn(), expire: jest.fn(), ttl: jest.fn(), persist: jest.fn(), pttl: jest.fn(), delByPattern: jest.fn() },
     hash: { hSet: jest.fn(), hGet: jest.fn() },
     operation: { sAdd: jest.fn(), sMembers: jest.fn() },
     sorted: { zAdd: jest.fn(), zRange: jest.fn() },
@@ -31,6 +34,8 @@ describe("RedisService (Facade)", () => {
     transaction: { multiExecute: jest.fn(), watch: jest.fn() },
     pubsub: { publish: jest.fn(), subscribe: jest.fn() },
     lock: { acquireLock: jest.fn(), releaseLock: jest.fn() },
+    stream: { xAdd: jest.fn(), xRead: jest.fn() },
+    bitmap: { setBit: jest.fn(), getBit: jest.fn() },
   };
 
   beforeEach(async () => {
@@ -50,6 +55,8 @@ describe("RedisService (Facade)", () => {
         { provide: TransactionRedisService, useValue: mocks.transaction },
         { provide: PubSubRedisService, useValue: mocks.pubsub },
         { provide: LockRedisService, useValue: mocks.lock },
+        { provide: StreamRedisService, useValue: mocks.stream },
+        { provide: BitmapRedisService, useValue: mocks.bitmap },
       ],
     }).compile();
 

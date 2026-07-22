@@ -6,14 +6,15 @@ Production-Grade Redis Infrastructure and Specialized Micro-Service Abstraction 
 
 ## Overview
 
-`@bts-soft/cache` is an enterprise Redis abstraction layer designed specifically for high-throughput, mission-critical NestJS microservices and web applications. Moving beyond standard key-value caching, this package provides a unified **Facade Architecture** backed by 13 specialized domain services. It natively handles automatic JSON serialization, atomic distributed locking via Redlock/Lua scripts, isolated Pub/Sub event streams, probabilistic counting, geospatial queries, and atomic pipelines.
+`@bts-soft/cache` is an enterprise Redis abstraction layer designed specifically for high-throughput, mission-critical NestJS microservices and web applications. Moving beyond standard key-value caching, this package provides a unified **Facade Architecture** backed by 15 specialized domain services. It natively handles automatic JSON serialization, atomic distributed locking via Redlock/Lua scripts, isolated Pub/Sub event streams, robust message queuing via Redis Streams, probabilistic counting, geospatial queries, and atomic pipelines.
 
 ---
 
 ## Architecture Highlights
 
-* **Unified Facade Pattern**: Developers interface with a single `RedisService` dependency while underlying logic is strictly decoupled across 13 single-responsibility domain services.
+* **Unified Facade Pattern**: Developers interface with a single `RedisService` dependency while underlying logic is strictly decoupled across 15 single-responsibility domain services.
 * **Isolated Pub/Sub Messaging**: Uses duplicated client sockets dedicated strictly to subscription listener loops to prevent blocking primary transactional Redis commands.
+* **Redis Streams Support**: Robust integration with Redis Streams and Consumer Groups for building reliable, persistent event-driven architectures.
 * **Redlock Distributed Locking**: Built-in atomic lock acquisition using `NX PX` flags paired with Lua scripts for safe, atomic lock releases and extensions.
 * **Transparent Type Handling & Serialization**: Automates JSON stringification and parsing across all complex data structures including Hashes, Lists, Sets, and Key-Value stores.
 * **Hybrid Core Driver Architecture**: Combines `node-redis v4` for fast command execution with `@nestjs/cache-manager` and `cache-manager-ioredis` for standard framework caching workflows.
@@ -98,23 +99,25 @@ sequenceDiagram
 
 ## Service Domain Architecture
 
-The module exports `RedisService`, which implements `IRedisInterface`. The table below outlines the 13 specialized internal domain services and their responsibilities:
+The module exports `RedisService`, which implements `IRedisInterface`. The table below outlines the 15 specialized internal domain services and their responsibilities:
 
 | Domain Service | Responsibility | Key Operations |
 | :--- | :--- | :--- |
-| **CoreRedisService** | Primary K/V cache operations with JSON support | `set`, `setForever`, `get`, `del`, `update`, `mSet`, `setNX` |
+| **CoreRedisService** | Primary K/V cache operations with JSON support and cache-aside | `set`, `setForever`, `get`, `getOrSet`, `del`, `update`, `mSet`, `setNX` |
 | **StringRedisService** | Advanced string manipulation and range queries | `getSet`, `strlen`, `append`, `getRange`, `setRange`, `mGet` |
 | **NumberRedisService** | Atomic numeric increments and decrements | `incr`, `incrBy`, `incrByFloat`, `decr`, `decrBy` |
 | **HashRedisService** | Object-like field-value dictionary storage | `hSet`, `hGet`, `hGetAll`, `hDel`, `hExists`, `hKeys`, `hVals`, `hLen`, `hIncrBy`, `hIncrByFloat`, `hSetNX` |
 | **ListORedisService** | Ordered sequence management, queues, and stacks | `lPush`, `rPush`, `lPop`, `rPop`, `lRange`, `lLen`, `lIndex`, `lInsert`, `lRem`, `lTrim`, `rPopLPush`, `lSet`, `lPos` |
-| **OperationRedisService**| Set theory operations and unique collections | `sAdd`, `sRem`, `sMembers`, `sIsMember`, `sCard`, `sPop`, `sMove`, `sDiff`, `sDiffStore`, `sInter`, `sInterStore`, `sUnion`, `sUnionStore` |
+| **OperationRedisService** | Set theory operations and unique collections | `sAdd`, `sRem`, `sMembers`, `sIsMember`, `sCard`, `sPop`, `sMove`, `sDiff`, `sDiffStore`, `sInter`, `sInterStore`, `sUnion`, `sUnionStore` |
 | **SortedORedisService** | Priority queues and scored real-time rankings | `zAdd`, `zRange`, `zRangeByScore`, `zRevRange`, `zCard`, `zScore`, `zRank`, `zRevRank`, `zIncrBy`, `zRem`, `zRemRangeByRank`, `zRemRangeByScore`, `zCount`, `zUnionStore`, `zInterStore` |
 | **GeoRedisService** | Coordinate tracking and proximity queries | `geoAdd`, `geoPos`, `geoDist`, `geoHash`, `geoRemove` |
-| **HyperLogLogRedisService**| Memory-efficient unique cardinality estimation | `pfAdd`, `pfCount`, `pfMerge`, `pfDebug`, `pfClear` |
+| **HyperLogLogRedisService** | Memory-efficient unique cardinality estimation | `pfAdd`, `pfCount`, `pfMerge`, `pfDebug`, `pfClear` |
 | **LockRedisService** | Distributed concurrency locking and mutexes | `acquireLock`, `releaseLock`, `extendLock`, `isLocked`, `getLockValue`, `waitForLock` |
 | **PubSubRedisService** | Dedicated multi-channel real-time event routing | `publish`, `subscribe`, `pSubscribe`, `unsubscribe`, `pUnsubscribe`, `getSubscriptions`, `getChannels`, `getSubCount`, `createMessageHandler` |
-| **TransactionRedisService**| Multi-command atomic pipelines and OCC transactions | `multiExecute`, `watch`, `unwatch`, `withTransaction`, `discard`, `transactionGetSet` |
-| **UtilityRedisService** | Key expiration, existence checks, and Lua execution | `exists`, `expire`, `ttl`, `eval` |
+| **TransactionRedisService** | Multi-command atomic pipelines and OCC transactions | `multiExecute`, `watch`, `unwatch`, `withTransaction`, `discard`, `transactionGetSet` |
+| **StreamRedisService** | Persistent event sourcing and reliable message queuing | `xAdd`, `xRead`, `xGroupCreate`, `xReadGroup`, `xAck`, `xLen` |
+| **BitmapRedisService** | Highly efficient boolean flags and population counting | `setBit`, `getBit`, `bitCount`, `bitOp` |
+| **UtilityRedisService** | Key expiration, non-blocking pattern eviction, and Lua | `exists`, `expire`, `ttl`, `persist`, `pttl`, `delByPattern`, `eval` |
 
 ---
 
@@ -469,6 +472,98 @@ export class AnalyticsService {
 }
 ```
 
+### 9. Redis Streams & Consumer Groups
+
+Persistent, append-only logs for reliable event-driven messaging and message queuing.
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { RedisService } from '@bts-soft/cache';
+
+@Injectable()
+export class EventSourcingService {
+  private readonly streamKey = 'events:orders';
+  private readonly groupName = 'workers:orders';
+
+  constructor(private readonly redisService: RedisService) {}
+
+  async appendOrderEvent(orderData: Record<string, any>): Promise<string> {
+    // Automatically stringifies complex objects inside the message
+    return await this.redisService.xAdd(this.streamKey, orderData);
+  }
+
+  async initializeConsumerGroup(): Promise<void> {
+    try {
+      // Create group starting from latest messages ('$'), creating stream if it doesn't exist
+      await this.redisService.xGroupCreate(this.streamKey, this.groupName, '$', true);
+    } catch (error) {
+      // Ignore BUSYGROUP error if it already exists
+    }
+  }
+
+  async processPendingEvents(workerName: string): Promise<void> {
+    // Read up to 10 new messages for this consumer group, blocking for 5 seconds
+    const result = await this.redisService.xReadGroup(
+      this.groupName,
+      workerName,
+      [{ key: this.streamKey, id: '>' }],
+      10,
+      5000
+    );
+
+    if (result && result[this.streamKey]) {
+      const messages = result[this.streamKey];
+      for (const msg of messages) {
+        // msg.message is automatically parsed back to an object
+        console.log(`Processing event ${msg.id}:`, msg.message);
+        
+        // Acknowledge processing
+        await this.redisService.xAck(this.streamKey, this.groupName, msg.id);
+      }
+    }
+  }
+}
+```
+
+---
+
+### 10. Bitmaps
+
+Highly efficient boolean flags and population counting. Ideal for tracking Daily Active Users (DAU), user features, or presence.
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { RedisService } from '@bts-soft/cache';
+
+@Injectable()
+export class UserActivityService {
+  constructor(private readonly redisService: RedisService) {}
+
+  async recordUserLogin(userId: number, dateStr: string): Promise<void> {
+    const key = \`dau:\${dateStr}\`;
+    // Set the bit corresponding to the user's integer ID to 1
+    await this.redisService.setBit(key, userId, 1);
+  }
+
+  async checkUserLogin(userId: number, dateStr: string): Promise<boolean> {
+    const bit = await this.redisService.getBit(\`dau:\${dateStr}\`, userId);
+    return bit === 1;
+  }
+
+  async getTotalActiveUsers(dateStr: string): Promise<number> {
+    // Count all 1s in the bitmap
+    return await this.redisService.bitCount(\`dau:\${dateStr}\`);
+  }
+
+  async calculateWeeklyActiveUsers(weekStr: string, ...dailyKeys: string[]): Promise<number> {
+    const destKey = \`wau:\${weekStr}\`;
+    // Perform bitwise OR across multiple days to find unique users
+    await this.redisService.bitOp('OR', destKey, ...dailyKeys);
+    return await this.redisService.bitCount(destKey);
+  }
+}
+```
+
 ---
 
 ## Error Handling & Resiliency
@@ -522,6 +617,7 @@ This project is licensed under the **MIT License**.
 
 ## Author
 
-**Omar Sabry**
+Omar Sabry
+
 * Portfolio: [omarsabry.varcel.app](https://omarsabry.varcel.app/)
 * GitHub: [Omar-Sa6ry](https://github.com/Omar-Sa6ry)

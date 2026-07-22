@@ -9,7 +9,7 @@ describe("HashRedisService (E2E)", () => {
   let redisClient: RedisClientType;
 
   beforeAll(async () => {
-    const setup = await createE2EApp();
+    const setup = await createE2EApp(5);
     module = setup.module;
     service = module.get<HashRedisService>(HashRedisService);
     redisClient = getRedisClient(module);

@@ -133,6 +133,44 @@ describe("CoreRedisService", () => {
     });
   });
 
+  describe("getOrSet", () => {
+    it("should return cached value if exists", async () => {
+      const key = "test-key";
+      const cachedValue = { id: 1 };
+      cacheManager.get.mockResolvedValue(cachedValue);
+
+      const factoryFn = jest.fn();
+      const result = await service.getOrSet(key, factoryFn);
+
+      expect(result).toEqual(cachedValue);
+      expect(cacheManager.get).toHaveBeenCalledWith(key);
+      expect(factoryFn).not.toHaveBeenCalled();
+    });
+
+    it("should fetch and set fresh value if cache miss", async () => {
+      const key = "test-key";
+      const freshValue = { id: 2 };
+      cacheManager.get.mockResolvedValue(null);
+
+      const factoryFn = jest.fn().mockResolvedValue(freshValue);
+      const result = await service.getOrSet(key, factoryFn, 1200);
+
+      expect(result).toEqual(freshValue);
+      expect(cacheManager.get).toHaveBeenCalledWith(key);
+      expect(factoryFn).toHaveBeenCalled();
+      expect(cacheManager.set).toHaveBeenCalledWith(key, freshValue, 1200);
+    });
+
+    it("should throw error if factory function fails", async () => {
+      const key = "test-key";
+      cacheManager.get.mockResolvedValue(null);
+
+      const factoryFn = jest.fn().mockRejectedValue(new Error("DB Error"));
+
+      await expect(service.getOrSet(key, factoryFn)).rejects.toThrow("DB Error");
+    });
+  });
+
   describe("del", () => {
     it("should delete a key", async () => {
       const key = "test-key";

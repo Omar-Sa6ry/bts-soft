@@ -9,7 +9,7 @@ describe("RedisService Facade (E2E)", () => {
   let redisClient: RedisClientType;
 
   beforeAll(async () => {
-    const setup = await createE2EApp();
+    const setup = await createE2EApp(4);
     module = setup.module;
     service = module.get<RedisService>(RedisService);
     redisClient = getRedisClient(module);

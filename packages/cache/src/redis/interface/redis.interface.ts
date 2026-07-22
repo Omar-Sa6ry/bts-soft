@@ -15,7 +15,9 @@ export interface IRedisInterface {
   // =================== Core Key-Value Operations ===================
   set<T = unknown>(key: string, value: T, ttl?: number): Promise<void>;
   setForever<T = unknown>(key: string, value: T): Promise<void>;
+  update<T = unknown>(key: string, value: T, ttl?: number): Promise<void>;
   get<T = unknown>(key: string): Promise<T | null>;
+  getOrSet<T = unknown>(key: string, factoryFn: () => Promise<T>, ttlSeconds?: number): Promise<T>;
   del(key: string): Promise<void>;
   mSet<T = unknown>(data: Record<string, T>): Promise<void>;
 
@@ -38,6 +40,9 @@ export interface IRedisInterface {
   exists(key: string): Promise<boolean>;
   expire(key: string, seconds: number): Promise<boolean>;
   ttl(key: string): Promise<number>;
+  persist(key: string): Promise<boolean>;
+  pttl(key: string): Promise<number>;
+  delByPattern(pattern: string): Promise<number>;
 
   // ===== Hash Operations =====
   hSet<T = unknown>(key: string, field: string, value: T): Promise<number>;
@@ -143,4 +148,18 @@ export interface IRedisInterface {
   // ===== Custom Atomic Operations =====
   setNX<T = unknown>(key: string, value: T, ttlSeconds: number): Promise<boolean>;
   eval<T = unknown>(script: string, keys: string[], args: string[]): Promise<T>;
+
+  // ===== Streams Operations =====
+  xAdd<T = unknown>(stream: string, message: Record<string, T>, id?: string): Promise<string>;
+  xRead<T = unknown>(streams: { key: string; id: string }[], count?: number, blockMs?: number): Promise<Record<string, Array<{ id: string; message: Record<string, T> }>> | null>;
+  xGroupCreate(stream: string, groupName: string, startId?: string, makeStream?: boolean): Promise<string>;
+  xReadGroup<T = unknown>(groupName: string, consumerName: string, streams: { key: string; id: string }[], count?: number, blockMs?: number): Promise<Record<string, Array<{ id: string; message: Record<string, T> }>> | null>;
+  xAck(stream: string, groupName: string, ...ids: string[]): Promise<number>;
+  xLen(stream: string): Promise<number>;
+
+  // ===== Bitmap Operations =====
+  setBit(key: string, offset: number, value: 0 | 1): Promise<number>;
+  getBit(key: string, offset: number): Promise<number>;
+  bitCount(key: string, start?: number, end?: number): Promise<number>;
+  bitOp(operation: 'AND' | 'OR' | 'XOR' | 'NOT', destKey: string, ...srcKeys: string[]): Promise<number>;
 }

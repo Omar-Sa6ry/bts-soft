@@ -8,7 +8,7 @@ describe('RedisHealth (E2E)', () => {
   let health: RedisHealth;
 
   beforeAll(async () => {
-    const setup = await createE2EApp();
+    const setup = await createE2EApp(15);
     module = setup.module;
     health = module.get<RedisHealth>(RedisHealth);
   });

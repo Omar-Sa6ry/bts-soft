@@ -10,7 +10,7 @@ describe('CoreRedisService (E2E)', () => {
   let redisClient: RedisClientType;
 
   beforeAll(async () => {
-    const setup = await createE2EApp();
+    const setup = await createE2EApp(3);
     module = setup.module;
     service = module.get<CoreRedisService>(CoreRedisService);
     redisClient = getRedisClient(module);

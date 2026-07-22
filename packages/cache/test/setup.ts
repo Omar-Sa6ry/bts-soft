@@ -9,10 +9,11 @@ import { RedisClientType } from 'redis';
  * Sets up a TestingModule for E2E testing of the RedisModule.
  * Injects environment variables for the real Redis instance.
  */
-export async function createE2EApp(): Promise<{ module: TestingModule }> {
+export async function createE2EApp(dbIndex = 9): Promise<{ module: TestingModule }> {
   // Use the real Redis container at 6380
   process.env.REDIS_HOST = 'localhost';
   process.env.REDIS_PORT = '6380';
+  process.env.REDIS_DB = String(dbIndex);
 
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [RedisModule],

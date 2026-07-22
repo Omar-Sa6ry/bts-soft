@@ -11,7 +11,7 @@ describe("Advanced Services (Geo & HLL) (E2E)", () => {
   let redisClient: RedisClientType;
 
   beforeAll(async () => {
-    const setup = await createE2EApp();
+    const setup = await createE2EApp(1);
     module = setup.module;
     geoService = module.get<GeoRedisService>(GeoRedisService);
     hllService = module.get<HyperLogLogRedisService>(HyperLogLogRedisService);

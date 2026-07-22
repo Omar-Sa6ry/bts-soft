@@ -82,7 +82,9 @@ export class PubSubRedisService implements OnModuleDestroy {
    * @param channel - Channel to unsubscribe from
    */
   async unsubscribe(channel: string): Promise<void> {
-    return this.redisClient.unsubscribe(channel);
+    if (this.subscriberClient) {
+      return this.subscriberClient.unsubscribe(channel);
+    }
   }
 
   /**
@@ -90,7 +92,9 @@ export class PubSubRedisService implements OnModuleDestroy {
    * @param pattern - Pattern to unsubscribe from
    */
   async pUnsubscribe(pattern: string): Promise<void> {
-    return this.redisClient.pUnsubscribe(pattern);
+    if (this.subscriberClient) {
+      return this.subscriberClient.pUnsubscribe(pattern);
+    }
   }
 
   /**

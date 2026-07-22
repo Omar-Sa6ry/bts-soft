@@ -8,6 +8,7 @@ export const createRedisClient = async (): Promise<RedisClientType> => {
   const logger = new Logger('RedisFactory');
 
   const client = createClient({
+    database: process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : 0,
     password: process.env.REDIS_PASSWORD || undefined,
     socket: {
       host: process.env.REDIS_HOST || 'localhost',
