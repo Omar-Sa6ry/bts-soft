@@ -1,6 +1,6 @@
 {
   "name": "@bts-soft/common",
-  "version": "1.5.1",
+  "version": "1.5.3",
   "description": "Shared NestJS utilities (modules, guards, interceptors, decorators, DTOs, and entities) for all @bts-soft packages.",
   "author": "Omar Sabry",
   "license": "MIT",
@@ -84,7 +84,7 @@
     "ulid": "^3.0.0"
   },
   "peerDependencies": {
-    "@bts-soft/cache": ">=1.1.0",
+    "@bts-soft/cache": "1.1.8",
     "@nestjs/mongoose": ">=10.0.0",
     "@prisma/client": ">=5.0.0",
     "mongoose": ">=7.0.0",

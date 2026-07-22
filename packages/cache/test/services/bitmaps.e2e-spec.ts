@@ -1,21 +1,26 @@
 import { TestingModule } from '@nestjs/testing';
-import { createE2EApp } from '../setup';
+import { createE2EApp, getRedisClient, cleanRedis } from '../setup';
 import { RedisService } from '../../src/redis/fascade/redis.service';
+import { RedisClientType } from 'redis';
 
 describe('Bitmaps E2E (RedisService)', () => {
   let service: RedisService;
   let module: TestingModule;
+  let redisClient: RedisClientType;
 
   beforeAll(async () => {
     const setup = await createE2EApp(2);
     module = setup.module;
     service = module.get<RedisService>(RedisService);
+    redisClient = getRedisClient(module);
+  });
+
+  beforeEach(async () => {
+    await cleanRedis(redisClient);
   });
 
   afterAll(async () => {
-    await service.del('e2e:bitmap:dau:1');
-    await service.del('e2e:bitmap:dau:2');
-    await service.del('e2e:bitmap:dau:weekly');
+    await cleanRedis(redisClient);
     await module.close();
   });
 

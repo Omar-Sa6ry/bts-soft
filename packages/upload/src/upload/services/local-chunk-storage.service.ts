@@ -54,7 +54,14 @@ export class LocalChunkStorage implements IChunkStorage {
   async cleanChunks(jobId: string): Promise<void> {
     const jobDir = this.getJobDir(jobId);
     if (fs.existsSync(jobDir)) {
-      await fs.promises.rm(jobDir, { recursive: true, force: true }).catch(() => {});
+      try {
+        await fs.promises.rm(jobDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      } catch {
+        // Fallback for Windows file locks
+        if (fs.existsSync(jobDir)) {
+          fs.rmSync(jobDir, { recursive: true, force: true });
+        }
+      }
     }
   }
 }

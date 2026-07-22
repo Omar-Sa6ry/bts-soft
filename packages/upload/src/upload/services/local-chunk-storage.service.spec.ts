@@ -17,14 +17,18 @@ describe('LocalChunkStorage', () => {
 
   beforeEach(() => {
     if (fs.existsSync(testRoot)) {
-      fs.rmSync(testRoot, { recursive: true, force: true });
+      try {
+        fs.rmSync(testRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      } catch {}
     }
     storage = new LocalChunkStorage(mockConfigService);
   });
 
   afterEach(() => {
     if (fs.existsSync(testRoot)) {
-      fs.rmSync(testRoot, { recursive: true, force: true });
+      try {
+        fs.rmSync(testRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      } catch {}
     }
   });
 

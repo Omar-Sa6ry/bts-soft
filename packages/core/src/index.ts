@@ -13,11 +13,5 @@ export * from "@bts-soft/validation";
 // Common Modules
 export * from "@bts-soft/common";
 
-if (process.env.NODE_ENV === "production") {
-  const noop = () => {};
-  console.log = noop;
-  console.error = noop;
-  console.warn = noop;
-  console.info = noop;
-  console.debug = noop;
-}
+export { RateLimiterConfig } from "@bts-soft/validation";
+export type { RateLimiterConfig as NotificationRateLimiterConfig } from "@bts-soft/notifications";
