@@ -1,71 +1,108 @@
 # @bts-soft/core
 
-![NestJS](https://img.shields.io/badge/NestJS-%3E%3D11.0.0-E0234E?style=flat-square&logo=nestjs)
-![Node](https://img.shields.io/badge/Node-%3E%3D20.17.0-339933?style=flat-square&logo=node.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=flat-square&logo=typescript)
-![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
+[![npm version](https://img.shields.io/npm/v/@bts-soft/core?style=flat-square&color=CB3837&logo=npm)](https://www.npmjs.com/package/@bts-soft/core)
+[![Node](https://img.shields.io/badge/Node->%3D20.17.0-339933?style=flat-square&logo=node.js)](https://nodejs.org)
+[![NestJS](https://img.shields.io/badge/NestJS->%3D11.0.0-E0234E?style=flat-square&logo=nestjs)](https://nestjs.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](https://opensource.org/licenses/MIT)
 
-## The Definitive Enterprise Meta-Framework for NestJS
+**Author: [Omar Sabry](https://omarsabry.vercel.app/) — Back-End Engineer**
 
-`@bts-soft/core` is not just a package; it is the architectural backbone of the BTS Soft enterprise ecosystem. It streamlines the development of high-performance, secure, and scalable NestJS applications by consolidating five specialized packages into a unified, high-level API.
+---
 
-This documentation serves as the comprehensive technical manual for the entire core infrastructure, covering everything from low-level Redis atomic operations to high-level multi-channel notification strategies.
+## Overview
+
+`@bts-soft/core` is a meta-package that consolidates the entire BTS Soft infrastructure ecosystem into a single, cohesive installation. Rather than managing five independent packages with their own versioning and peer dependency resolution, `@bts-soft/core` pins all packages at compatible, tested versions and exposes every export through a single entry point.
+
+Installing `@bts-soft/core` gives you immediate access to:
+
+- [@bts-soft/validation](https://www.npmjs.com/package/@bts-soft/validation) — Composite validation decorators, rate limiters, SQL injection prevention
+- [@bts-soft/cache](https://www.npmjs.com/package/@bts-soft/cache) — Enterprise Redis abstraction layer with 15 specialized domain services
+- [@bts-soft/notifications](https://www.npmjs.com/package/@bts-soft/notifications) — Multi-channel queued notification engine (Email, SMS, Push, Chat)
+- [@bts-soft/upload](https://www.npmjs.com/package/@bts-soft/upload) — Production-grade media orchestration with chunked uploads and CDN integration
+- [@bts-soft/common](https://www.npmjs.com/package/@bts-soft/common) — Standard library: interceptors, base entities, ORM adapters, infrastructure modules
 
 ---
 
 ## Table of Contents
-- [Installation \& Quick Start](#installation--quick-start)
-- [Core Vision \& Architecture](#core-vision--architecture)
-- [Module Index](#module-index)
-- [Deep Dive: @bts-soft/validation](#deep-dive-bts-softvalidation)
-- [Deep Dive: @bts-soft/cache](#deep-dive-bts-softcache)
-- [Deep Dive: @bts-soft/notifications](#deep-dive-bts-softnotifications)
-- [Deep Dive: @bts-soft/upload](#deep-dive-bts-softupload)
-- [Deep Dive: @bts-soft/common](#deep-dive-bts-softcommon)
-- [Security Audit \& Hardening Guide](#security-audit--hardening-guide)
-- [Deployment, CI/CD, and Operations](#deployment-cicd-and-operations)
-- [The Giant Book of Usage Examples](#the-giant-book-of-usage-examples)
-- [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
-- [Exhaustive Redis API Guide](#exhaustive-redis-api-guide)
+
+1. [Why a Meta-Package](#why-a-meta-package)
+2. [Installation](#installation)
+3. [System Architecture and Design Principles](#system-architecture-and-design-principles)
+4. [Package: @bts-soft/validation](#package-bts-softvalidation)
+5. [Package: @bts-soft/cache](#package-bts-softcache)
+6. [Package: @bts-soft/notifications](#package-bts-softnotifications)
+7. [Package: @bts-soft/upload](#package-bts-softupload)
+8. [Package: @bts-soft/common](#package-bts-softcommon)
+9. [Cross-Package Integration Scenarios](#cross-package-integration-scenarios)
+10. [Security Model](#security-model)
+11. [Environment Variable Reference](#environment-variable-reference)
+12. [Testing and Verification](#testing-and-verification)
+13. [FAQ](#faq)
 
 ---
 
-## Installation & Quick Start
+## Why a Meta-Package
 
-### 1. Install the Package
+In a large NestJS monorepo or a microservice mesh, every service needs the same foundational infrastructure: caching, validation, file uploads, and notification dispatching. Without coordination, teams end up manually aligning package versions, discovering peer-dependency conflicts at runtime, and duplicating module setup code.
+
+`@bts-soft/core` solves this by:
+
+- Pinning all five sub-packages at versions that have been integration-tested together
+- Re-exporting everything from a single entry point so import paths stay clean
+- Providing a single version bump point when the underlying packages update
+
+Consuming a single package instead of five also makes audit pipelines, SBOM generation, and dependency management significantly simpler.
+
+---
+
+## Installation
 
 ```bash
 npm install @bts-soft/core
 ```
 
-*Note: `@bts-soft/core` requires `Node.js >= 20.17.0` and has peer dependencies on `@nestjs/common` and `@nestjs/core` (v11+).*
+Peer dependencies required in your host application:
 
-### 2. Basic Integration
+```bash
+npm install @nestjs/common @nestjs/core
+```
 
-Import the individual modules provided by `@bts-soft/core` into your `AppModule` or use them as needed:
+Minimum runtime requirements:
+
+| Requirement | Version |
+| :--- | :--- |
+| Node.js | >= 20.17.0 |
+| npm | >= 10.0.0 |
+| NestJS | >= 11.0.0 |
+
+### Quickstart
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { 
-  ConfigModule, 
-  GraphqlModule, 
-  ThrottlingModule 
+import {
+  ConfigModule,
+  RedisModule,
+  ThrottlingModule,
+  GraphqlModule,
+  NotificationModule,
+  UploadModule,
 } from '@bts-soft/core';
 
 @Module({
   imports: [
     ConfigModule,
+    RedisModule,
     ThrottlingModule,
-    GraphqlModule,
-    // Add other core modules like RedisModule, UploadModule, etc. as needed
+    GraphqlModule.forRoot({ autoSchemaFile: true }),
+    NotificationModule,
+    UploadModule,
   ],
 })
 export class AppModule {}
 ```
 
-### 3. Bootstrap Utilities
-
-In your `main.ts`, utilize the core infrastructure to set up global interceptors and launch banners:
+In `main.ts`:
 
 ```typescript
 import { NestFactory } from '@nestjs/core';
@@ -74,14 +111,9 @@ import { setupInterceptors, displayAppBanner } from '@bts-soft/core';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
-  // Apply standard BTS-Soft global interceptors (Serialization, SQLi Protection, Formatting)
   setupInterceptors(app);
-  
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  
-  // Display the professional terminal banner
   displayAppBanner('My Service', port);
 }
 bootstrap();
@@ -89,2961 +121,1404 @@ bootstrap();
 
 ---
 
-## Core Vision & Architecture
+## System Architecture and Design Principles
 
-The primary objective of `@bts-soft/core` is to eliminate "infrastructure boilerplate." Instead of configuring Redis, Cloudinary, BullMQ, and Nodemailer repeatedly for every microservice, developers can import a single module that provides pre-validated, secure, and performant implementations of these essential services.
+### High-Level Component Map
 
-### Architectural Philosophy
+```
+                    @bts-soft/core (Meta-Package)
+                            |
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+@bts-soft/validation  @bts-soft/notifications  @bts-soft/upload
+Decorators            Queued Multi-Channel      Chunked Upload
+Rate Limiters         Engine                    CDN Orchestration
+SQLi Guards                │                       │
+        │                  └─────────┐  ┌───────────┘
+        │                            ▼  ▼
+@bts-soft/common              @bts-soft/cache
+Interceptors                  Redis Facade
+ORM Adapters         ◄────── 15 Domain Services
+Infrastructure               (shared by all packages)
+```
 
-The ecosystem is built on three core pillars:
+### Request Lifecycle
 
-1.  **Protocol Agnostic**: Every component is designed to work seamlessly with both **REST** (OpenAPI) and **GraphQL** (Apollo).
-2.  **Security by Default**: Global interceptors and specialized decorators protect against common vulnerabilities like SQL Injection and XSS from the moment the application starts.
-3.  **Extensible Patterns**: By utilizing the Strategy and Command patterns, the system allows for swapping providers (e.g., moving from Redis to Memcached, or Cloudinary to S3) without changing the business logic.
+```
+Client ──► CommonThrottlerGuard ──[rate limit exceeded]──► 429 Too Many Requests
+                │
+         [within threshold]
+                │
+                ▼
+        SqlInjectionInterceptor ──[SQLi pattern found]──► 400 Bad Request
+                │
+          [payload clean]
+                │
+                ▼
+       IdempotencyInterceptor ──[duplicate key in Redis]──► Cached Response
+                │
+          [new request]
+                │
+                ▼
+         NestJS ValidationPipe  (transform + validate DTO)
+                │
+                ▼
+          Controller / Resolver
+                │
+                ▼
+    GeneralResponseInterceptor  (wrap in unified envelope)
+                │
+                ▼
+              Client  ◄── { success, statusCode, data, timeStamp }
+```
 
----
+### Design Patterns in Use
 
-## Module Index
-
-| Package | Purpose | Key technologies |
+| Pattern | Package | Implementation |
 | :--- | :--- | :--- |
-| `@bts-soft/validation` | Domain-driven validation and security | Class-Validator, Class-Transformer |
-| `@bts-soft/cache` | Enterprise-grade Redis abstraction | redis (v4), cache-manager |
-| `@bts-soft/notifications` | Reliable multi-channel delivery | BullMQ, Nodemailer, Twilio, FCM |
-| `@bts-soft/upload` | Media management and processing | Cloudinary, Strategy/Command Pattern |
-| `@bts-soft/common` | Infrastructure glue and standard bases | RXJS, TypeORM, Apollo |
+| **Facade** | `@bts-soft/cache` | `RedisService` provides a single API surface over 15 internal domain services |
+| **Strategy** | `@bts-soft/upload` | `IUploadStrategy` decouples Local Disk and Cloudinary backends |
+| **Strategy** | `@bts-soft/common` | `IdGenerator` swaps between ULID, UUID, Snowflake, and CUID2 at runtime |
+| **Command** | `@bts-soft/upload` | Each media type (image, video, audio, raw) is an encapsulated command object |
+| **Observer** | `@bts-soft/upload` | `IUploadObserver` broadcasts lifecycle events (success, fail, delete) |
+| **Chain of Responsibility** | `@bts-soft/common` | Interceptor chain: ClassSerializer, SqlInjection, GeneralResponse |
+| **Adapter** | `@bts-soft/common` | ORM adapters for TypeORM, Mongoose, Sequelize, Prisma |
+| **Decorator** | `@bts-soft/validation` | Composite decorators apply validation, transformation, and GraphQL metadata in one annotation |
+| **Proxy / Deduplication** | `@bts-soft/common` | `IdempotencyInterceptor` returns cached Redis responses for duplicate requests |
+| **Factory** | `@bts-soft/common` | `ConfigModule.forRoot()`, `ThrottlingModule.forRoot()`, `GraphqlModule.forRoot()` |
+
+### Three Core Design Pillars
+
+**1. Protocol Agnosticism**
+Every component operates identically on REST (Express) and GraphQL (Apollo). Validation decorators apply `@Field()` metadata for GraphQL and omit it for REST using a single `isGraphql` flag. Rate limiting guards extract request context from both HTTP and Apollo execution contexts. The response formatter detects GraphQL contexts and skips HTTP envelope wrapping.
+
+**2. Security by Default**
+From the moment `setupInterceptors(app)` is called, every incoming request passes through SQL injection scanning before reaching any controller. Every text-based validation decorator applies a negative lookahead regex against common SQL keywords, double-hyphen comments, and statement terminators. Sensitive response fields are stripped by the `ClassSerializerInterceptor` before transmission.
+
+**3. Extensibility Without Coupling**
+Provider switching (Local disk to Cloudinary, Redis to in-memory, SMTP to SES) is achieved through environment variables and interface implementations, not code changes. New notification channels, upload strategies, or rate-limiting algorithms can be registered without modifying the core service.
 
 ---
 
-## Deep Dive: `@bts-soft/validation`
+## Package: @bts-soft/validation
 
-The validation module is the primary security layer for BTS Soft applications. It implements a "Validation-at-the-Edge" philosophy, where data is validated, sanitized, and transformed before it reaches the service layer.
+[![npm](https://img.shields.io/npm/v/@bts-soft/validation?style=flat-square&color=CB3837&logo=npm)](https://www.npmjs.com/package/@bts-soft/validation)
 
-### Key Features
+An enterprise-grade validation, sanitization, and rate-limiting toolkit. Decorators are composite: a single annotation applies structural validation, type checking, SQL injection prevention, and `class-transformer` normalization simultaneously. The package is protocol-agnostic: the same decorator annotates a REST DTO and a GraphQL `@InputType()` without modification.
 
-1.  **Declarative Security**: Every text-based decorator integrates the `SQL_INJECTION_REGEX` to filter malicious patterns.
-2.  **Smart Transformations**: Leverages `class-transformer` for automatic data normalization (e.g., auto-capitalization of names, lowercase emails, and digit-only national IDs).
-3.  **Protocol Agnostic**: Native support for both REST (Express) and GraphQL (Apollo), allowing a single DTO to serve both architectures via the `isGraphql` flag.
-4.  **Policy-Driven Passwords**: Comprehensive password validation with three configurable complexity levels.
+### Decorator Reference
 
----
+#### Identity and Security
 
-### Core Decorators
+| Decorator | Signature | Description |
+| :--- | :--- | :--- |
+| `@IdField` | `(id, length?, nullable?, isGraphql?, optional?)` | Validates fixed-length identifiers such as ULIDs (26 chars) or UUIDs. Checks SQLi patterns. |
+| `@NationalIdField` | `(nullable?, isGraphql?, optional?)` | Egyptian National ID: exactly 14 digits, starts with `2` or `3`. Strips non-digits automatically. |
+| `@PasswordField` | `(min?, max?, complexity?, nullable?, isGraphql?, optional?, checkSql?)` | Configurable complexity: `ALPHANUMERIC`, `SYMBOLIC`, or `COMPREHENSIVE`. |
 
-#### 1. Identity & Security
-- **`@PasswordField`**: Supports `ALPHANUMERIC`, `SYMBOLIC`, and `COMPREHENSIVE` complexity scenarios.
-- **`@NationalIdField`**: Specialized for Egyptian National IDs (14 digits) with auto-stripping of non-digits.
-- **`@IdField`**: Flexible validation for generic IDs (ULID, UUID, etc) with length enforcement.
+Password complexity levels:
 
-#### 2. Text & Content
-- **`@NameField`**: Validates names and automatically applies title-case (e.g., "omar sabry" → "Omar Sabry").
-- **`@CapitalTextField`**: Generic text field with auto-capitalization for proper nouns like cities.
-- **`@TextField`**: Standard input field with length limits and strict SQL injection checks.
-- **`@DescriptionField`**: Designed for long-form content with support for newlines and special punctuation.
-- **`@UsernameField`**: Enforces system-level handle rules (3-30 chars, starts with a letter).
+| Level | Rules |
+| :--- | :--- |
+| `ALPHANUMERIC` | At least one uppercase, one lowercase, one digit |
+| `SYMBOLIC` | At least one uppercase, one lowercase, one special character |
+| `COMPREHENSIVE` | At least one uppercase, one lowercase, one digit, and one special character |
 
-#### 3. Contact & Primitives
-- **`@EmailField`**: Validates email format and normalizes input to lowercase.
-- **`@PhoneField`**: Validates international phone numbers using `libphonenumber-js` with regional support.
-- **`@UrlField`**: Validates web addresses and ensures lowercase normalization.
-- **`@NumberField`**: Supports integers and floats with flexible min/max constraints.
-- **`@BooleanField`**: Strict boolean checking for logic flags.
-- **`@DateField`**: Handles date strings and Date objects with automatic type conversion.
+#### String and Text
 
----
+| Decorator | Signature | Auto-Transform | Description |
+| :--- | :--- | :--- | :--- |
+| `@TextField` | `(text, min?, max?, nullable?, isGraphql?, optional?, checkSql?)` | Lowercase | General-purpose input. Allows Latin, Arabic, digits, spaces, basic punctuation. |
+| `@CapitalTextField` | `(text, min?, max?, nullable?, isGraphql?, optional?, checkSql?)` | Title Case | Proper nouns: city names, countries, titles. Letters and Arabic only. |
+| `@NameField` | `(text, min?, max?, nullable?, isGraphql?, optional?, checkSql?)` | Title Case | Human names. Latin and Arabic alphabets only. |
+| `@UsernameField` | `(nullable?, isGraphql?, optional?, checkSql?)` | None | 3-30 chars, alphanumeric and underscore, must start with a letter. |
+| `@DescriptionField` | `(text, min?, max?, nullable?, isGraphql?, optional?, checkSql?)` | Lowercase | Long-form content. Allows newlines, punctuation, Arabic text. Default 10-2000 chars. |
 
-### Implementation Example
+#### Contact and Web
+
+| Decorator | Signature | Auto-Transform | Description |
+| :--- | :--- | :--- | :--- |
+| `@EmailField` | `(nullable?, isGraphql?, optional?)` | Lowercase | RFC-compliant email validation with SQLi check. |
+| `@PhoneField` | `(format?, nullable?, isGraphql?, optional?, checkSql?)` | Strip non-digits | Validates against ISO country code using `libphonenumber-js`. Default: `EG`. |
+| `@UrlField` | `(text?, nullable?, isGraphql?, optional?, checkSql?)` | Lowercase | Enforces URL structure including protocol. |
+
+#### Primitives
+
+| Decorator | Signature | GraphQL Type | Description |
+| :--- | :--- | :--- | :--- |
+| `@NumberField` | `(text, min?, max?, isInt?, nullable?, isGraphql?, optional?)` | `Int` or `Float` | Range-bounded numeric validation. |
+| `@BooleanField` | `(nullable?, isGraphql?, optional?)` | `Boolean` | Strict boolean enforcement. |
+| `@DateField` | `(text, nullable?, isGraphql?, optional?)` | `Date` | ISO string or epoch number parsed into `Date` via `class-transformer`. |
+| `@EnumField` | `(enumType, name, nullable?, isGraphql?, optional?)` | Enum | Validates value exists within the TypeScript enum's values. |
+
+### Usage Examples
 
 ```typescript
-import { NameField, EmailField, PasswordField, PasswordComplexity } from '@bts-soft/validation';
+import {
+  NameField, EmailField, PasswordField, PasswordComplexity,
+  PhoneField, IdField, DescriptionField, NumberField,
+} from '@bts-soft/core';
 
 export class RegisterUserDto {
+  @NameField('Full Name', 2, 80, false, false, false)
+  name: string; // "omar sabry" -> "Omar Sabry"
+
+  @EmailField(false, false, false)
+  email: string; // "USER@Example.COM" -> "user@example.com"
+
+  @PasswordField(12, 32, PasswordComplexity.COMPREHENSIVE, false, false, false)
+  password: string;
+
+  @PhoneField('EG', false, false, true)
+  phone: string; // "+20 101 234 5678" -> "+201012345678"
+}
+```
+
+For GraphQL `@InputType()` classes, set `isGraphql = true` (or omit the flag, since `true` is the default):
+
+```typescript
+import { InputType } from '@nestjs/graphql';
+import { NameField, EmailField, PasswordField, PasswordComplexity } from '@bts-soft/core';
+
+@InputType()
+export class RegisterInput {
   @NameField('Full Name')
   name: string;
 
   @EmailField()
   email: string;
 
-  @PasswordField(12, 32, PasswordComplexity.COMPREHENSIVE)
+  @PasswordField(8, 32, PasswordComplexity.COMPREHENSIVE)
   password: string;
 }
 ```
 
----
+### Rate Limiting Suite
 
+The package implements all five rate-limiting algorithms from *System Design Interview Vol. 1, Chapter 4* as a pluggable NestJS guard. Both REST and GraphQL contexts are supported natively.
 
-### Utility Exports
+```
+Incoming Request
+      │
+      ▼
+ RateLimiterGuard
+      │
+      ▼
+ Extract Client Key  (IP / JWT user ID / API key)
+      │
+      ▼
+ algorithm.consume(key)
+      │
+      ├── [Allowed] ──► Set X-RateLimit-* Headers ──► Pass to Handler
+      │
+      └── [Denied]  ──► Set Retry-After Header ──► 429 HttpException
+```
 
-The validation package also exports the underlying transformation functions for manual use:
+| Algorithm | Storage Complexity | Best For |
+| :--- | :--- | :--- |
+| **Token Bucket** | O(1) per key | General APIs with burst tolerance |
+| **Leaking Bucket** | O(1) per key | Smooth, predictable outflow for payment APIs |
+| **Fixed Window Counter** | O(1) per key | Low-overhead login attempt limits |
+| **Sliding Window Log** | O(limit) per key | High-security endpoints requiring absolute precision |
+| **Sliding Window Counter** | O(1) per key | High-scale endpoints needing precision without log overhead |
 
-- `LowerWords(value: string)`: Converts strings to lowercase.
-- `CapitalizeWords(value: string)`: Converts strings to Title Case.
+Storage backends auto-negotiate: if a Redis connection is available via `@bts-soft/cache`, the distributed `RedisStore` is used. On connection failure, the guard transparently falls back to an in-memory store.
 
----
-
-## Deep Dive: `@bts-soft/cache`
-
-The `@bts-soft/cache` module is a high-performance Redis infrastructure layer designed for enterprise NestJS applications. It utilizes a **Modular Facade Pattern** where the `RedisService` orchestrates 13 specialized internal services, providing a unified API for everything from simple caching to complex distributed coordination.
-
----
-
-### Key Capabilities
-
-1.  **Atomic Distributed Locking**: Prevents race conditions in distributed environments using `acquireLock` and `waitForLock`.
-2.  **Reliable Pub/Sub**: High-speed, multi-channel event distribution with dedicated subscriber connections to ensure non-blocking operations.
-3.  **Complex Data Structures**: Native support for Hashes, Sets, Sorted Sets (Rankings), and Lists.
-4.  **Advanced Analytics**: Geospatial indexing for "nearby" features and HyperLogLog for memory-efficient unique counting.
-5.  **100% Verified Infrastructure**: Every operation is backed by comprehensive E2E tests running on real Redis instances.
-
----
-
-### Core Operations API
-
-#### 1. Standard Caching
-- `set(key, value, ttl?)`: Stores values with automatic JSON serialization (Default TTL: 1 hour).
-- `setForever(key, value)`: Bypasses default TTLs for permanent configuration or state storage.
-- `get<T>(key)`: Retrieves and automatically parses JSON into typed objects.
-- `del(key)`: Removes keys from the database.
-
-#### 2. Atomic Numeric Operations
-- `incr(key)` / `decr(key)`: Atomically increments or decrements integers.
-- `incrByFloat(key, n)`: Handles precise floating-point increments.
-
-#### 3. Distributed Locking Example
 ```typescript
-const lockValue = crypto.randomUUID();
-const acquired = await redisService.acquireLock('order:process:123', lockValue, 5000);
+import { RateLimit, RateLimiterAlgorithm } from '@bts-soft/core';
 
-if (acquired) {
-  try {
-    // Critical section logic
-  } finally {
-    await redisService.releaseLock('order:process:123', lockValue);
+@Controller('payments')
+export class PaymentController {
+  @RateLimit({
+    algorithm: RateLimiterAlgorithm.SLIDING_WINDOW_LOG,
+    limit: 5,
+    windowMs: 60_000,
+    keyExtractor: (req) => req.user?.id ?? req.ip,
+  })
+  @Post('charge')
+  async chargeCard() {}
+}
+```
+
+Response headers appended on every rate-limited response:
+
+| Header | Description |
+| :--- | :--- |
+| `X-RateLimit-Limit` | Maximum requests per window |
+| `X-RateLimit-Remaining` | Remaining requests in current window |
+| `X-RateLimit-Reset` | Unix timestamp when the window resets |
+| `Retry-After` | Seconds to wait before retrying (only on 429) |
+
+### SQL Injection Prevention
+
+The `SQL_INJECTION_REGEX` applied to every string field is:
+
+```
+/^(?!.*(SELECT|INSERT|DELETE|UPDATE|DROP|UNION|EXEC|TRUNCATE|ALTER|CREATE|--|;)).*$/i
+```
+
+The negative lookahead `(?! ...)` fails validation the moment any SQL keyword, double-hyphen comment sequence, or statement terminator is detected anywhere in the input string. The check is case-insensitive to catch obfuscated payloads.
+
+---
+
+## Package: @bts-soft/cache
+
+[![npm](https://img.shields.io/npm/v/@bts-soft/cache?style=flat-square&color=CB3837&logo=npm)](https://www.npmjs.com/package/@bts-soft/cache)
+
+A production-grade Redis abstraction layer built on the Modular Facade Pattern. Developers interact with a single `RedisService` injectable while the internal architecture distributes responsibility across 15 single-responsibility domain services.
+
+### Module Initialization Flow
+
+```
+NestJS App ──► RedisConfigService
+                     │  resolve REDIS_HOST / PORT / PASSWORD / DB
+                     ▼
+             createRedisClient
+                     │
+                     ▼
+              node-redis v4 ──TCP──► Redis Server
+                                          │
+                              ◄── Connection confirmed
+
+NestJS App ──► RedisHealth.onModuleInit()
+                     │  PING
+                     ▼
+              Redis Server
+                     │  PONG
+                     ▼
+              Module ready
+```
+
+### 15 Internal Domain Services
+
+| Domain Service | Operations |
+| :--- | :--- |
+| **CoreRedisService** | `set`, `setForever`, `get`, `getOrSet`, `del`, `update`, `mSet`, `setNX` |
+| **StringRedisService** | `getSet`, `strlen`, `append`, `getRange`, `setRange`, `mGet` |
+| **NumberRedisService** | `incr`, `incrBy`, `incrByFloat`, `decr`, `decrBy` |
+| **HashRedisService** | `hSet`, `hGet`, `hGetAll`, `hDel`, `hExists`, `hKeys`, `hVals`, `hLen`, `hIncrBy`, `hIncrByFloat`, `hSetNX` |
+| **ListORedisService** | `lPush`, `rPush`, `lPop`, `rPop`, `lRange`, `lLen`, `lIndex`, `lInsert`, `lRem`, `lTrim`, `rPopLPush`, `lSet`, `lPos` |
+| **OperationRedisService** | `sAdd`, `sRem`, `sMembers`, `sIsMember`, `sCard`, `sPop`, `sMove`, `sDiff`, `sInter`, `sUnion` and store variants |
+| **SortedORedisService** | `zAdd`, `zRange`, `zRangeByScore`, `zRevRange`, `zCard`, `zScore`, `zRank`, `zRevRank`, `zIncrBy`, `zRem`, `zRemRangeByRank`, `zRemRangeByScore`, `zCount`, `zUnionStore`, `zInterStore` |
+| **GeoRedisService** | `geoAdd`, `geoPos`, `geoDist`, `geoHash`, `geoRemove` |
+| **HyperLogLogRedisService** | `pfAdd`, `pfCount`, `pfMerge`, `pfDebug`, `pfClear` |
+| **LockRedisService** | `acquireLock`, `releaseLock`, `extendLock`, `isLocked`, `getLockValue`, `waitForLock` |
+| **PubSubRedisService** | `publish`, `subscribe`, `pSubscribe`, `unsubscribe`, `pUnsubscribe`, `getSubscriptions`, `getChannels`, `getSubCount`, `createMessageHandler` |
+| **TransactionRedisService** | `multiExecute`, `watch`, `unwatch`, `withTransaction`, `discard`, `transactionGetSet` |
+| **StreamRedisService** | `xAdd`, `xRead`, `xGroupCreate`, `xReadGroup`, `xAck`, `xLen` |
+| **BitmapRedisService** | `setBit`, `getBit`, `bitCount`, `bitOp` |
+| **UtilityRedisService** | `exists`, `expire`, `ttl`, `persist`, `pttl`, `delByPattern`, `eval` |
+
+### Setup
+
+```typescript
+import { RedisModule } from '@bts-soft/core';
+
+@Module({
+  imports: [RedisModule],
+})
+export class AppModule {}
+```
+
+Environment variables:
+
+| Variable | Default | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `REDIS_HOST` | `localhost` | No | Redis hostname |
+| `REDIS_PORT` | `6379` | No | Redis port |
+| `REDIS_PASSWORD` | — | No | Authentication password |
+| `REDIS_DB` | `0` | No | Database index (0-15) |
+| `REDIS_TTL` | `3600` | No | Default TTL in seconds |
+
+### Core API Reference
+
+#### Key-Value Operations
+
+| Method | Signature | Description |
+| :--- | :--- | :--- |
+| `set` | `(key, value, ttl?)` | Store any value with automatic JSON serialization. Default TTL: 3600s. |
+| `setForever` | `(key, value)` | Store without expiration. For permanent configuration state. |
+| `get` | `<T>(key)` | Retrieve and automatically JSON-parse into typed object. |
+| `getOrSet` | `<T>(key, factory, ttl?)` | Cache-aside: returns cached value or calls factory and caches result. |
+| `del` | `(key)` | Delete a key. |
+| `update` | `(key, value, ttl?)` | Delete and re-set atomically. |
+| `mSet` | `(data)` | Multi-set via Redis pipeline. |
+| `setNX` | `(key, value, ttl?)` | Set only if the key does not exist. Returns boolean. |
+| `exists` | `(key)` | Returns true if the key exists. |
+| `expire` | `(key, seconds)` | Update TTL on an existing key. |
+| `ttl` | `(key)` | Returns remaining TTL in seconds. |
+
+#### Atomic Counters
+
+| Method | Signature | Description |
+| :--- | :--- | :--- |
+| `incr` | `(key)` | Atomically increment by 1. |
+| `incrBy` | `(key, n)` | Atomically increment by integer N. |
+| `incrByFloat` | `(key, n)` | Atomically increment by float N. |
+| `decr` | `(key)` | Atomically decrement by 1. |
+| `decrBy` | `(key, n)` | Atomically decrement by integer N. |
+
+#### Distributed Locking
+
+All locks use Lua scripts for atomic token verification. A lock can only be released by the exact process that acquired it.
+
+```
+Service A ──► Redis: acquireLock("lock:order:99", "token-A", 10000)
+              Redis ──► Service A: OK  (lock acquired)
+
+Service B ──► Redis: acquireLock("lock:order:99", "token-B", 10000)
+              Redis ──► Service B: null  (lock denied — already held by A)
+
+              [Service A executes critical business logic]
+
+Service A ──► Redis: releaseLock("lock:order:99", "token-A")
+              Redis: Lua script verifies token-A matches stored token
+              Redis ──► Service A: 1  (key deleted)
+
+Service B ──► Redis: acquireLock("lock:order:99", "token-B", 10000)
+              Redis ──► Service B: OK  (lock acquired)
+```
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { RedisService } from '@bts-soft/core';
+import { randomUUID } from 'crypto';
+
+@Injectable()
+export class PaymentService {
+  constructor(private readonly redis: RedisService) {}
+
+  async processOrder(orderId: string): Promise<void> {
+    const lockKey = `lock:order:${orderId}`;
+    const token = randomUUID();
+
+    const acquired = await this.redis.acquireLock(lockKey, token, 10_000);
+    if (!acquired) return; // Another instance is already processing this order
+
+    try {
+      await this.runPaymentGateway(orderId);
+    } finally {
+      await this.redis.releaseLock(lockKey, token);
+    }
   }
 }
 ```
 
-#### 4. Real-time Pub/Sub Example
+#### Pub/Sub
+
+The subscriber uses a dedicated, isolated connection separate from the main command connection to prevent blocking.
+
+```
+┌─────────────────────────┐         ┌────────────────────────────┐
+│    Publisher Service    │         │    Subscriber Service      │
+│                         │         │                            │
+│  Publisher Code         │         │  Dedicated Sub Connection  │
+│       │                 │         │        │                   │
+│       │ PUBLISH         │         │        │ Deliver           │
+│       ▼                 │         │        ▼                   │
+│  Primary Connection ────┼──────►  │  Redis Server              │
+│                         │ network │        │                   │
+└─────────────────────────┘         │        │ Parse JSON        │
+                                    │        ▼                   │
+                                    │  Handler Callback          │
+                                    └────────────────────────────┘
+```
+
 ```typescript
-// Subscriber (Dedicated connection handled automatically)
-await redisService.subscribe('system_updates', (msg) => {
-  console.log('Update received:', JSON.parse(msg));
+// Subscribe on module init
+await redisService.subscribe('events:orders', (data, channel) => {
+  console.log(`Event on ${channel}:`, data);
 });
 
-// Publisher
-await redisService.publish('system_updates', { status: 'OK', timestamp: Date.now() });
+// Wildcard pattern subscription
+await redisService.pSubscribe('user:*', (data, channel) => {
+  console.log(`Pattern match on ${channel}:`, data);
+});
+
+// Publish from any service
+await redisService.publish('events:orders', { orderId: '123', status: 'shipped' });
+```
+
+#### Sorted Sets: Leaderboards
+
+```typescript
+await redis.zAdd('leaderboard:weekly', 9850, 'user:alice');
+await redis.zIncrBy('leaderboard:weekly', 150, 'user:alice');
+const top10 = await redis.zRevRange('leaderboard:weekly', 0, 9);
+const rank = await redis.zRevRank('leaderboard:weekly', 'user:alice');
+```
+
+#### Bitmaps: Daily Active Users
+
+```typescript
+// Record login for user ID 4201 on a specific date
+await redis.setBit('dau:2025-01-15', 4201, 1);
+
+// Check if user was active
+const active = await redis.getBit('dau:2025-01-15', 4201); // 0 or 1
+
+// Count total active users for the day
+const total = await redis.bitCount('dau:2025-01-15');
+
+// Weekly active users using bitwise OR across daily bitmaps
+await redis.bitOp('OR', 'wau:2025-W03', 'dau:2025-01-13', 'dau:2025-01-14', 'dau:2025-01-15');
+```
+
+#### HyperLogLog: Unique Visitor Counting
+
+```typescript
+// Uses approximately 12KB of memory regardless of unique visitor count
+await redis.pfAdd('hll:page:/home', visitorId);
+const uniqueCount = await redis.pfCount('hll:page:/home');
+
+// Merge multiple HyperLogLogs
+await redis.pfMerge('hll:all-pages', 'hll:page:/home', 'hll:page:/about');
+```
+
+#### Redis Streams: Reliable Event Sourcing
+
+```typescript
+// Producer appends events
+const messageId = await redis.xAdd('stream:orders', { orderId: '123', amount: '99.99' });
+
+// Create consumer group (idempotent)
+try {
+  await redis.xGroupCreate('stream:orders', 'workers', '$', true);
+} catch { /* Group already exists */ }
+
+// Consumer reads and acknowledges
+const result = await redis.xReadGroup(
+  'workers', 'worker-1',
+  [{ key: 'stream:orders', id: '>' }],
+  10,   // Max messages
+  5000, // Block for 5 seconds if no messages
+);
+await redis.xAck('stream:orders', 'workers', result[0].id);
 ```
 
 ---
 
-### Data Structure Reference
+## Package: @bts-soft/notifications
 
-| Structure | Common Methods | Best For |
+[![npm](https://img.shields.io/npm/v/@bts-soft/notifications?style=flat-square&color=CB3837&logo=npm)](https://www.npmjs.com/package/@bts-soft/notifications)
+
+A high-availability multi-channel notification engine. All dispatch operations are queued via BullMQ and processed asynchronously, decoupling API response times from external provider latency.
+
+### Architecture
+
+```
+notificationService.send()
+        │
+        ▼  PRE-FLIGHT PIPELINE (synchronous)
+  ┌─────────────────────────────────────────────────────┐
+  │  Expired?          ──[yes]──► Discard + Log EXPIRED │
+  │  Duplicate key?    ──[yes]──► Skip + Log DUPLICATE   │
+  │  User opted out?   ──[yes]──► Skip + Log OPTED_OUT   │
+  │  Rate limited?     ──[yes]──► Skip + Log RATE_LIMITED│
+  └─────────────────────────────────────────────────────┘
+        │ [all checks pass]
+        ▼
+  Enqueue BullMQ Job ──► API returns 200 immediately to caller
+        │
+        ▼  WORKER PIPELINE (asynchronous)
+  ┌─────────────────────────────────────────────────────┐
+  │  Job expired?  ──[yes]──► Update log EXPIRED        │
+  │                                                     │
+  │  Apply i18n + Handlebars template render            │
+  │  Resolve channel from factory                       │
+  │  Dispatch to provider                               │
+  │    ├── [Success]        Update log SENT             │
+  │    ├── [4xx client err] Update log FAILED           │
+  │    └── [5xx server err] BullMQ exponential retry    │
+  └─────────────────────────────────────────────────────┘
+```
+
+### Supported Channels
+
+| Channel | Technology | Provider |
 | :--- | :--- | :--- |
-| **Hashes** | `hSet`, `hGetAll`, `hIncrBy` | Object storage, User profiles |
-| **Sorted Sets** | `zAdd`, `zRange`, `zScore` | Leaderboards, Scored feeds |
-| **Sets** | `sAdd`, `sMembers`, `sIsMember` | Unique tags, Permissions |
-| **Lists** | `lPush`, `rPop`, `lTrim` | Queues, Activity history |
-| **Geo** | `geoAdd`, `geoDist`, `geoPos` | Nearby stores, Proximity search |
+| `EMAIL` | Nodemailer | SMTP, Gmail, Outlook, SendGrid, Amazon SES |
+| `SMS` | Twilio / SMS Misr / Vonage | Configurable via `SMS_PROVIDER` env var |
+| `WHATSAPP` | Twilio WhatsApp Business API | E.164 normalization with Egypt fallback |
+| `FIREBASE_FCM` | Firebase Admin SDK | Android, iOS, Web push |
+| `TELEGRAM` | Telegram Bot API | Markdown V2 and HTML parse modes |
+| `DISCORD` | Webhook | Embeds, custom bot identity |
+| `TEAMS` | Incoming Webhooks | Adaptive Message Cards |
+| `MESSENGER` | Meta Graph API | Page-Scoped IDs (PSID) |
+| `SLACK` | Webhook / Slack Web API | Bot messages, channel targeting |
+| `ONESIGNAL` | OneSignal REST API | Cross-platform push notifications |
+| `WEB_PUSH` | VAPID / Web Push Standard | Browser push notifications |
+| `IN_APP` | Pusher Channels | Real-time in-app events |
+| `WEBHOOK` | HTTP POST | Generic signed webhook dispatch |
+
+### Setup
+
+```typescript
+import { Module } from '@nestjs/common';
+import { RedisModule, NotificationModule } from '@bts-soft/core';
+
+@Module({
+  imports: [
+    RedisModule,
+    NotificationModule,
+  ],
+})
+export class AppModule {}
+```
+
+### Sending Notifications
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType } from '@bts-soft/core';
+
+@Injectable()
+export class OrderService {
+  constructor(private readonly notifications: NotificationService) {}
+
+  async onOrderCompleted(email: string, orderId: string) {
+    // Single channel with Handlebars template
+    await this.notifications.send(ChannelType.EMAIL, {
+      recipientId: email,
+      subject: 'Order Confirmed',
+      body: 'Hi {{name}}, your order #{{orderId}} has been confirmed.',
+      context: { name: 'Omar', orderId },
+    });
+  }
+
+  async alertTeam(message: string) {
+    // Multi-channel bulk dispatch
+    await this.notifications.sendBulk([
+      { channel: ChannelType.SLACK,   message: { recipientId: '#alerts', body: message } },
+      { channel: ChannelType.DISCORD, message: { body: message } },
+      { channel: ChannelType.TEAMS,   message: { body: message } },
+    ]);
+  }
+}
+```
+
+### Database Integration for Notification Logs
+
+Implement `INotificationLogRepository` and register it using the `NOTIFICATION_LOG_REPOSITORY` injection token to persist logs to any database:
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { INotificationLogRepository, NotificationLog } from '@bts-soft/core';
+
+@Injectable()
+export class DbNotificationLogRepo implements INotificationLogRepository {
+  constructor(
+    @InjectRepository(NotificationLogEntity)
+    private readonly repo: Repository<NotificationLogEntity>,
+  ) {}
+
+  async create(log: Omit<NotificationLog, 'id'>): Promise<NotificationLog> {
+    return this.repo.save(this.repo.create(log));
+  }
+
+  async updateByJobId(jobId: string, update: Partial<NotificationLog>): Promise<void> {
+    await this.repo.update({ jobId }, update);
+  }
+
+  async findByJobId(jobId: string): Promise<NotificationLog | null> {
+    return this.repo.findOne({ where: { jobId } });
+  }
+
+  async findByRecipientId(recipientId: string): Promise<NotificationLog[]> {
+    return this.repo.find({ where: { recipientId }, order: { createdAt: 'DESC' } });
+  }
+
+  async findAll(filter?: Partial<NotificationLog>): Promise<NotificationLog[]> {
+    return this.repo.find({ where: filter as any, order: { createdAt: 'DESC' } });
+  }
+}
+```
+
+Register in your module:
+
+```typescript
+import { NOTIFICATION_LOG_REPOSITORY } from '@bts-soft/core';
+
+@Module({
+  providers: [
+    { provide: NOTIFICATION_LOG_REPOSITORY, useClass: DbNotificationLogRepo },
+  ],
+})
+export class AppModule {}
+```
+
+### User Opt-Out Management
+
+```typescript
+import { Inject, Injectable } from '@nestjs/common';
+import { USER_PREFERENCE_REPOSITORY, IUserPreferenceRepository } from '@bts-soft/core';
+
+@Injectable()
+export class PreferenceService {
+  constructor(
+    @Inject(USER_PREFERENCE_REPOSITORY)
+    private readonly prefs: IUserPreferenceRepository,
+  ) {}
+
+  optOut(userId: string, channel: string) {
+    return this.prefs.setOptOut(userId, channel, true);
+  }
+
+  optIn(userId: string, channel: string) {
+    return this.prefs.setOptOut(userId, channel, false);
+  }
+}
+```
+
+### BullMQ Retry Policy
+
+| Setting | Value |
+| :--- | :--- |
+| Max attempts | 3 |
+| Strategy | Exponential backoff |
+| Initial delay | 5,000ms |
+| Progression | 5s -> 10s -> 20s |
+
+Client errors (4xx) are not retried. Only provider errors (5xx, connection timeouts) trigger retry logic.
 
 ---
 
-## Deep Dive: @bts-soft/notifications
+## Package: @bts-soft/upload
 
-The notification module is a high-availability delivery engine designed to handle massive volumes of transactional and marketing messages across multiple protocols without impacting primary application performance.
+[![npm](https://img.shields.io/npm/v/@bts-soft/upload?style=flat-square&color=CB3837&logo=npm)](https://www.npmjs.com/package/@bts-soft/upload)
 
----
+A production-grade media orchestration library supporting single-file uploads, large-file chunked uploads with resume capability, real-time Server-Sent Events progress streaming, and multi-provider storage backends.
 
-### Reliability Engineering: The Queue System
+### System Architecture
 
-All notifications are processed asynchronously using BullMQ and Redis. This architecture provides several critical benefits:
-
-1.  **Non-Blocking Execution**: The API returns a response immediately after the job is queued, decoupling user experience from external provider latency.
-2.  **Categorized Error Handling**: Distinguishes between unrecoverable Client Errors (e.g., invalid data) and temporary Provider Errors (e.g., API downtime), optimizing retry resource allocation.
-3.  **Global Retry Policies**: Integrated with exponential backoff strategies to handle temporary infrastructure failures gracefully.
-
----
-
-### Channel Capabilities (8+ Integrated Protocols)
-
-#### 1. Email (EMAIL)
-- **Technology**: Nodemailer.
-- **Support**: Standard SMTP, SES, Gmail, and custom transport configurations.
-- **Dynamic Overrides**: Support for per-message SMTP configuration and attachments.
-
-#### 2. WhatsApp (WHATSAPP)
-- **Provider**: Twilio WhatsApp Business API.
-- **Normalizer**: Automatic handling of regional phone number formats.
-
-#### 3. SMS (SMS)
-- **Provider**: Twilio SMS.
-- **Reliability**: Optimized for high-deliverability transactional messaging.
-
-#### 4. Telegram (TELEGRAM)
-- **Technology**: Telegram Bot API.
-- **Features**: MarkdownV2 and HTML parsing support, real-time bot integration.
-
-#### 5. Firebase Push (FIREBASE_FCM)
-- **Technology**: Firebase Admin SDK.
-- **Support**: Native Android/iOS push notifications and web push.
-
-#### 6. Discord (DISCORD)
-- **Mechanism**: High-performance Webhook integration.
-- **Customization**: Support for complex embeds and custom bot identities.
-
-#### 7. Microsoft Teams (TEAMS)
-- **Mechanism**: Incoming Webhooks using adaptive message cards.
-
-#### 8. Facebook Messenger (MESSENGER)
-- **Technology**: Meta Graph API.
-- **Usage**: Support for Page-Scoped IDs (PSID) and standard messaging blocks.
-
----
-
-### Enterprise Features
-
-#### Templating and Localization
-- **Handlebars Engine**: Centralized template rendering for all channels via TemplateService.
-- **Dynamic I18n**: Support for per-recipient language resolution using nestjs-i18n.
-- **Contextual Data**: Pass complex objects to templates for real-time personalization.
-
-#### Architecture and Extensibility
-- **Channel Registry**: A plugin-based system that allows for dynamic channel registration and discovery.
-- **BullMQ Priority**: Native support for job priorities (1-100) to ensure critical alerts are processed before marketing broadcasts.
-- **Comprehensive Testing**: Backed by a 100% coverage unit testing suite and standalone Docker-based E2E verification.
-
----
-
-
-## Deep Dive: `@bts-soft/upload`
-
-The upload module is a production-hardened media orchestration service designed to handle the complexities of multi-part streams, file validation, and cross-provider storage management.
-
-### Multi-Provider Architecture
-
-The service leverages the **Strategy Pattern** to support multiple storage backends without changing the application logic:
-
-1.  **Cloudinary Strategy**: Default for production, providing on-the-fly optimization, transcoding, and CDN delivery.
-2.  **Local Disk Strategy**: Ideal for development or high-security environments where files must remain on the internal network.
-
-Switching providers is handled via the `UPLOAD_PROVIDER` environment variable.
+```
+Client Request
+      │
+      ▼
+RateLimiterService (Token Bucket)
+      ├── [rate limited] ──► 429 Too Many Requests
+      │
+      ▼
+FileValidatorService (extension + size check)
+      ├── [invalid] ──► 400 Bad Request
+      │
+      ▼
+Upload Controllers (REST / GraphQL)
+      │
+      ├── [single file] ──► UploadService
+      │                          │
+      │                     Upload Commands
+      │                          │
+      │                    Strategy Pattern
+      │                    ├── LocalDiskUploadStrategy
+      │                    └── CloudinaryUploadStrategy
+      │
+      └── [large file] ──► ChunkedUploadService
+                                │
+                          LocalChunkStorage
+                                │  [final chunk received]
+                                ▼
+                         UploadQueueService ──► BullMQ Queue
+                                                    │
+                                             UploadProcessor
+                                                    │
+                                            Merge all chunks
+                                                    │
+                                            ──► Upload Commands (same path)
+                                                    │  (progress updates)  
+                                            UploadJobService
+                                                    │
+                                            SSE Controller ──► Client
+```
 
 ### Design Patterns
 
-The module is built on three pillars of software engineering:
+**Strategy Pattern:** The `IUploadStrategy` interface decouples file storage from the application. Switching between Local Disk and Cloudinary requires only an environment variable change.
 
-- **Strategy Pattern**: The `IUploadStrategy` and `IDeleteStrategy` interfaces decouple the service from the underlying storage technology.
-- **Command Pattern**: Each operation (Upload, Delete) is encapsulated in a command object, ensuring consistent execution and error handling.
-- **Observer Pattern**: Triggers events on success or failure, enabling centralized logging and auditing via `IUploadObserver`.
+```
+UploadService
+      │
+      ▼
+ IUploadStrategy (interface)
+      │
+      ├──► LocalDiskUploadStrategy    (UPLOAD_PROVIDER=local)
+      │
+      └──► CloudinaryUploadStrategy   (UPLOAD_PROVIDER=cloudinary)
+```
 
-### Media Specifications & Validation
+**Command Pattern:** Each media type (image, video, audio, raw file, 3D model) is encapsulated in its own command object carrying type-specific processing logic such as chunked video upload or image optimization.
 
-The system enforces strict validation for file extensions and sizes. Limits can be customized via environment variables.
+**Observer Pattern:** `IUploadObserver` implementations register to receive lifecycle events for auditing, analytics, or cleanup pipelines.
 
-| Media Type | File Extensions | Default Limit | Storage Logic |
+### Setup
+
+```typescript
+import { UploadModule } from '@bts-soft/core';
+
+@Module({ imports: [UploadModule] })
+export class AppModule {}
+```
+
+### Media Specifications
+
+| Type | Extensions | Default Size Limit | Processing |
 | :--- | :--- | :--- | :--- |
-| **Images** | `jpg`, `png`, `webp`, `gif` | 5 MB | Auto-optimization and non-destructive resizing. |
-| **Videos** | `mp4`, `webm`, `avi`, `mov` | 100 MB | Chunked upload support with duration extraction. |
-| **Audio** | `mp3`, `wav`, `ogg`, `m4a` | 50 MB | Optimized for playback and metadata extraction. |
-| **Raw Files** | `pdf`, `doc`, `zip`, `txt` | 10 MB | Stored as 'raw' binary with original headers. |
-| **3D Models** | `glb`, `gltf`, `fbx`, `obj`, `stl` | 100 MB | Stored as binary models with high-capacity limits. |
+| Images | `jpg`, `png`, `webp`, `gif` | 5 MB | Auto-optimization, `fetch_format: auto` |
+| Videos | `mp4`, `webm`, `avi`, `mov` | 100 MB | Chunked upload (6MB chunks), duration extraction |
+| Audio | `mp3`, `wav`, `ogg`, `m4a` | 50 MB | Waveform generation via Cloudinary video resource type |
+| Raw Files | `pdf`, `doc`, `docx`, `zip`, `txt` | 10 MB | Stored as raw binary with original headers |
+| 3D Models | `glb`, `gltf`, `fbx`, `obj`, `stl` | 100 MB | Binary model storage |
 
-### Configuration Reference
+### API Reference
 
+**UploadService:**
 
-```env
-# Provider Selection
-UPLOAD_PROVIDER=cloudinary # or 'local'
+```typescript
+uploadImageCore(file: UploadStreamInput): Promise<UploadResult>
+uploadVideoCore(file: UploadStreamInput): Promise<UploadResult>
+uploadAudioCore(file: UploadStreamInput): Promise<UploadResult>
+uploadFileCore(file: UploadStreamInput): Promise<UploadResult>
+uploadModel3dCore(file: UploadStreamInput): Promise<UploadResult>
+deleteImage(url: string): Promise<boolean>
+deleteVideo(url: string): Promise<boolean>
+deleteAudio(url: string): Promise<boolean>
+deleteFile(url: string): Promise<boolean>
+```
 
-# Cloudinary Credentials (if provider=cloudinary)
-CLOUDINARY_CLOUD_NAME=your_name
-CLOUDINARY_API_KEY=your_key
-CLOUDINARY_API_SECRET=your_secret
+**ChunkedUploadService:**
 
-# Local Settings (if provider=local)
-UPLOAD_LOCAL_PATH=./uploads
+```typescript
+initiateUpload(filename, size, type, fileHash?, userId?): Promise<{ jobId: string, status: string }>
+uploadChunk(jobId, chunkIndex, totalChunks, buffer, fileHash?, userId?): Promise<{ progress: number, completed: boolean }>
+getUploadedChunks(jobId): Promise<number[]>
+```
+
+### Chunked Upload Implementation
+
+```typescript
+// Backend REST controller
+@Controller('upload')
+export class UploadController {
+  constructor(private readonly chunked: ChunkedUploadService) {}
+
+  @Post('chunk/initiate')
+  initiateUpload(@Body() body: { filename: string; size: number; type: string }) {
+    return this.chunked.initiateUpload(body.filename, body.size, body.type);
+  }
+
+  @Post('chunk/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadChunk(
+    @Body() body: { jobId: string; chunkIndex: string; totalChunks: string },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.chunked.uploadChunk(
+      body.jobId,
+      parseInt(body.chunkIndex, 10),
+      parseInt(body.totalChunks, 10),
+      file.buffer,
+    );
+  }
+
+  @Get('chunk/uploaded/:jobId')
+  getUploadedChunks(@Param('jobId') jobId: string) {
+    return this.chunked.getUploadedChunks(jobId);
+  }
+}
+```
+
+Frontend with resume support:
+
+```typescript
+async function uploadFileInChunks(file: File, userId: string) {
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per chunk
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+  const { jobId } = await fetch('/upload/chunk/initiate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: file.name, size: file.size, type: 'video', userId }),
+  }).then(r => r.json());
+
+  // Resume: get already uploaded chunk indexes
+  const uploadedChunks: number[] = await fetch(`/upload/chunk/uploaded/${jobId}`).then(r => r.json());
+
+  // Subscribe to SSE progress stream
+  const es = new EventSource(`/upload/jobs/${jobId}/stream`);
+  es.onmessage = ({ data }) => {
+    const { type, progress, url } = JSON.parse(data);
+    if (type === 'completed') { console.log('Final URL:', url); es.close(); }
+    if (type === 'progress') { console.log(`${progress}%`); }
+  };
+
+  for (let i = 0; i < totalChunks; i++) {
+    if (uploadedChunks.includes(i)) continue; // Skip already uploaded chunks
+
+    const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+    const form = new FormData();
+    form.append('jobId', jobId);
+    form.append('chunkIndex', String(i));
+    form.append('totalChunks', String(totalChunks));
+    form.append('file', chunk);
+
+    await fetch('/upload/chunk/upload', { method: 'POST', body: form });
+  }
+}
+```
+
+### Custom Observer
+
+```typescript
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { IUploadObserver, UploadObserverManager } from '@bts-soft/core';
+
+@Injectable()
+export class AuditObserver implements IUploadObserver, OnModuleInit {
+  constructor(private readonly manager: UploadObserverManager) {}
+
+  onModuleInit() { this.manager.register(this); }
+
+  async onUploadSuccess(url: string, type: string) {
+    console.log(`Uploaded: ${url} (type: ${type})`);
+  }
+
+  async onUploadFail(error: Error) {
+    console.error(`Upload failed: ${error.message}`);
+  }
+
+  async onDeleteSuccess(url: string) {
+    console.log(`Deleted: ${url}`);
+  }
+
+  async onDeleteFail(error: Error, url: string) {
+    console.error(`Delete failed for ${url}: ${error.message}`);
+  }
+}
 ```
 
 ---
 
-## Deep Dive: `@bts-soft/common`
+## Package: @bts-soft/common
 
-The common module is the "Standard Library" of the BTS Soft ecosystem. It provides the essential infrastructure that ensures all microservices and modules speak the same language.
+[![npm](https://img.shields.io/npm/v/@bts-soft/common?style=flat-square&color=CB3837&logo=npm)](https://www.npmjs.com/package/@bts-soft/common)
 
----
+The standard library of the BTS Soft ecosystem. Provides the foundation shared by all services: interceptors, exception filters, base entities, ORM adapters, ID generation, infrastructure modules, distributed locking, and idempotency.
 
-### Standardized Global Interceptors
+### Request Processing Architecture
 
-By calling `setupInterceptors(app)` in your `main.ts`, you enable a powerful suite of request-processing logic:
+```
+Client Request
+      |
+      v
+CommonThrottlerGuard
+      |
+      v
+SqlInjectionInterceptor
+      |
+      v
+IdempotencyInterceptor
+      |
+      v
+Guards / Authentication
+      |
+      v
+Controller / Resolver --[exception]--> RestExceptionFilter / GqlHttpExceptionFilter
+      |
+      v
+GeneralResponseInterceptor       Standard Error Envelope
+      |
+      v
+Unified JSON Envelope --> Client
+```
 
-1.  **`ClassSerializerInterceptor`**: 
-    Uses `class-transformer` to filter out sensitive fields (marked with `@Exclude()`) and include computed properties (marked with `@Expose()`).
-    
-2.  **`SqlInjectionInterceptor`**: 
-    A global scanner that intercepts all incoming request payloads (Body, Query, Params) and checks every string against a predefined regex. If a violation is caught, it automatically throws a `400 Bad Request` before the controller logic is executed.
+### Global Interceptors
 
-3.  **`GeneralResponseInterceptor`**: 
-    Ensures that every REST response follows the exact same JSON structure. For GraphQL, it automatically skips formatting to preserve schema integrity while still allowing for global error handling.
+Call `setupInterceptors(app)` in `main.ts` to activate three interceptors globally in this order:
 
-#### The Standard Response Envelope
+**1. ClassSerializerInterceptor**
+Applies `class-transformer` serialization rules. Fields decorated with `@Exclude()` are stripped from responses. Fields decorated with `@Expose()` are included. This prevents sensitive data such as passwords and internal database IDs from leaking to clients.
+
+**2. SqlInjectionInterceptor**
+Recursively scans all incoming request body fields, query string parameters, and path parameters. Any string matching the SQL injection regex causes an immediate `400 Bad Request` before the controller executes. Endpoints processing trusted raw SQL can opt out with `@SkipSqlCheck()`.
+
+**3. GeneralResponseInterceptor**
+Wraps every controller return value in the standard response envelope:
+
 ```json
 {
   "success": true,
   "statusCode": 200,
-  "message": "Request successful",
-  "timeStamp": "2024-03-21T10:00:00.000Z",
-  "data": { ... },
-  "items": [ ... ],
+  "message": "Operation executed successfully",
+  "timeStamp": "2025-01-15T10:00:00.000Z",
+  "data": {},
+  "items": [],
   "pagination": {
-     "total": 100,
-     "page": 1,
-     "limit": 10
+    "total": 100,
+    "page": 1,
+    "limit": 10
   }
 }
 ```
 
----
+GraphQL contexts are detected and bypass HTTP envelope wrapping to preserve Apollo schema integrity.
 
-### Shared Base Classes
+### Base Entities
 
-#### 1. `BaseEntity` (The Persistence Foundation)
-All database entities in the system should extend a specialized base class. 
+#### AgnosticEntity
 
-- **ULID Integration**: Instead of predictable numeric IDs, it uses ULIDs (Universally Unique Lexicographically Sortable Identifiers) which are both unique and sortable.
-- **Audit Trails**: Automatically generates `createdAt` and `updatedAt` timestamps.
-- **Multi-ORM Support**: Includes dedicated bases for TypeORM, Sequelize, Mongoose, Prisma, and GraphQL.
+Pure TypeScript base, no ORM decorators. Generates IDs using `IdGenerator` and maintains `createdAt` and `updatedAt` timestamps.
 
-#### 2. `BaseResponse` (The API Contract)
-Used as a base class for DTOs and GraphQL Object Types to ensure consistency in response construction.
+#### ORM-Specific Adapters
 
----
+| Sub-path | Class | ORM |
+| :--- | :--- | :--- |
+| `@bts-soft/common/typeorm` | `TypeOrmBaseEntity` | TypeORM with lifecycle hooks (`@AfterInsert`, `@AfterUpdate`, `@BeforeRemove`) |
+| `@bts-soft/common/mongoose` | `MongooseBaseEntity` | Mongoose with `@Schema({ timestamps: true })` |
+| `@bts-soft/common/sequelize` | `SequelizeBaseEntity` | Sequelize with `@Table({ timestamps: true })` |
+| `@bts-soft/common/prisma` | `PrismaBase` | Helper `generateId(strategy?)` and `IPrismaEntity` interface |
+
+### ID Generation Strategy
+
+```
+Entity / ORM Base
+      │
+      ▼
+IdGenerator.generate(strategy?)
+      │
+      ├── ULID      ──► 128-bit, lexicographically sortable (default)
+      ├── UUID v4   ──► RFC4122 fully random 128-bit
+      ├── Snowflake ──► 64-bit: timestamp + worker ID + sequence counter
+      └── CUID2     ──► sortable, collision-resistant, URL-safe
+```
+
+| Strategy | Characteristics | Best For |
+| :--- | :--- | :--- |
+| **ULID** (default) | 48-bit timestamp + 80-bit random, B-Tree friendly | High-write databases such as PostgreSQL and MySQL |
+| **UUID v4** | Fully random 128-bit | Compatibility with existing systems |
+| **Snowflake** | 64-bit, embeds worker ID (0-1023) and sequence (0-4095) | Distributed microservice node coordination |
+| **CUID2** | Collision-resistant, URL-safe | Short IDs in URLs and external references |
+
+```typescript
+import { IdGenerator } from '@bts-soft/core';
+
+IdGenerator.setDefaultStrategy('snowflake');
+IdGenerator.setWorkerId(12); // Required for distributed deployments
+
+const id = IdGenerator.generate();        // Uses default strategy
+const ulid = IdGenerator.generate('ulid'); // Override per call
+```
 
 ### Infrastructure Modules
 
-The common package provides pre-configured NestJS modules:
+#### ThrottlingModule
 
-- **`ConfigModule`**: A wrapper around `@nestjs/config` with built-in validation.
-- **`ThrottlingModule`**: Robust rate limiting that automatically handles both HTTP and GraphQL contexts.
-- **`TranslationModule`**: Integrated `nestjs-i18n` support for multi-language applications (Arabic/English).
-- **`GraphqlModule`**: Standard Apollo Server setup with custom error filters and a context that includes both request and response objects.
-
----
-
-### Production & CLI Utilities
-
-The common package exposes tools to manage environment-specific behaviors:
-
-- **`disableConsoleInProduction()`**: A safety utility to mute all `console` outputs when running in production.
-- **`displayAppBanner(appName, port)`**: Displays a clean, professional banner in the terminal when the server starts.
-
----
-
-
----
-
-## Scenario-Based Integration Guides
-
-To understand the full power of `@bts-soft/core`, let's look at how these modules interact in real-world scenarios.
-
-### Scenario A: Building a "User Registration" Flow
-
-This scenario demonstrates the interaction between **Validation**, **Cache**, **Common**, and **Notifications**.
-
-1.  **Input Validation**: 
-    The `RegisterDto` uses `@EmailField`, `@NameField`, and `@PasswordField`. The input is automatically cleaned (SQLi protection), name is capitalized ("john doe" -> "John Doe"), and email is lowercased.
-    
-2.  **Duplicate Check (Cache)**: 
-    Before hitting the database, the service checks Redis using `redisService.exists('registration:lock:' + email)` to prevent rapid-fire duplicate registrations (Idempotency).
-
-3.  **Persistence (Common)**: 
-    The `User` entity extends `BaseEntity`. It is saved with a auto-generated ULID.
-
-4.  **Welcome Message (Notifications)**: 
-    A background job is queued via `notificationService.send(ChannelType.EMAIL, ...)`. The background processor handles the Nodemailer handshake while the API returns a response.
-
-5.  **Response Formatting (Common)**: 
-    The `GeneralResponseInterceptor` catches the return value and wraps it in the standard success envelope before sending it to the client.
-
-### Scenario B: Building an "Image Gallery with Search"
-
-This scenario demonstrates **Upload**, **Validation**, and **Cache**.
-
-1.  **Image Upload**: 
-    The controller receives a stream. `uploadService.uploadImageCore` processes it using the `CloudinaryUploadStrategy` and notifies the `LoggingObserver`.
-    
-2.  **Metadata Search**: 
-    The search query is validated via `@TextField('Query', 3, 50)`.
-    
-3.  **Result Caching**: 
-    Search results are cached in Redis using a Hash (`hSet`). Subsequent searches for the same term are served in under 1ms.
-
----
-
-## Technical Appendix: The Complete API Dictionary
-
-This section provides an exhaustive reference for internal services. Every method is documented with its signature, parameter requirements, and a real-world example.
-
-### 1. `RedisService` (`@bts-soft/cache`)
-
-The `RedisService` is a high-level facade orchestrating multiple specialized services (Core, String, Hash, List, Set, Geo, PubSub, Lock, etc.) to provide a comprehensive API for Redis operations.
-
-#### Core Key-Value Operations
-
-| Method | Signature | Description | Example |
-| :--- | :--- | :--- | :--- |
-| `set` | `(key, value, ttl?)` | Stores any JS object or primitive. | `await set('k', {a:1}, 60)` |
-| `get` | `<T>(key)` | Retrieves and JSON-parses value. | `await get<User>('u1')` |
-| `del` | `(key)` | Deletes a key. | `await del('old_key')` |
-| `mSet` | `(data)` | Multi-set via pipeline. | `await mSet({a:1, b:2})` |
-| `mGet` | `(keys)` | Multi-get. | `await mGet(['a', 'b'])` |
-| `exists`| `(key)` | Checks key existence. | `await exists('token')` |
-| `expire`| `(key, sec)` | Updates TTL. | `await expire('k', 3600)` |
-| `ttl`   | `(key)` | Gets remaining seconds. | `await ttl('k')` |
-
-#### Atomic Counters & Numeric Groups
-
-| Method | Signature | Description | Example |
-| :--- | :--- | :--- | :--- |
-| `incr` | `(key)` | Increments by 1. | `await incr('views')` |
-| `incrBy` | `(key, n)` | Increments by integer N. | `await incrBy('score', 10)` |
-| `decr` | `(key)` | Decrements by 1. | `await decr('retries')` |
-| `decrBy` | `(key, n)` | Decrements by integer N. | `await decrBy('balance', 5)` |
-| `getSet` | `(key, val)` | Set new, return old. | `await getSet('v', 5)` |
-
-#### Hash Operations (Field-Level Access)
-
-| Method | Signature | Description | Example |
-| :--- | :--- | :--- | :--- |
-| `hSet` | `(k, f, v)` | Sets field in hash. | `await hSet('u:1', 'n', 'O')` |
-| `hGet` | `<T>(k, f)` | Gets field value. | `await hGet<string>('u:1', 'n')`|
-| `hGetAll`| `(k)` | Gets all fields as Object. | `await hGetAll('u:1')` |
-| `hDel` | `(k, f)` | Deletes field. | `await hDel('u:1', 'n')` |
-| `hKeys` | `(k)` | Returns all field names. | `await hKeys('u:1')` |
-| `hVals` | `(k)` | Returns all field values. | `await hVals('u:1')` |
-| `hLen` | `(k)` | Field count. | `await hLen('u:1')` |
-| `hIncrBy`| `(k, f, n)` | Incr field by N. | `await hIncrBy('u:1', 'v', 1)`|
-
-#### Set Operations (Uniqueness)
-
-| Method | Signature | Description | Example |
-| :--- | :--- | :--- | :--- |
-| `sAdd` | `(k, ...m)` | Adds members. | `await sAdd('tags', 'a', 'b')` |
-| `sRem` | `(k, ...m)` | Removes members. | `await sRem('tags', 'a')` |
-| `sMembers`| `(k)` | Returns all members. | `await sMembers('tags')` |
-| `sCard` | `(k)` | Set count. | `await sCard('tags')` |
-| `sIsMember`| `(k, m)` | Membership check. | `await sIsMember('tags', 'a')`|
-| `sInter` | `(...k)` | Set intersection. | `await sInter('s1', 's2')` |
-| `sUnion` | `(...k)` | Set union. | `await sUnion('s1', 's2')` |
-
-#### Sorted Sets (Rankings)
-
-| Method | Signature | Description | Example |
-| :--- | :--- | :--- | :--- |
-| `zAdd` | `(k, s, m)` | Add item with score. | `await zAdd('lb', 100, 'u1')` |
-| `zRange` | `(k, s, t)` | Range by index. | `await zRange('lb', 0, 10)` |
-| `zRank` | `(k, m)` | Member rank. | `await zRank('lb', 'u1')` |
-| `zScore` | `(k, m)` | Member score. | `await zScore('lb', 'u1')` |
-| `zRem` | `(k, m)` | Remove member. | `await zRem('lb', 'u1')` |
-
-#### Geospatial Operations
-
-| Method | Signature | Description | Example |
-| :--- | :--- | :--- | :--- |
-| `geoAdd` | `(k, lo, la, m)` | Store coordinate. | `await geoAdd('idx', 31, 30, 'P')`|
-| `geoDist` | `(m1, m2, u)` | Distance calculation. | `await geoDist('P1', 'P2', 'km')`|
-| `geoPos` | `(k, m)` | Get Lat/Long. | `await geoPos('idx', 'P')` |
-
-#### HyperLogLog (Approximate Counting)
-
-| Method | Signature | Description | Example |
-| :--- | :--- | :--- | :--- |
-| `pfAdd` | `(k, ...e)` | Add elements. | `await pfAdd('uv', '1', '2')` |
-| `pfCount` | `(...k)` | Get cardinality. | `await pfCount('uv')` |
-
----
-
-## Security Audit & Hardening Guide
-
-The `@bts-soft/core` package is built with a "Zero Trust" mindset toward external input. Here is how we enforce security across different layers.
-
-### 1. Database Security (SQL Injection)
-
-We use a two-tier defense system against SQL injection:
-
-*   **Logic Level**: Every `TextField`, `EmailField`, and `DescriptionField` in the validation module includes a `Matches(SQL_INJECTION_REGEX)` check. This ensures that potentially malicious strings are caught before they ever reach your service.
-*   **Infrastructure Level**: The `SqlInjectionInterceptor` provides a global safety net by scanning every request property.
-
-### 2. Output Sanitization (XSS)
-
-The `ClassSerializerInterceptor` is mandatory. It ensures that:
-- Sensitive internal data (like user passwords or internal DB IDs) are stripped from the response.
-- Only fields explicitly marked with `@Expose()` are sent to the client.
-
-### 3. Rate Limiting (Brute Force)
-
-By using the `ThrottlingModule`, you can define per-endpoint limits based on the IP or the User ID.
+Rate limiting for REST and GraphQL using sliding window counters. Supports tiered limits:
 
 ```typescript
-@Throttle({ default: { limit: 10, ttl: 60000 } })
-@Post('login')
-async login() { ... }
-```
-
-### 4. Media Safety
-
-The Upload module provides:
-- Extension white-listing to prevent uploading executable files (like `.exe`, `.sh`).
-- Size caps to prevent Disk Exhaustion attacks.
-- Strategy-level validation to ensure the cloud provider is reputable and secure.
-
-### 5. Production Optimization & Information Leakage Prevention
-
-To prevent sensitive data from leaking into server logs (such as tokens, passwords, or PII mistakenly logged during development), the `@bts-soft/core` meta-package **automatically disables all `console.*` methods** (e.g., `console.log`, `console.error`) the moment it is imported, provided that `process.env.NODE_ENV === "production"`.
-
-If your production environment requires structured logging, you should use the NestJS `Logger` class or a dedicated logging transport instead of native `console` methods.
-
----
-
-## Deployment, CI/CD, and Operations
-
-A production-ready application requires a production-ready infrastructure.
-
-### Environment Variable Reference
-
-Ensure the following variables are defined in your `.env` or CI secrets:
-
-#### General
-- `NODE_ENV`: `production` | `development` | `test`
-- `PORT`: Default 3000
-
-#### Redis Configuration
-- `REDIS_HOST`: e.g., `localhost`
-- `REDIS_PORT`: Default `6379`
-- `REDIS_PASSWORD`: Optional
-
-#### Notifications Configuration
-- `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_SENDER`
-- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_NUMBER`, `TWILIO_WHATSAPP_NUMBER`
-- `TELEGRAM_BOT_TOKEN`
-- `FIREBASE_SERVICE_ACCOUNT_PATH`
-
-#### Media Configuration
-- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
-
----
-
-## The Giant Book of Usage Examples
-
-This section provides complete, copy-pasteable implementations of every core feature for both REST and GraphQL architectures.
-
----
-
-### 1. Advanced Cache Patterns
-
-#### Pattern: "Cache-Aside" for High Traffic Entities
-Best for User Profiles, Product Details, or Settings.
-
-**REST Controller Implementation:**
-```typescript
-@Get(':id')
-async getProfile(@Param('id') id: string) {
-  const cacheKey = `user:profile:${id}`;
-  
-  // 1. Try to get from Cache
-  const cachedUser = await this.redis.get<User>(cacheKey);
-  if (cachedUser) return cachedUser;
-
-  // 2. Fetch from DB if not in Cache
-  const user = await this.userRepo.findOneBy({ id });
-  if (!user) throw new NotFoundException();
-
-  // 3. Store in Cache with 10 min TTL
-  await this.redis.set(cacheKey, user, 600);
-  
-  return user;
-}
-```
-
-**GraphQL Resolver Implementation:**
-```typescript
-@Query(() => User)
-async userProfile(@Args('id') id: string) {
-  const cacheKey = `user:profile:${id}`;
-  
-  return await this.redis.getOrSet(cacheKey, async () => {
-    return await this.userRepo.findOneBy({ id });
-  }, 600);
-}
-```
-
-#### Pattern: "Atomic Rate Limiter" (Custom Logic)
-When the standard Throttler isn't enough.
-
-```typescript
-async isAllowed(userId: string, action: string): Promise<boolean> {
-  const key = `limit:${userId}:${action}`;
-  const count = await this.redis.incr(key);
-  
-  if (count === 1) {
-    await this.redis.expire(key, 60); // Set 1 min window on first attempt
-  }
-  
-  return count <= 5; // Allow 5 actions per minute
-}
-```
-
----
-
-### 2. Multi-Channel Notification Orchestration
-
-#### Pattern: "The Preference-Aware Broadcaster"
-Sends notifications based on user opt-in channels.
-
-```typescript
-async notifyUser(user: User, payload: any) {
-  const jobs = [];
-
-  if (user.wantsEmail) {
-    jobs.push(this.notif.send(ChannelType.EMAIL, {
-      recipientId: user.email,
-      ...payload
-    }));
-  }
-
-  if (user.wantsSms) {
-    jobs.push(this.notif.send(ChannelType.SMS, {
-      recipientId: user.phone,
-      ...payload
-    }));
-  }
-
-  await Promise.all(jobs);
-}
-```
-
----
-
-### 3. Media Handling Lifecycle
-
-#### Pattern: "Avatar Upload with Auto-Cleanup"
-Uploads a new avatar and deletes the old one from Cloudinary.
-
-```typescript
-async updateAvatar(userId: string, file: UploadFile) {
-  const user = await this.userRepo.findOneBy({ id: userId });
-  
-  // 1. Upload new image
-  const result = await this.upload.uploadImageCore(file, 'avatars');
-  
-  // 2. Delete old image if exists
-  if (user.avatarUrl) {
-    const publicId = this.getPublicIdFromUrl(user.avatarUrl);
-    await this.upload.deleteImage(publicId);
-  }
-  
-  // 3. Update DB
-  user.avatarUrl = result.url;
-  await this.userRepo.save(user);
-}
-```
-
----
-
-## Frequently Asked Questions (FAQ)
-
-### General
-
-**Q1: Can I use @bts-soft/core with NestJS 10?**  
-A: No, version 2.2.4+ requires NestJS 11 due to dependency alignment and peer dependency overrides.
-
-**Q2: Does this package include TypeORM?**  
-A: It includes `@bts-soft/common` which depends on TypeORM, but you must still install the driver (e.g., `pg`, `mysql2`) in your main application.
-
----
-
-### Validation
-
-**Q3: How do I disable SQL injection checks for a specific field?**  
-A: You should use the standard `class-validator` decorators (like `@IsString()`) instead of the `@TextField` composite decorators.
-
-**Q4: Can I add custom transformation logic to @PhoneField?**  
-A: No, the PhoneField uses a non-configurable regex cleaner. If you need custom cleaning, use `Transform()` manually.
-
----
-
-### Cache
-
-**Q5: What happens if the Redis server goes down?**  
-A: The `RedisService` will throw errors. It is recommended to wrap cache calls in `try/catch` or use a circuit breaker if your application must remain functional without cache.
-
----
-
-## Exhaustive Redis API Guide
-
-The `RedisService` provides a high-level, type-safe interface for interacting with Redis. This section contains a line-by-line documentation of every method available in the service.
-
----
-
-### Basic Key-Value Operations
-
-#### 1. `set`
-**Description:** Stores a value in Redis with automatic serialization of objects and primitives.
-**Interface:** `set(key: string, value: any, ttl: number = 3600): Promise<void>`
-**Parameters:**
-- `key`: The unique identifier in Redis.
-- `value`: The data to store. Can be a string, number, or plain JavaScript object.
-- `ttl`: Time-To-Live in seconds. Default is 1 hour.
-**Return:** `Promise<void>`
-**Examples:**
-```typescript
-// REST Example
-await this.redisService.set(`user:${id}`, userData, 3600);
-
-// GraphQL Example
-await this.redisService.set(`profile:${userId}`, profileData, 1800);
-```
-
-#### 2. `get`
-**Description:** Retrieves and deserializes a value from Redis.
-**Interface:** `get<T = any>(key: string): Promise<T | null>`
-**Parameters:**
-- `key`: The key to retrieve.
-**Return:** `Promise<T | null>`. Returns `null` if the key does not exist.
-**Examples:**
-```typescript
-// REST Example
-const user = await this.redisService.get<UserEntity>(`user:${id}`);
-
-// GraphQL Example
-const profile = await this.redisService.get<ProfileInput>(`profile:${userId}`);
-```
-
-#### 3. `del`
-**Description:** Deletes one or more keys from Redis.
-**Interface:** `del(...keys: string[]): Promise<void>`
-**Parameters:**
-- `keys`: One or more keys to delete.
-**Return:** `Promise<void>`
-**Example:**
-```typescript
-await this.redisService.del(`user:${id}`, `session:${token}`);
-```
-
-#### 4. `exists`
-**Description:** Checks if a key exists in Redis.
-**Interface:** `exists(key: string): Promise<boolean>`
-**Return:** `true` if it exists, `false` otherwise.
-
-#### 5. `expire`
-**Description:** Sets or updates the TTL of a key.
-**Interface:** `expire(key: string, seconds: number): Promise<boolean>`
-
-#### 6. `ttl`
-**Description:** Gets the remaining TTL of a key.
-**Interface:** `ttl(key: string): Promise<number>`
-
----
-
-### String & Numeric Operations
-
-#### 7. `incr`
-**Description:** Atomically increments the numeric value of a key.
-**Interface:** `incr(key: string): Promise<number>`
-**Usage:** `const newCount = await this.redisService.incr('hit_counter');`
-
-#### 8. `incrBy`
-**Description:** Increments a key by a specific integer.
-**Interface:** `incrBy(key: string, increment: number): Promise<number>`
-
-#### 9. `incrByFloat`
-**Description:** Increments a key by a floating-point number.
-**Interface:** `incrByFloat(key: string, increment: number): Promise<number>`
-
-#### 10. `decr`
-**Description:** Atomically decrements a key.
-**Interface:** `decr(key: string): Promise<number>`
-
-#### 11. `getSet`
-**Description:** Sets a new value and returns the old one. This is an atomic operation.
-**Interface:** `getSet(key: string, value: any): Promise<string | null>`
-
-#### 12. `strlen`
-**Description:** Returns the length of a string value.
-**Interface:** `strlen(key: string): Promise<number>`
-
----
-
-### Hash Operations (Object Manipulation)
-
-#### 13. `hSet`
-**Description:** Sets a field in a Redis hash.
-**Interface:** `hSet(key: string, field: string, value: any): Promise<void>`
-
-#### 14. `hGet`
-**Description:** Gets a field from a Redis hash.
-**Interface:** `hGet<T = any>(key: string, field: string): Promise<T | null>`
-
-#### 15. `hGetAll`
-**Description:** Gets all fields and values from a Redis hash as a JavaScript object.
-**Interface:** `hGetAll(key: string): Promise<Record<string, any>>`
-
-#### 16. `hDel`
-**Description:** Deletes fields from a hash.
-**Interface:** `hDel(key: string, ...fields: string[]): Promise<void>`
-
-#### 17. `hKeys`
-**Description:** Gets all field names in a hash.
-**Interface:** `hKeys(key: string): Promise<string[]>`
-
-#### 18. `hVals`
-**Description:** Gets all field values in a hash.
-**Interface:** `hVals(key: string): Promise<any[]>`
-
-#### 19. `hLen`
-**Description:** Gets the number of fields in a hash.
-**Interface:** `hLen(key: string): Promise<number>`
-
-#### 20. `hIncrBy`
-**Description:** Increments a numeric hash field.
-**Interface:** `hIncrBy(key: string, field: string, increment: number): Promise<number>`
-
----
-
-### Set Operations (Unique Collections)
-
-#### 21. `sAdd`
-**Description:** Adds one or more members to a set.
-**Interface:** `sAdd(key: string, ...members: any[]): Promise<void>`
-
-#### 22. `sRem`
-**Description:** Removes members from a set.
-**Interface:** `sRem(key: string, ...members: any[]): Promise<void>`
-
-#### 23. `sMembers`
-**Description:** Gets all members of a set.
-**Interface:** `sMembers(key: string): Promise<any[]>`
-
-#### 24. `sIsMember`
-**Description:** Checks if a value is a member of a set.
-**Interface:** `sIsMember(key: string, member: any): Promise<boolean>`
-
-#### 25. `sCard`
-**Description:** Gets the number of members in a set.
-**Interface:** `sCard(key: string): Promise<number>`
-
-#### 26. `sInter`
-**Description:** Finds the intersection of multiple sets.
-**Interface:** `sInter(...keys: string[]): Promise<any[]>`
-
----
-
-#### 27. `sUnion`
-**Description:** Returns the union of multiple sets.
-**Interface:** `sUnion(...keys: string[]): Promise<any[]>`
-
-#### 28. `sDiff`
-**Description:** Returns the difference between the first set and all successive sets.
-**Interface:** `sDiff(...keys: string[]): Promise<any[]>`
-
----
-
-### Sorted Set Operations (Leaderboards & Priority)
-
-#### 29. `zAdd`
-**Description:** Adds a member with a specific score to a sorted set.
-**Interface:** `zAdd(key: string, score: number, member: any): Promise<void>`
-
-#### 30. `zRange`
-**Description:** Returns a range of members by their index.
-**Interface:** `zRange(key: string, start: number, stop: number): Promise<any[]>`
-
-#### 31. `zRevRange`
-**Description:** Returns a range of members, ordered from high to low score.
-**Interface:** `zRevRange(key: string, start: number, stop: number): Promise<any[]>`
-
-#### 32. `zRank`
-**Description:** Returns the rank (index) of a member, sorted by score.
-**Interface:** `zRank(key: string, member: any): Promise<number | null>`
-
-#### 33. `zScore`
-**Description:** Returns the score associated with a member.
-**Interface:** `zScore(key: string, member: any): Promise<number | null>`
-
-#### 34. `zCard`
-**Description:** Gets the number of elements in a sorted set.
-**Interface:** `zCard(key: string): Promise<number>`
-
-#### 35. `zCount`
-**Description:** Counts members with scores within a specific range.
-**Interface:** `zCount(key: string, min: number, max: number): Promise<number>`
-
-#### 36. `zRem`
-**Description:** Removes one or more members.
-**Interface:** `zRem(key: string, ...members: any[]): Promise<void>`
-
----
-
-### List Operations (Queues & Stacks)
-
-#### 37. `lPush`
-**Description:** Prepends a value to a list.
-**Interface:** `lPush(key: string, ...values: any[]): Promise<number>`
-
-#### 38. `rPush`
-**Description:** Appends a value to a list.
-**Interface:** `rPush(key: string, ...values: any[]): Promise<number>`
-
-#### 39. `lPop`
-**Description:** Removes and returns the first element.
-**Interface:** `lPop<T = any>(key: string): Promise<T | null>`
-
-#### 40. `rPop`
-**Description:** Removes and returns the last element.
-**Interface:** `rPop<T = any>(key: string): Promise<T | null>`
-
-#### 41. `lRange`
-**Description:** Returns a range of elements from a list.
-**Interface:** `lRange(key: string, start: number, stop: number): Promise<any[]>`
-
-#### 42. `lLen`
-**Description:** Returns the length of a list.
-**Interface:** `lLen(key: string): Promise<number>`
-
-#### 43. `lTrim`
-**Description:** Trims a list to a specific range (Atomic capping).
-**Interface:** `lTrim(key: string, start: number, stop: number): Promise<void>`
-
----
-
-### Advanced Tooling: Pub/Sub & Locking
-
-#### 44. `publish`
-**Description:** Posts a message to a channel.
-**Interface:** `publish(channel: string, message: any): Promise<void>`
-
-#### 45. `subscribe`
-**Description:** Listens for messages on a channel.
-**Interface:** `subscribe(channel: string, callback: (message: string) => void): Promise<void>`
-
-#### 46. `acquireLock`
-**Description:** Attempts to acquire a distributed lock.
-**Interface:** `acquireLock(resource: string, value: string, ttl: number): Promise<string | null>`
-
-#### 47. `releaseLock`
-**Description:** Safely releases a distributed lock using Lua scripting.
-**Interface:** `releaseLock(resource: string, value: string): Promise<boolean>`
-
----
-
-## Notification Provider Master Reference
-
-This section provides a deep technical dive into every supported notification channel, including its underlying technology, payload schema, and configuration secrets.
-
----
-
-### 1. Email (Nodemailer Engine)
-
-The email channel is built for massive scale, supporting both direct SMTP and high-volume API relays.
-
-#### Configuration Matrix
-| Variable | Description | Example |
-| :--- | :--- | :--- |
-| `EMAIL_HOST` | SMTP Server | `smtp.gmail.com` |
-| `EMAIL_PORT` | Connection Port | `465` (SSL) or `587` (TLS) |
-| `EMAIL_USER` | Auth Login | `notifications@company.com` |
-| `EMAIL_PASS` | Auth Password | `password_or_app_token` |
-| `EMAIL_SERVICE`| Pre-defined service | `gmail`, `outlook`, `sendgrid` |
-
-#### Advanced Usage: Attachments & Inline Images
-```typescript
-await notificationService.send(ChannelType.EMAIL, {
-  recipientId: 'boss@company.com',
-  subject: 'Monthly Report',
-  body: 'Please see the attached report.',
-  channelOptions: {
-    attachments: [
-      {
-        filename: 'report.pdf',
-        content: pdfBuffer,
-        contentType: 'application/pdf'
-      }
-    ]
-  }
-});
-```
-
----
-
-### 2. WhatsApp & SMS (Twilio Hub)
-
-Both channels leverage the Twilio REST API with custom normalization for Middle-Eastern phone formats.
-
-#### The Normalization Logic
-Every phone number passed to `recipientId` is passed through a sanitizer:
-1.  Trims whitespace and dashes.
-2.  Handles `00` prefix by converting to `+`.
-3.  Automatically detects Egyptian `01` formats and prepends `+20`.
-4.  Ensures the `whatsapp:` prefix is correctly applied for the WhatsApp channel.
-
-#### Configuration Matrix
-| Variable | Description |
-| :--- | :--- |
-| `TWILIO_ACCOUNT_SID` | Your unique Twilio account identifier. |
-| `TWILIO_AUTH_TOKEN` | Secret token for API authentication. |
-| `TWILIO_SMS_NUMBER` | The registered 10-digit Twilio phone number. |
-| `TWILIO_WHATSAPP_NUMBER`| The "Sandbox" or production WhatsApp number. |
-
----
-
-### 3. Telegram (Bot API integration)
-
-The Telegram channel is the fastest way to build real-time monitoring and alert systems.
-
-#### Configuration
-- `TELEGRAM_BOT_TOKEN`: Obtained from `@BotFather`.
-
-#### Rich Formatting Support
-Telegram supports `HTML` and `MarkdownV2`. You can trigger these via `channelOptions`.
-
-```typescript
-await notificationService.send(ChannelType.TELEGRAM, {
-  recipientId: '@monitoring_channel',
-  body: '<b>CRITICAL:</b> Database CPU is at 95%',
-  channelOptions: { parse_mode: 'HTML' }
-});
-```
-
----
-
-### 4. Firebase Cloud Messaging (FCM)
-
-The FCM channel is the standard for mobile and web push notifications in the BTS Soft ecosystem.
-
-#### Device Token Management
-- `recipientId`: Must be a valid FCM device token or topic name (prefixed with `/topics/`).
-
-#### Rich Payloads
-You can pass custom data and notification options to fine-tune the delivery.
-
-```typescript
-await notificationService.send(ChannelType.FIREBASE_FCM, {
-  recipientId: 'EXPO_TOKEN_123',
-  title: 'Flash Sale! ⚡',
-  body: 'Get 50% off for the next 4 hours.',
-  channelOptions: {
-    data: { url: '/deals/flash-sale' },
-    options: {
-      priority: 'high',
-      timeToLive: 14400 // 4 hours
-    }
-  }
-});
-```
-
----
-
-### 5. Chatbot Webhooks (Discord & Teams)
-
-Both channels use a simplified HTTP-based webhook architecture, perfect for server alerts and team collaboration.
-
-#### Discord Features
-- Supports rich embeds and custom avatars per message.
-- Configuration: `DISCORD_WEBHOOK_URL`.
-
-#### MS Teams Features
-- Supports adaptive cards and actionable messages.
-- Configuration: `TEAMS_WEBHOOK_URL`.
-
----
-
-## Technical Appendix: Complete Redis API Reference
-
-This specification documents every method available in the `RedisService`, providing developers with a complete catalog of atomic data operations.
-
-### 1. Key Lifecycle (O(1))
-
-#### `get<T>(key: string): Promise<T | null>`
-- **Returns**: The parsed JSON object or raw string.
-- **Error Cases**: Returns `null` if key does not exist.
-
-#### `set(key: string, value: any, ttl?: number): Promise<void>`
-- **Params**: `ttl` defaults to 3600 seconds.
-- **Serialization**: Automatic `JSON.stringify` for objects.
-
-#### `del(key: string): Promise<void>`
-- **Purpose**: Permanent removal of a key.
-
-#### `exists(key: string): Promise<boolean>`
-- **Returns**: `true` if key exists, `false` otherwise.
-
-#### `expire(key: string, seconds: number): Promise<boolean>`
-- **Purpose**: Update the TTL of an existing key.
-
-#### `ttl(key: string): Promise<number>`
-- **Returns**: Remaining seconds (-1 for infinite, -2 for not found).
-
----
-
-### 2. Atomic Counters (O(1))
-
-#### `incr(key: string): Promise<number>`
-- **Purpose**: Thread-safe increment of an integer key.
-
-#### `decr(key: string): Promise<number>`
-- **Purpose**: Thread-safe decrement.
-
-#### `incrBy(key: string, value: number): Promise<number>`
-- **Purpose**: Increment by a specific amount.
-
-#### `decrBy(key: string, value: number): Promise<number>`
-- **Purpose**: Decrement by a specific amount.
-
----
-
-### 3. Hash Objects (O(N) for Multiple Fields)
-
-#### `hSet(key: string, field: string, value: any): Promise<number>`
-- **Purpose**: Store a value in a hash field.
-
-#### `hGet<T>(key: string, field: string): Promise<T | null>`
-- **Purpose**: Retrieve value from a specific hash field.
-
-#### `hDel(key: string, ...fields: string[]): Promise<number>`
-- **Purpose**: Remove one or more fields from a hash.
-
-#### `hGetAll<T>(key: string): Promise<T>`
-- **Purpose**: Retrieve the entire hash object.
-
-#### `hKeys(key: string): Promise<string[]>`
-- **Purpose**: List all field names in a hash.
-
----
-
-## Technical Appendix: Global Configuration Schema (Exhaustive)
-
-Every environment variable that influences `@bts-soft/core` is documented below.
-
-| Variable Name | Purpose | Example Value |
-| :--- | :--- | :--- |
-| `NODE_ENV` | Runtime environment | `production` | `development` |
-| `REDIS_HOST` | Cache endpoint | `127.0.0.1` |
-| `REDIS_PORT` | Cache port | `6379` |
-| `REDIS_PASS` | Cache password | `StrongSecret123!` |
-| `EMAIL_SERVICE` | Nodemailer provider | `gmail` | `outlook` |
-| `EMAIL_USER` | Sender address | `noreply@bts-soft.com` |
-| `EMAIL_PASS` | App-specific password | `abcd-efgh-ijkl-mnop` |
-| `CLOUDINARY_NAME` | Media cloud name | `bts-soft-cloud` |
-| `CLOUDINARY_API_KEY`| Media API key | `123456789012345` |
-| `CLOUDINARY_SECRET` | Media API secret | `_shhh_secrets_` |
-| `TWILIO_SID` | SMS account SID | `AC123...` |
-| `TWILIO_TOKEN` | SMS auth token | `auth_tok_...` |
-| `TELEGRAM_TOKEN` | Bot API token | `123456:ABC-DEF...` |
-
----
-
-## Technical Appendix: Architectural Blueprint & Decision Records (ADR)
-
-### ADR 001: Choosing ULID over UUID
-**Decision**: Standardize on ULID for primary keys.
-**Rationale**: ULIDs are lexicographical (sortable by time) while maintaining the collision resistance of UUIDs. This significantly improves database index performance for time-series data like Orders and Audits.
-
-### ADR 002: Command Pattern for Uploads
-**Decision**: Use the Command & Strategy pattern for the Upload module.
-**Rationale**: This allows us to add new storage providers (S3, Azure Blob) without changing the `UploadService` signature, ensuring future-proof extensibility.
-
-### ADR 003: BullMQ for Notifications
-**Decision**: Mandatory queueing for all notification channels.
-**Rationale**: Third-party APIs (Twilio, Firebase) are inherently unreliable. A persistent queue ensures that momentary network glitches do not result in dropped user notifications.
-
----
-
-
-## Technical Appendix: Ecosystem Roadmap 2026-2027
-
-As we continue to evolve the `@bts-soft/core` framework hub, we have planned a series of major enhancements to maintain our lead in the enterprise NestJS space.
-
-### v2.3.0: The "Observability" Update (Q2 2026)
-- **OpenTelemetry Native Support**: Built-in tracing for Redis, TypeORM, and Notification dispatch.
-- **Service Mesh Helpers**: Pre-configured sidecar patterns for Istio and Linkerd.
-- **Log Masking**: Automated PII detection and redaction in the `GeneralResponseInterceptor`.
-
-### v2.4.0: The "Intelligence" Update (Q4 2026)
-- **AI-Logic Validation**: New decorators like `@SentimentField` and `@SpamScanner` using local LLMs or external APIs.
-- **Predictive Caching**: Using Redis TimeSeries to predict key expiration and warm the cache proactively.
-- **Notification Sentiment Analysis**: Automated scoring of incoming (if implemented) or outgoing message tones.
-
-### v3.0.0: The "Micro-Kernel" Revolution (2027)
-- **Zero-Dependency Core**: Moving heavy providers (Twilio, Firebase) into optional peer-dependencies.
-- **WebAssembly Transformers**: High-performance data cleaning using WASM-compiled Rust modules.
-- **Native Bun/Deno Support**: Ensuring full compatibility with next-gen JavaScript runtimes.
-
----
-
-## Technical Appendix: Developer Onboarding Checklist
-
-New to the BTS Soft ecosystem? Follow this step-by-step onboarding guide.
-
-### Week 1: Foundational Setup
-1. [ ] Install the [BTS Soft VS Code Extension Pack](link).
-2. [ ] Clone the [Core Samples Repository](link).
-3. [ ] Complete the "Hello World" tutorial for the **Validation** module.
-4. [ ] Successfully send a test email via the **Notification** service.
-
-### Week 2: Intermediate Patterns
-5. [ ] Implement a **Cache-Aside** logic for a database entity.
-6. [ ] Create a custom **Upload Observer** for audit logging.
-7. [ ] Build a **GraphQL Input Type** using the core decorators.
-
-### Week 3: Production Readiness
-8. [ ] Perform a **SQL Injection Simulation** on your local API.
-9. [ ] Run a **Load Test** (1,000 RPS) using `k6`.
-10. [ ] Configure **Redis Persistence (AOF)** on your staging server.
-
----
-
-## Technical Appendix: The Global Developer Credits
-
-A special thank you to all the engineers who have contributed to the `@bts-soft` codebase.
-
-| Contributor | Area of Expertise | Version Contribution |
-| :--- | :--- | :--- |
-| **Omar Sabry** | Lead Architect, Security | v1.0.0 - Present |
-
----
-
-## Epilogue: The BTS Soft Legacy
-The `@bts-soft/core` package represents years of combined engineering experience in the Middle Eastern tech market. It is built to solve the unique challenges of local connectivity, right-to-left language support, and high-availability requirements.
-
----
-
-## Credits & License
-Created and maintained by **Omar Sabry** for **BTS Soft**.
-Licensed under the **MIT License**.
-© 2026 BTS Soft. All Rights Reserved.
-
-## Enterprise Media Management Deep Dive
-
-The `@bts-soft/upload` package is built to handle the entire lifecycle of a file—from the moment it arrives as a stream to its eventual deletion or transformation in the cloud.
-
----
-
-### The Command Pattern Architecture
-
-Instead of one giant service with 50 methods, we encapsulate file-specific logic into "Commands." This keeps the codebase clean and allows for easy unit testing of upload logic.
-
-#### Available Commands
-- `UploadImageCommand`: Handles image-specific validation and format conversion.
-- `UploadVideoCommand`: Manages large file streams and chunked uploads.
-- `UploadAudioCommand`: Processes sound files with audio metadata extraction.
-- `UploadFileCommand`: Transparently handles documents and raw binary data.
-- `DeleteImageCommand`: Safely removes assets and cleans up the Cloudinary cache.
-
----
-
-### Strategic Media Lifecycles
-
-Every file upload follows a 5-step lifecycle:
-
-1.  **Validation Stage**: The `UploadService` checks the file extension and size against the protocol limits (e.g., 5MB for images).
-2.  **Command Preparation**: A specific command is instantiated (e.g., `UploadImageCommand`) with the incoming stream and target folder.
-3.  **Execution (Strategy)**: The command calls the `IUploadStrategy.upload()` method. By default, this pipes the stream directly to Cloudinary's secure servers.
-4.  **Observer Notification**: On success or failure, the `LoggingObserver` (or your custom observer) is notified to log the event or trigger a DB update.
-5.  **Response Sanitization**: High-level metadata (URL, public_id, size) is returned to the caller in a standardized object.
-
----
-
-### Advanced Media Transformations
-
-Since we use Cloudinary by default, you can leverage their massive transformation CDN directly through `channelOptions`.
-
-```typescript
-// Example: Generate a square avatar with rounded corners
-const result = await uploadService.uploadImageCore(file, 'users', {
-  transformation: [
-    { width: 500, height: 500, crop: "fill", gravity: "face" },
-    { radius: "max" },
-    { effect: "sepia" }
-  ]
-});
-```
-
----
-
-## Global Troubleshooting Matrix
-
-This comprehensive guide covers common errors and their solutions across all core modules.
-
-### Redis Connectivity
-| Error Message | Possible Root Cause | Solution |
-| :--- | :--- | :--- |
-| `ECONNREFUSED` | Redis server is not running or port is wrong. | Check `REDIS_HOST` and `REDIS_PORT`. |
-| `NOAUTH` | Redis requires a password but none was provided. | Set `REDIS_PASSWORD` in `.env`. |
-| `OOM command not allowed` | Redis has reached its memory limit. | Increase `maxmemory` in `redis.conf` or cleanup old keys. |
-
-### Notification Delivery
-| Error Message | Possible Root Cause | Solution |
-| :--- | :--- | :--- |
-| `EAUTH - Invalid credentials`| SMTP user/password is incorrect. | Check `EMAIL_USER` and `EMAIL_PASS`. |
-| `Invalid phone number` | Input is not in E.164 format. | Ensure `recipientId` starts with `+` or use the auto-normalizer. |
-| `403 Forbidden (Telegram)` | Bot has been blocked by the user. | User must restart the bot to receive messages. |
-
-### Media Upload
-| Error Message | Possible Root Cause | Solution |
-| :--- | :--- | :--- |
-| `Invalid image type` | Extension is not in the allowed list. | Check the 'Media Type Specifications' table above. |
-| `File too large` | Stream size exceeds the module limit. | Use a separate command for large files or update limits. |
-| `Must provide cloud_name` | Cloudinary config is missing. | Verify `CLOUDINARY_CLOUD_NAME` is loaded in `process.env`. |
-
----
-
-## Enterprise Design Patterns & Architecture Deep Dive
-
-The architecture of `@bts-soft/core` is influenced by high-scale enterprise systems. This section explains the internal design patterns that make the system robust and modular.
-
----
-
-### 1. The Strategy Pattern (Provider Decoupling)
-
-In the upload and notification modules, we decouple the "What to do" from "How to do it."
-
-```mermaid
-classDiagram
-    class IUploadStrategy {
-        <<interface>>
-        +upload(stream, options)
-    }
-    class CloudinaryUploadStrategy {
-        -cloudinaryClient
-        +upload()
-    }
-    class S3UploadStrategy {
-        -s3Client
-        +upload()
-    }
-    IUploadStrategy <|.. CloudinaryUploadStrategy
-    IUploadStrategy <|.. S3UploadStrategy
-    UploadService --> IUploadStrategy
-```
-
-**Why this matters:**
-- **Zero Lock-in**: You can switch from Cloudinary to S3 by simply creating a new strategy class and updating the factory.
-- **Improved Testing**: You can inject a `MockUploadStrategy` in unit tests to avoid hitting real APIs.
-
----
-
-### 2. The Command Pattern (Logic Encapsulation)
-
-Every specific media operation is a discrete "Command" object.
-
-```mermaid
-sequenceDiagram
-    participant App as Application Code
-    participant Service as UploadService
-    participant Command as UploadImageCommand
-    participant Strategy as CloudinaryStrategy
-
-    App->>Service: uploadImageCore(stream, options)
-    Service->>Command: new UploadImageCommand(strategy, stream, opts)
-    Service->>Command: execute()
-    Command->>Strategy: upload(stream, opts)
-    Strategy-->>Command: result
-    Command-->>Service: result
-    Service-->>App: result
-```
-
-**Why this matters:**
-- **Single Responsibility**: The `UploadService` doesn't need to know how to handle MP4 chunks or JPEG compression; it just knows how to execute commands.
-- **Atomic Operations**: Each command is an isolated unit of work.
-
----
-
-### 3. The Observer Pattern (Reactive Events)
-
-We use the Observer pattern to handle secondary effects like logging, analytics, and cache invalidation.
-
-```mermaid
-graph LR
-    Upload[Upload Command Success] --> ObserverPool[Observer Registry]
-    ObserverPool --> Log[LoggingObserver]
-    ObserverPool --> Analytics[MetricsObserver]
-    ObserverPool --> DB[DatabaseSyncObserver]
-```
-
----
-
-## Global Configuration Schema Master List
-
-The following table lists every supported configuration property used across the five sub-packages.
-
-### Core & Common Config
-| Key | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `NODE_ENV` | `string` | `development` | Runtime environment. |
-| `PORT` | `number` | `3000` | HTTP port. |
-
-### Redis & Cache Config
-| Key | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `REDIS_HOST` | `string` | `localhost` | Redis server address. |
-| `REDIS_PORT` | `number` | `6379` | Redis server port. |
-| `REDIS_PASSWORD`| `string` | `null` | Optional auth password. |
-
-### Notification Hub Config
-| Key | Type | Description |
-| :--- | :--- | :--- |
-| `EMAIL_USER` | `string` | SMTP Username. |
-| `EMAIL_PASS` | `string` | SMTP App Password. |
-| `TWILIO_SID` | `string` | Twilio Account SID. |
-| `TELEGRAM_TOKEN`| `string` | BotFather Token. |
-
----
-
-## Technical Appendix: The Giant FAQ Registry (100+ Items)
-
-This registry is a living document of questions, edge cases, and architectural inquiries collected from developers across the BTS Soft ecosystem.
-
----
-
-### Phase 1: General Ecosystem & Architecture
-
-**Q1: Why was the core package split into five sub-packages?**
-A: To allow for "Tree-Shaking" and reduced bundle sizes in microservices that only need a subset of the functionality. While `@bts-soft/core` bundles everything, you can also install `@bts-soft/cache` independently.
-
-**Q2: What is the primary advantage of using ULIDs over UUIDs in `BaseEntity`?**
-A: ULIDs are lexicographically sortable. This means that database indexes for primary keys stay efficient as they are inserted in order, unlike UUIDs which cause index fragmentation.
-
-**Q3: Is this package compatible with Fastify?**
-A: Yes. All core modules are built on top of standard NestJS abstractions, making them compatible with both Express and Fastify adapters.
-
-**Q4: How does the meta-package handle versioning?**
-A: `@bts-soft/core` acts as a "BOM" (Bill of Materials). When you update `@bts-soft/core`, it automatically pulls in the validated, compatible versions of all five sub-packages.
-
-**Q5: Can I override the global interceptors?**
-A: Yes. While `setupInterceptors(app)` adds the defaults, you can still apply controller-level or method-level interceptors that will execute after the global ones.
-
-**Q6: What happens if I don't provide a Cloudinary API key?**
-A: The `UploadService` will fail during initialization or throw an descriptive error when the first upload command is executed.
-
-**Q7: How do I contribute a new notification channel?**
-A: 1. Create a new class implementing `INotificationChannel`. 2. Update the `NotificationChannelFactory`. 3. Add the necessary config to `NotificationConfigService`.
-
-**Q8: Does the package support multi-tenancy?**
-A: The architecture supports it at the logic level (e.g., prefixing Redis keys), but there is no built-in "Tenant Selector" strategy yet.
-
----
-
-### Phase 2: Validation & Enterprise Security
-
-**Q9: Why does `@TextField` convert everything to lowercase by default?**
-A: To ensure data consistency in searches and database indexes. If you need case-sensitive fields, use the `CapitalField` or standard `class-validator` decorators.
-
-**Q10: Is the SQL Injection regex 100% foolproof?**
-A: No regex is perfect, but ours covers the top 95% of common injection patterns (UNION, SELECT, --, etc.). It acts as a primary defensive layer, complemented by TypeORM’s parameterized queries.
-
-**Q11: Can I use `@PhoneField` for American numbers?**
-A: Yes, pass `'US'` as the first argument to the decorator: `@PhoneField('US')`.
-
-**Q12: Why is `@IsOptional()` included in most composite decorators?**
-A: In our experience, most API update DTOs treat fields as optional. If you need a field to be required, simply add the `@IsNotEmpty()` decorator above the composite one.
-
-**Q13: How do I validate a field that must be exactly 14 characters?**
-A: Use `@TextField('Field', 14, 14)`.
-
-**Q14: Does `@EmailField` check if the domain actually exists?**
-A: No, it performs structural validation (regex) only. For DNS checks, you would need a custom validator or a third-party service integration.
-
-**Q15: What is the performance impact of the global SQLi interceptor?**
-A: Negligible. Regex checks on request bodies typically take less than 1ms, even for large payloads.
-
-**Q16: Can I use these decorators outside of NestJS?**
-A: No, they are heavily dependent on `@nestjs/common` and the NestJS decorator metadata system.
-
----
-
-### Phase 3: High-Performance Caching (Redis)
-
-**Q17: Why use `ioredis` instead of the native `redis` package?**
-A: `ioredis` provides superior support for Promises, Clusters, Sentinels, and automatic reconnection logic.
-
-**Q18: How do I clear the entire cache?**
-A: Use the `flushAll()` method in the `RedisService` (Warning: This is a destructive operation).
-
-**Q19: Can I use Redis for session management with this package?**
-A: Absolutely. You can wrap the `get` and `set` methods to create a custom session store for `express-session` or `passport`.
-
-**Q20: What is the maximum size of a value I can store in Redis?**
-A: 512MB, though we recommend keeping cached objects under 100KB for optimal network performance.
-
-**Q21: How do I implement a "Wait-for-Lock" logic?**
-A: Use the `waitForLock(resource, timeout)` helper, which polls the `acquireLock` method until the lock is available or the timeout is reached.
-
-**Q22: Is the Pub/Sub system reliable?**
-A: Redis Pub/Sub is "Fire and Forget." If a subscriber is offline when a message is sent, they will miss it. For reliable messaging, use the Redis Streams support (planned for v2.3).
-
-**Q23: How do I handle Redis clusters?**
-A: Pass the cluster node array in the `REDIS_HOST` environment variable (comma-separated). The service will automatically detect and initialize a Cluster client.
-
----
-
-### Phase 4: Reliable Notifications (Reliable Hub)
-
-**Q24: Why use BullMQ instead of simple `Promise.all`?**
-A: Because network requests to external APIs (like Twilio) frequently fail or time out. BullMQ ensures that if a message isn't sent, it stays in the queue and retries later.
-
-**Q25: Can I send HTML emails with Nodemailer?**
-A: Yes, pass the `html` property inside the `channelOptions` object of the `NotificationMessage`.
-
-**Q26: How do I set up a Telegram bot?**
-A: Talk to `@BotFather` on Telegram to get a token, then set it as `TELEGRAM_BOT_TOKEN`.
-
-**Q27: Does the WhatsApp channel support images?**
-A: Yes, pass `mediaUrl` in the `channelOptions`. Twilio will handle the delivery of the media.
-
-**Q28: What is the default retry delay?**
-A: It uses an exponential backoff starting at 5 seconds. (5s, 10s, 20s...).
-
-**Q29: How do I listen for failed notification jobs?**
-A: Currently, you can check the Redis `bull:notifications:failed` set or use the BullBoard UI (not included in core).
-
----
-
-### Phase 5: Media & Uploads (Digital Asset Management)
-
-**Q30: What is the maximum file size for video uploads?**
-A: By default, the `UploadVideoCommand` allows up to 100MB. This limit is set to balance server memory and Cloudinary's chunked upload efficiency.
-
-**Q31: How do I handle private file uploads?**
-A: Use the `access_type: 'private'` or `type: 'authenticated'` options in the `channelOptions` when calling the upload methods. Note that you will also need to generate signed URLs to view these files.
-
-**Q32: Does the package support local file storage?**
-A: No. `@bts-soft/upload` is cloud-native and focuses on Cloudinary. To support local storage, you would need to implement a `LocalStorageStrategy`.
-
-**Q33: How can I prevent users from uploading large TIFF files?**
-A: The `validateFile` method already limits images to `jpg`, `png`, `webp`, and `gif`. Any other extension will trigger a `400 Bad Request`.
-
-**Q34: What is a "Public ID" in Cloudinary?**
-A: It is the unique identifier (filename) of the asset in your cloud storage. Our system generates these using a timestamp + original filename hash to avoid collisions.
-
-**Q35: How do I generate a thumbnail for a video?**
-A: Simply change the extension of the video URL to `.jpg` or use Cloudinary's dynamic transformation URL parameters.
-
-**Q36: Can I use this for S3?**
-A: Yes, by implementing the `IUploadStrategy` for AWS SDK and injecting it into the service.
-
----
-
-### Phase 6: Advanced Troubleshooting & Edge Cases
-
-**Q37: Why am I getting "Circular dependency" errors?**
-A: This usually happens when two services in different modules import each other. Use `forwardRef(() => ...)` in your module definitions to resolve this.
-
-**Q38: How do I migrate from an old Redis package?**
-A: Replace your direct client calls with `redisService` methods. Most common operations (get, set, del) have identical names.
-
-**Q39: How do I handle Arabic characters in the SQL injection check?**
-A: The regex is designed to allow Arabic character ranges while still blocking SQL-specific keywords and characters like `'`, `;`, and `--`.
-
-**Q40: Can I use multiple Redis instances?**
-A: The current `CacheModule` supports a single global instance. For multiple instances, you would need to define multiple providers using different injection tokens.
-
-**Q41: How do I unit test a service that uses @bts-soft/core?**
-A: Mock the injected services (`RedisService`, `UploadService`, etc.) using standard NestJS testing utilities like `jest.mock()`.
-
-**Q42: What if my Twilio account is suspended?**
-A: The notification service will throw a `401 Unauthorized` or `403 Forbidden` error. You should monitor your logs for these specific status codes.
-
----
-
-### 10. `Exponential Backoff Waiter`
-When waiting for a resource, don't spam the network. Scale your wait time.
-
-```typescript
-async waitForResource(key: string, maxRetries = 5) {
-  let delay = 1000;
-  for (let i = 0; i < maxRetries; i++) {
-    if (await this.redis.exists(key)) return true;
-    await new Promise(r => setTimeout(r, delay));
-    delay *= 2;
-  }
-  return false;
-}
-```
-
-### 11. `The Sliding Window Rate Limiter`
-Using Redis Sorted Sets to implement a precise rate limiter that handles "bursty" traffic.
-
-```typescript
-async isAllowedInWindow(userId: string, windowInSec = 60, limit = 10) {
-  const key = `ratelimit:${userId}`;
-  const now = Date.now();
-  const windowStart = now - (windowInSec * 1000);
-
-  const multi = this.redis.client.multi();
-  multi.zremrangebyscore(key, 0, windowStart);
-  multi.zadd(key, now, now.toString());
-  multi.zcard(key);
-  multi.expire(key, windowInSec);
-  
-  const results = await multi.exec();
-  const count = results[2][1] as number;
-  return count <= limit;
-}
-```
-
-### 12. `Partial Cache Update` (Patching)
-Updating specific fields in a cached object without re-fetching everything.
-
-```typescript
-async patchUserCache(userId: string, partialData: Partial<User>) {
-  const key = `user:${userId}`;
-  const existing = await this.redis.get<User>(key);
-  if (cached) {
-    await this.redis.set(key, { ...existing, ...partialData });
-  }
-}
-```
-
-### 13. `The Decoupled Producer/Consumer` (Redis Lists)
-A simple, low-overhead queue pattern for non-critical background tasks.
-
-```typescript
-// Producer
-async addToGenericQueue(data: any) {
-  await this.redis.lPush('tasks:generic', data);
-}
-
-// Consumer (Mock)
-async processNextTask() {
-  const task = await this.redis.rPop('tasks:generic');
-  if (task) await execute(task);
-}
-```
-
-### 14. `HyperLogLog Unique Visitor Count`
-Count millions of unique IPs using only 12KB of memory.
-
-```typescript
-async trackUniqueVisit(ip: string) {
-  await this.redis.pfAdd('stats:unique_visitors', ip);
-}
-
-async getUniqueCount() {
-  return await this.redis.pfCount('stats:unique_visitors');
-}
-```
-
-### 15. `Geospatial User Search`
-Find users within 5km of a coordinate.
-
-```typescript
-async findNearbyUsers(lon: number, lat: number, radius = 5) {
-  return await this.redis.client.georadius('users:geo', lon, lat, radius, 'km');
-}
-```
-
-### 16. `Bitfield Storage` (Permission Flags)
-Store 64 boolean permissions in a single Redis key for extreme efficiency.
-
-### 17. `Cache Warming Strategy`
-Proactively fill the cache during application startup or low-traffic periods.
-
-### 18. `The "Dogpile" Prevention` (Locking on Miss)
-Ensure that only one request hits the database when a popular key expires.
-
-### 19. `Redis Streams for Event Sourcing`
-Log every state change into an append-only Redis Stream.
-
-### 20. `Cross-Module Signaling` (Pub/Sub)
-Trigger a clear-cache event in Module B when Module A updates a shared entity.
-
----
-
-## Internal Source Code Audit: A Line-by-Line Guide
-
-This section is for senior architects who want to understand exactly how the sausage is made. We walk through the core logic of the absolute most critical files in the ecosystem.
-
----
-
-### Audit: `sqlInjection.regex.ts` (`@bts-soft/validation`)
-
-The regex in this file is the heart of the security system.
-
-```typescript
-// Line 1-2: Defining the keyword list
-const SQL_KEYWORDS = [
-  'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'UNION' ...
-];
-
-// Line 12: Constructing the boundary-aware capture group
-// We use \b to ensure we don't block words like "Selection" or "Updateable".
-const pattern = `(\\b(${SQL_KEYWORDS.join('|')})\\b)`;
-
-// Line 25: Adding non-word delimiters
-// We catch --, /*, and # which are used for SQL comments to bypass authentication.
-const fullPattern = `${pattern}|(--)|(\\/\\*)|(\\*\\/)|(')|(")|(;)|(#)`;
-```
-
-### Audit: `redis.service.ts` (`@bts-soft/cache`)
-
-How we handle serialization and Type Safety.
-
-```typescript
-// Line 45: The Generic Get method
-public async get<T = any>(key: string): Promise<T | null> {
-  const value = await this.cacheManager.get(key);
-  if (!value) return null;
-  
-  // Logic: We assume values in Redis are JSON strings. 
-  // If parsing fails, we return the raw string.
-  try {
-    return JSON.parse(value as string);
-  } catch {
-    return value as unknown as T;
-  }
-}
-```
-
-### Audit: `NotificationChannel.factory.ts` (`@bts-soft/notifications`)
-
-The Dependency Injection orchestration.
-
-```typescript
-// Line 60: The Switch-based instantiation
-// Note how we only instantiate a channel if it is actually called.
-// This saves memory by avoiding loading heavy SDKs (like Firebase) unless needed.
-public getChannel(channelType: ChannelType): INotificationChannel {
-  switch (channelType) {
-    case ChannelType.EMAIL:
-      return new EmailChannel(this.configService.getEmailConfig());
-    // ...
-  }
-}
-```
-
----
-
-### Audit: `GeneralResponseInterceptor` (`@bts-soft/common`)
-
-The logic for standardizing success and error envelopes.
-
-```typescript
-// Line 35: The Success Mapping
-// We use rxjs map operator to transform the stream.
-// This ensures that even if a controller returns a plain object, 
-// the client receives a structured response.
-map((data: any) => {
-  return {
-    success: true,
-    statusCode: context.switchToHttp().getResponse().statusCode,
-    message: data?.message || 'Request successful',
-    data: data?.data || data,
-    // ...
-  };
+import { ThrottlingModule } from '@bts-soft/core';
+
+@Module({
+  imports: [
+    ThrottlingModule.forRoot([
+      { name: 'short',  ttl: 1_000,  limit: 10  },
+      { name: 'medium', ttl: 10_000, limit: 50  },
+      { name: 'long',   ttl: 60_000, limit: 250 },
+    ]),
+  ],
 })
+export class AppModule {}
+```
 
-// Line 75: The GraphQL Error Shim
-// This is critical for keeping Apollo Server responses standard.
-catchError((error) => {
-  const response = this.formatError(error);
-  return throwError(() => new GraphQLError(response.message, { 
-    extensions: response 
-  }));
+#### GraphqlModule
+
+Apollo Server with WebSocket subscriptions, GraphQL Upload, CSRF prevention, and Apollo Federation:
+
+```typescript
+import { GraphqlModule } from '@bts-soft/core';
+
+@Module({
+  imports: [
+    GraphqlModule.forRoot({
+      autoSchemaFile: true,
+      playground: true,
+      federation: true,
+      webSocket: { enabled: true, path: '/graphql', keepAlive: 10_000 },
+    }),
+  ],
 })
+export class AppModule {}
 ```
 
-### Audit: `BaseEntity.ts` (`@bts-soft/common`)
+#### TranslationModule
 
-The lifecycle hooks and ULID generation.
+Integrates `nestjs-i18n` with automatic locale resolution from `x-lang` and `Accept-Language` headers:
 
 ```typescript
-// Line 12: The @PrimaryColumn with ULID
-// We don't use @PrimaryGeneratedColumn('uuid') because we want 
-// lexicographical ordering.
-@PrimaryColumn('varchar', { length: 26 })
-id: string = ulid();
+import { TranslationModule } from '@bts-soft/core';
 
-// Line 30: The AfterInsert Hook
-// Used for automatic audit logging across the entire ecosystem.
-@AfterInsert()
-logInsert() {
-  console.log(`[ENTITY_CREATED] ${this.constructor.name} ID: ${this.id}`);
-}
+@Module({ imports: [TranslationModule] })
+export class AppModule {}
 ```
 
-### Audit: `uploadImage.command.ts` (`@bts-soft/upload`)
-
-The bridge between the Service and the Strategy.
+### Resilience: Idempotency and Distributed Locking
 
 ```typescript
-// Line 10: The Execute Method
-// The command doesn't implement upload logic; it provides the "Context".
-// This follows the Command Pattern to the letter.
-public async execute(): Promise<UploadResult> {
-  const result = await this.strategy.upload(this.stream, this.options);
-  this.notifyObservers('onUploadSuccess', result);
-  return result;
-}
-```
-
----
-
-## Production Hardening & High Availability
-
-A production deployment of `@bts-soft/core` requires specific infrastructure tuning to handle enterprise-level loads.
-
-### 1. Redis High Availability (Sentinel vs. Cluster)
-
-Depending on your traffic, you should choose one of these two topologies:
-
-#### Redis Sentinel (Failover)
-Recommended for most medium-scale applications.
-- **Topology**: 1 Master, 2 Slavic replicas, 3 Sentinels.
-- **Service Config**: Use the `sentinel` options in `ioredis`.
-
-#### Redis Cluster (Horizontal Scale)
-Recommended for million-user applications.
-- **Topology**: Multiple masters with sharding.
-- **Service Config**: Enable `cluster` mode in the `CacheModule`.
-
-### 2. BullMQ Worker Tuning
-
-The notification system can be a bottleneck if not tuned.
-- **Concurrency**: Increase the number of concurrent jobs per worker (Default is 1).
-- **Separation**: Run the `NotificationProcessor` in a separate microservice to avoid CPU contention with your API.
-
----
-
-## Developer Productivity: IDE Snippets & Tools
-
-To speed up development, we recommend adding these VS Code snippets.
-
-### Snippet: New DTO Field
-```json
-"BTS DTO Field": {
-  "prefix": "bts-field",
-  "body": [
-    "@TextField('${1:Name}', ${2:3}, ${3:100})",
-    "${4:fieldName}: string;"
-  ]
-}
-```
-
-### Snippet: Cache-Aside Pattern
-```json
-"BTS Cache-Aside": {
-  "prefix": "bts-cache",
-  "body": [
-    "const cacheKey = `${1:prefix}:${id}`;",
-    "const cached = await this.redis.get(cacheKey);",
-    "if (cached) return cached;",
-    "const data = await this.db.find(id);",
-    "await this.redis.set(cacheKey, data, 3600);",
-    "return data;"
-  ]
-}
-```
-
----
-
-## Global Error Code Reference
-
-This section serves as a comprehensive dictionary for every error code returnable by the external providers integrated into `@bts-soft/core`.
-
-### 1. Cloudinary API Errors
-| Code | Meaning | BTS Soft Recommendation |
-| :--- | :--- | :--- |
-| `400` | Invalid request parameters | Check your `channelOptions` and folders. |
-| `401` | Authentication failed | Verify `CLOUDINARY_API_KEY` and `SECRET`. |
-| `403` | Access denied / Capacity exceeded | Check your Cloudinary plan limits. |
-| `404` | Asset not found | Double check the `public_id` provided. |
-| `420` | Rate limit reached | Implement a retry delay or upgrade plan. |
-
-### 2. Twilio (SMS/WhatsApp) Errors
-| Code | Meaning | BTS Soft Recommendation |
-| :--- | :--- | :--- |
-| `21211` | Invalid 'To' Phone Number | Check the recipientId format and country code. |
-| `21408` | Landline cannot receive SMS | Ensure the number is a mobile or SMS-enabled. |
-| `21614` | To number is not a mobile number | Verify the phone type. |
-| `63003` | WhatsApp message undeliverable | Check if user has opted in or if the session is open. |
-
-### 3. Firebase (FCM) Errors
-| Code | Meaning | BTS Soft Recommendation |
-| :--- | :--- | :--- |
-| `messaging/invalid-argument` | The payload is malformed. | Verify the structure of your `channelOptions`. |
-| `messaging/registration-token-not-registered` | The token is no longer valid. | Remove this token from your database. |
-| `messaging/message-rate-exceeded` | Too many messages sent. | Implement a queue delay. |
-
-### 4. Nodemailer (SMTP) Errors
-| Code | Meaning | BTS Soft Recommendation |
-| :--- | :--- | :--- |
-| `535` | Authentication failed | Check your app-specific password. |
-| `550` | Mailbox unavailable | The recipient email does not exist. |
-| `554` | Transaction failed (Spam?) | Your IP might be blacklisted. Use a relay like SendGrid. |
-
----
-
-## Global Best Practices & Performance Guide
-
----
-
-## Global Best Practices & Performance Guide
-
-**Q43: How do I handle "Connection Lost" in the Redis service?**
-A: The `RedisService` utilizes `ioredis` with an automatic `retryStrategy`. By default, it will attempt to reconnect every 2 seconds, but you can configure this in the `CacheModule` options if needed.
-
-**Q44: Can I use multiple Cloudinary accounts?**
-A: Not with the default `UploadModule`. It is configured to use a single global account. For multi-account support, you would need to instantiate multiple `Cloudinary` clients manually.
-
-**Q45: Does the `BaseEntity` support Soft Deletes?**
-A: The current `BaseEntity` does not include `@DeleteDateColumn`. To support soft deletes, you can add this column to your specific entity class or create a `BaseSoftDeleteEntity`.
-
-**Q46: Is there a way to prioritize certain notification jobs?**
-A: Yes, BullMQ supports job priorities. We plan to expose the `priority` option in the `NotificationMessage` interface in the next minor release (v2.3).
-
-**Q47: How do I change the default email template?**
-A: The `EmailChannel` is designed to be template-agnostic. You should generate your HTML using a library like `handlebars` or `ejs` and pass it to the `html` field in `channelOptions`.
-
-**Q48: Does the WhatsApp channel support location messages?**
-A: Yes, pass `persistentAction` or `location` parameters in the `channelOptions` as per Twilio’s documentation.
-
-**Q49: How do I handle "Rate Limit Exceeded" from Telegram?**
-A: When Telegram returns a `429`, our service will bubble up the error. You should implement a "Wait-and-Retry" logic in your service or use the BullMQ backoff.
-
-**Q50: Can I use this package in a Serverless environment (AWS Lambda)?**
-A: Yes, but you must ensure that your Redis and external API connections are handled efficiently to avoid cold-start delays. Specifically, ensure the Redis client is initialized outside the handler.
-
-**Q51: Why is my `GeneralResponseInterceptor` not catching errors?**
-A: Ensure that you are not catching and "swallowing" errors in your service or controller before the interceptor can see them. The interceptor only catches unhandled exceptions.
-
-**Q52: Is there a built-in UI for managing the notification queue?**
-A: No, but we recommend integrating `Bull-Board` or `Arena` into your application to monitor the Redis queue visually.
-
-**Q53: How do I validate a field that must be a valid ULID?**
-A: Use `@IdField(26)` which enforces the exact length (26 chars) expected for a ULID.
-
-**Q54: Does the package support Webhooks for receiving messages?**
-A: No. `@bts-soft/notifications` is exclusively for *outgoing* messages. For incoming webhooks, you must implement dedicated controllers.
-
-**Q55: What is the recommended Redis eviction policy?**
-A: For caching, we recommend `allkeys-lru`. For BullMQ, you must ensure that your eviction policy does not delete pending jobs (i.e., set a separate Redis instance for queues).
-
-**Q56: How do I handle large file uploads in a low-memory environment?**
-A: The `UploadService` uses streams, which means the file is never fully loaded into RAM. This makes it safe for small containers (e.g., 512MB RAM).
-
-**Q57: Can I use the `RedisService` for Pub/Sub and Caching simultaneously?**
-A: No. Due to how Redis clients work, a client in "subscriber" mode cannot perform normal GET/SET operations. You must use two separate instances or clients.
-
-**Q58: Why does `@NameField` capitalize "McDonnald" incorrectly?**
-A: Our `CapitalizeWords` utility uses a simple whitespace-based split. Complex names with apostrophes or interior capitals may require custom logic.
-
-**Q59: How do I bypass the `SqlInjectionInterceptor` for a specific route?**
-A: You cannot "bypass" a global interceptor easily. If you have a route that legitimately needs to receive SQL-like strings (e.g., a code editor), you should apply the interceptor at the controller level instead of globally.
-
----
-
-### Phase 7: Deep Architecture & Performance FAQ
-
-**Q60: What is the bottleneck in the Notification system?**
-A: Usually the network latency to the third-party providers (Twilio, Firebase). This is why the asynchronous queue architecture is mandatory.
-
-**Q61: How many IOps can the RedisService handle?**
-A: On a standard Redis instance, the service can handle upwards of 10,000 GET/SET operations per second with less than 2ms latency.
-
-**Q62: Should I use `@Exclude()` on the `id` field of a `BaseEntity`?**
-A: Only if you want to hide the ID from the API response (security by obscurity). Generally, IDs are harmless and necessary for client-side state management.
-
-**Q63: Does the `UploadService` support parallel uploads?**
-A: Yes. Since it is stateless and uses streams, you can execute multiple upload commands concurrently without any cross-talk.
-
-**Q64: How do I debug hidden `class-transformer` issues?**
-A: Set the logger level to `debug` in your `main.ts` and monitor the `Transform` operations in the console.
-
-**Q65: Can I use this with NestJS Microservices (NATS/Inspur/RabbitMQ)?**
-A: Yes. All service logic is decoupled from HTTP and will work perfectly inside a Microservice controller.
-## The SQL Injection Defense Wiki
-
-This section provides a deep technical analysis of how `@bts-soft/core` protects your data from malicious SQL injection attacks.
-
----
-
-### Understanding the Threat Landscape
-
-SQL Injection (SQLi) remains one of the most critical vulnerabilities in modern web applications. At its core, SQLi occurs when untrusted data is concatenated directly into a database query.
-
-### Tier 1: The `SQL_INJECTION_REGEX`
-
-Our primary defense is a highly optimized regular expression designed to catch the most dangerous SQL keywords and syntax patterns.
-
-**The Regex Pattern:**
-```regex
-/(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|TRUNCATE|ALTER|EXEC|CREATE|GRANT|REVOKE|DATABASE|SCHEMA|TABLE|COLUMN|FROM|WHERE|HAVING|ORDER\s+BY|GROUP\s+BY|LIMIT|OFFSET|JOIN|INNER|OUTER|LEFT|RIGHT|FULL|CROSS|NATURAL|INTO|VALUES|SET|TABLESPACE|TRIGGER|PROCEDURE|FUNCTION|VIEW|INDEX|ALL|ANY|SOME|EXISTS|BETWEEN|LIKE|SIMILAR|ILIKE|REGEX|REGEXP|GLOB|SOUNDS|MATCH|ESCAPE|OR|AND|XOR|NOT|AS|IS|NULL|TRUE|FALSE|UNKNOWN|COALESCE|NULLIF|IFNULL|ISNULL|IF|THEN|ELSE|CASE|WHEN|END|WAITFOR|DELAY|SLEEP|BENCHMARK|HEX|MD5|SHA1|SHA2|CHRT|ORD|ASCII|CONCAT|SUBSTR|SUBSTRING|LENGTH|CHAR_LENGTH|BIT_LENGTH|OCTET_LENGTH|UPPER|LOWER|INITCAP|TRIM|LTRIM|RTRIM|RPAD|LPAD|REPLACE|TRANSLATE|REPEAT|REVERSE|QUOTE|UNQUOTE|DUMP|VSIZE|UID|USER|SESSION_USER|SYSTEM_USER|CURRENT_USER|CURRENT_DATE|CURRENT_TIME|CURRENT_TIMESTAMP|LOCALTIME|LOCALTIMESTAMP|CAST|CONVERT|TO_DATE|TO_TIMESTAMP|TO_NUMBER|TO_CHAR|TRUNC|ROUND|MOD|ABS|CEIL|FLOOR|EXP|LN|LOG|POWER|SQRT|PI|SIN|COS|TAN|ASIN|ACOS|ATAN|EXP|LN|LOG|POWER|SQRT|PI|SIN|COS|TAN|ASIN|ACOS|ATAN)\b)|(--)|(\/\*)|(\*\/)|(\')|(\")|(\;)|(\#)/gi
-```
-
-**What it blocks:**
-1.  **DML Keywords**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`.
-2.  **DDL Keywords**: `DROP`, `ALTER`, `CREATE`, `TRUNCATE`.
-3.  **Comments**: `--`, `/*`, `#`.
-4.  **Terminators**: `;`.
-5.  **Sensitive Functions**: `SLEEP()`, `BENCHMARK()`, `MD5()`.
-6.  **Boolean Logic**: `OR 1=1`, `AND 1=0`.
-
----
-
-### Tier 2: The Global Interceptor (`SqlInjectionInterceptor`)
-
-The `SqlInjectionInterceptor` ensures that this regex is applied to *every* incoming request.
-
-#### How it works:
-1.  **Iteration**: It recursively traverses the `Body`, `Query`, and `Params` objects.
-2.  **Scrubbing**: Every string value is tested against the regex.
-3.  **Bail-out**: If a match is found, it immediately throws a `400 Bad Request` with the message: `"SQL Injection detected in field: [fieldName]"`.
-
----
-
-### Tier 3: Validation Decorators
-
-For granular control, decorators like `@TextField` and `@EmailField` apply the same regex at the DTO level. This provides better error messages and integrates with `ValidationPipe`.
-
----
-
-## 20+ Advanced Redis Design Patterns
-
-Building on the basic patterns mentioned earlier, here are advanced strategies for high-scale applications.
-
-### 1. The "Read-Through" Service Cache
-Ensures your database is never overwhelmed by high-traffic spikes.
-
-```typescript
-async getProductSmartly(id: string) {
-  return await this.redis.getOrSet(`prod:${id}`, async () => {
-    return await this.db.products.findOne(id);
-  }, 3600);
-}
-```
-
-### 2. "Atomic ID Generator" (Distributed)
-Generate unique, gaps-free numeric IDs across multiple app instances.
-
-```typescript
-async getNextInvoiceNumber() {
-  return await this.redis.incr('infra:invoice_counter');
-}
-```
-
-### 3. "Real-time Leaderboard" with Expiring Scores
-Perfect for "Trending Now" features.
-
-```typescript
-async trackView(productId: string) {
-  const score = Date.now();
-  await this.redis.zAdd('trending_products', score, productId);
-  // Optional: Automatically expire old scores using a scheduled task or Lua
-}
-```
-
-### 4. "Distributed Locking" for Finalizing Payments
-Prevent double-charging users by locking the payment process.
-
-```typescript
-async processPayment(userId: string) {
-  const lock = await this.redis.acquireLock(`pay:${userId}`, 'locking_val', 30);
-  if (!lock) throw new ConflictException('Payment in progress');
-  
-  try {
-    // payment logic
-  } finally {
-    await this.redis.releaseLock(`pay:${userId}`, 'locking_val');
+import {
+  Idempotent, IdempotencyInterceptor,
+  DistributedLock,
+} from '@bts-soft/core';
+
+@Controller('payments')
+export class PaymentController {
+  @Post('charge')
+  @UseInterceptors(IdempotencyInterceptor)
+  @Idempotent({ ttl: 60, headerName: 'x-idempotency-key' })
+  async chargeCard(@Body() body: ChargeDto) {
+    return { transactionId: 'tx_123' };
+  }
+
+  @Post('transfer')
+  @DistributedLock((body) => `lock:user:${body.userId}`, { ttlMs: 5_000 })
+  async transferFunds(@Body() body: TransferDto) {
+    return { status: 'transferred' };
   }
 }
 ```
 
-### 5. "User Session Tracker" (Active Users)
-Store the set of active users with a sliding window.
+### Sub-Path Export Matrix
 
-```typescript
-async markUserActive(userId: string) {
-  await this.redis.sAdd('active_users', userId);
-  await this.redis.expire('active_users', 900); // 15 min window
-}
-```
-
-### 6. "Heavy Hitter" Tracking (Bloom Filters)
-Approximate counting for massive datasets where space is at a premium.
-
-### 7. "Job Rate Limiting"
-Ensure your worker doesn't overwhelm an external API.
-
-### 8. "Cache Versioning"
-Force invalidation of all keys by appending a global version prefix.
-
-### 9. "Tiered Expiration" (Hot/Cold Data)
-Keep hot data for 1 hour and warm data for 24 hours.
-
----
-
-## Global Best Practices & Performance Guide
-
-To get the most out of `@bts-soft/core`, follow these enterprise-grade best practices.
-
-### 1. Caching Strategy: The "Golden Rule"
-Never store huge objects in Redis. If you have a list of 5000 items, store the *IDs* in Redis and fetch the items from the DB, or store the list in a compressed format. Redis is fastest when keys are small (<5KB).
-
-### 2. Notification Resilience
-Always use the BullMQ queue for production workloads. Direct service calls (`channel.send()`) should be reserved for testing or internal tools where latency and failure don't impact the end-user.
-
-### 3. Media Optimization
-Leverage Cloudinary's `f_auto` and `q_auto` parameters. Our `UploadImageCommand` applies these by default. This ensures that a user on a mobile device receives a WebP image, while a user on Safari receives a JPEG.
-
----
-
-## Enterprise Migration & Modernization Roadmap
-
-### Moving from Legacy to `@bts-soft/core`
-
-1.  **Phase 1: Dependency Cleanup**: Remove old packages like `cache-manager-redis-store` and `cloudinary-nestjs`.
-2.  **Phase 2: Database Alignment**: Update your entities to extend `BaseEntity`. Run a migration to convert `INT` IDs to `VARCHAR(26)` if moving to ULIDs.
-3.  **Phase 3: DTO Modernization**: Replace your basic `IsString()` decorators with our composite ones (e.g., `@TextField()`).
-4.  **Phase 4: Service Refactoring**: Inject `RedisService` and `UploadService` into your business logic layers.
-
----
-
-## Technical Glossary of Terms
-
-| Term | Definition |
+| Sub-path | Exported Components |
 | :--- | :--- |
-| **ULID** | Universally Unique Lexicographically Sortable Identifier. |
-| **BOM** | Bill of Materials (A meta-package that versions children). |
-| **Strategy** | A design pattern for swappable algorithms or providers. |
-| **Command** | An object encapsulating all information needed to perform an action. |
-| **FCM** | Firebase Cloud Messaging. |
-| **SQLi** | SQL Injection (A malicious attack pattern). |
+| `@bts-soft/common` | Core bases, decorators, DTOs, filters, interceptors, `IdGenerator`, infrastructure modules |
+| `@bts-soft/common/typeorm` | `TypeOrmBaseEntity` |
+| `@bts-soft/common/sequelize` | `SequelizeBaseEntity` |
+| `@bts-soft/common/mongoose` | `MongooseBaseEntity` |
+| `@bts-soft/common/prisma` | `PrismaBase`, `IPrismaEntity` |
+| `@bts-soft/common/resilience` | `ResilienceModule`, `IdempotencyInterceptor`, `@Idempotent()`, `@DistributedLock()`, `DistributedLockService` |
+
+### Production Utilities
+
+```typescript
+import { disableConsoleInProduction, displayAppBanner } from '@bts-soft/core';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  setupInterceptors(app);
+  disableConsoleInProduction(); // No-ops all console.* in NODE_ENV=production
+  await app.listen(3000);
+  displayAppBanner('My Service', 3000);
+}
+```
 
 ---
 
-## Full Example Codebase: The Marketplace Service
+## Cross-Package Integration Scenarios
 
-This section provides a complete, production-grade implementation of a "Marketplace Service" that integrates every single sub-package within the `@bts-soft/core` ecosystem.
+### Scenario A: Secure User Registration
 
-### 1. The Entity Layer (`@bts-soft/common`)
+Demonstrates: Validation, Cache, Common, Notifications
 
 ```typescript
-import { Entity, Column } from 'typeorm';
-import { BaseEntity } from '@bts-soft/core';
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly redis: RedisService,
+    private readonly notifications: NotificationService,
+    private readonly userRepo: UserRepository,
+  ) {}
 
-@Entity('products')
-export class Product extends BaseEntity {
-  @Column()
-  name: string;
+  async register(dto: RegisterUserDto): Promise<void> {
+    // Validation runs automatically via the ValidationPipe before this method executes.
+    // @NameField:     "omar sabry"    -> "Omar Sabry"
+    // @EmailField:    "USER@MAIL.COM" -> "user@mail.com"
+    // @PasswordField: enforces COMPREHENSIVE complexity
 
-  @Column('decimal')
-  price: number;
+    // Prevent duplicate registration under race conditions
+    const lockKey = `registration:lock:${dto.email}`;
+    const lockToken = randomUUID();
+    const acquired = await this.redis.acquireLock(lockKey, lockToken, 30_000);
+    if (!acquired) throw new ConflictException('Registration already in progress');
 
-  @Column({ nullable: true })
-  imageUrl: string;
+    try {
+      // Persist with auto-generated ULID from BaseEntity
+      const user = await this.userRepo.create(dto);
+
+      // Cache user profile for fast subsequent reads
+      await this.redis.set(`user:profile:${user.id}`, user, 3600);
+
+      // Queue welcome email asynchronously - does not block the API response
+      await this.notifications.send(ChannelType.EMAIL, {
+        recipientId: user.email,
+        subject: 'Welcome to BTS Soft',
+        body: 'Hi {{name}}, your account is ready.',
+        context: { name: user.name },
+      });
+    } finally {
+      await this.redis.releaseLock(lockKey, lockToken);
+    }
+  }
 }
 ```
 
-### 2. The Data Transfer Layer (`@bts-soft/validation`)
+### Scenario B: Cache-Aside Pattern for High-Traffic Reads
+
+Demonstrates: Cache, Common
 
 ```typescript
-import { TextField, NumberField, UrlField } from '@bts-soft/core';
-
-export class CreateProductDto {
-  @TextField('Product Name', 3, 100)
-  name: string;
-
-  @NumberField(false, 0.01, 100000)
-  price: number;
-
-  @UrlField(true)
-  imageUrl?: string;
-}
-```
-
-### 3. The Business Logic Layer (`@bts-soft/cache`, `@bts-soft/notifications`, `@bts-soft/upload`)
-
-```typescript
-import { Injectable } from '@nestjs/common';
-import { RedisService, NotificationService, UploadService, ChannelType } from '@bts-soft/core';
-
 @Injectable()
 export class ProductService {
   constructor(
-    private redis: RedisService,
-    private notif: NotificationService,
-    private upload: UploadService,
-    private productRepo: ProductRepository,
+    private readonly redis: RedisService,
+    private readonly productRepo: ProductRepository,
   ) {}
 
-  async create(dto: CreateProductDto, image?: any) {
-    // 1. Handle Upload
-    let imageUrl = dto.imageUrl;
-    if (image) {
-      const uploadResult = await this.upload.uploadImageCore(image, 'products');
-      imageUrl = uploadResult.url;
-    }
+  async getProduct(id: string): Promise<Product> {
+    // Returns cached value if present, otherwise fetches, caches, and returns
+    return this.redis.getOrSet(
+      `product:${id}`,
+      () => this.productRepo.findOneOrFail({ where: { id } }),
+      600, // Cache for 10 minutes
+    );
+  }
+}
+```
 
-    // 2. Persist to DB
-    const product = this.productRepo.create({ ...dto, imageUrl });
-    await this.productRepo.save(product);
+### Scenario C: Real-Time Event Broadcasting
 
-    // 3. Cache the new product
-    await this.redis.set(`product:${product.id}`, product, 3600);
+Demonstrates: Cache Pub/Sub, Notifications
 
-    // 4. Notify Admin
-    await this.notif.send(ChannelType.TELEGRAM, {
-      recipientId: process.env.ADMIN_CHAT_ID,
-      body: `📦 New Product Created: ${product.name} ($${product.price})`
+```typescript
+@Injectable()
+export class OrderEventBus implements OnModuleInit {
+  constructor(
+    private readonly redis: RedisService,
+    private readonly notifications: NotificationService,
+  ) {}
+
+  async onModuleInit() {
+    await this.redis.subscribe('events:order_shipped', async (data) => {
+      await this.notifications.send(ChannelType.FIREBASE_FCM, {
+        recipientId: data.userFcmToken,
+        title: 'Order Shipped',
+        body: `Your order #${data.orderId} is on the way.`,
+      });
     });
-
-    return product;
   }
 
-  async findOne(id: string) {
-    const cacheKey = `product:${id}`;
-    
-    // Attempt cache hit
-    const cached = await this.redis.get(cacheKey);
-    if (cached) return cached;
+  async publishOrderShipped(orderId: string, userFcmToken: string) {
+    await this.redis.publish('events:order_shipped', { orderId, userFcmToken });
+  }
+}
+```
 
-    // Fetch on miss
-    const product = await this.productRepo.findOneBy({ id });
-    if (product) {
-      await this.redis.set(cacheKey, product, 3600);
+### Scenario D: Preference-Aware Multi-Channel Broadcaster
+
+Demonstrates: Notifications, Cache
+
+```typescript
+@Injectable()
+export class NotificationOrchestrator {
+  constructor(
+    private readonly notifications: NotificationService,
+    private readonly redis: RedisService,
+  ) {}
+
+  async notifyUser(user: User, payload: NotificationPayload) {
+    const prefKey = `user:notification-prefs:${user.id}`;
+    const prefs = await this.redis.get<UserNotificationPrefs>(prefKey);
+
+    const jobs = [];
+
+    if (prefs?.email !== false && user.email) {
+      jobs.push(this.notifications.send(ChannelType.EMAIL, {
+        recipientId: user.email,
+        ...payload,
+      }));
     }
-    
-    return product;
+
+    if (prefs?.sms !== false && user.phone) {
+      jobs.push(this.notifications.send(ChannelType.SMS, {
+        recipientId: user.phone,
+        body: payload.body,
+      }));
+    }
+
+    if (prefs?.push !== false && user.fcmToken) {
+      jobs.push(this.notifications.send(ChannelType.FIREBASE_FCM, {
+        recipientId: user.fcmToken,
+        title: payload.subject,
+        body: payload.body,
+      }));
+    }
+
+    await Promise.all(jobs);
   }
 }
 ```
 
 ---
 
-## Comprehensive Interface Registry
+## Security Model
 
-This registry documents every property of the main interfaces used across the core sub-packages.
+### Defense in Depth
 
-### 1. `NotificationMessage`
-| Property | Type | Required | Description |
+```
+Internet Traffic
+      │
+      ▼
+ThrottlingModule          (rate limiting — DDoS / brute force protection)
+      │
+      ▼
+SqlInjectionInterceptor   (recursive payload scanning — SQLi / stacked queries)
+      │
+      ▼
+ValidationPipe            (DTO constraints + auto-transformation)
+      │
+      ▼
+DistributedLockService    (critical section guard — race condition prevention)
+      │
+      ▼
+Business Logic
+      │
+      ▼
+ClassSerializerInterceptor (strip @Exclude() fields — prevent data leakage)
+      │
+      ▼
+Client Response
+```
+
+| Layer | Mechanism | Protection Against |
+| :--- | :--- | :--- |
+| Network | `ThrottlingModule` | DDoS, brute force, noisy neighbor attacks |
+| Payload | `SqlInjectionInterceptor` | SQL injection, stacked queries, time-delay attacks, xp_cmdshell |
+| Input | `ValidationPipe` with composite decorators | Type coercion attacks, invalid data formats |
+| Concurrency | `DistributedLockService` | Race conditions across service replicas |
+| Output | `ClassSerializerInterceptor` | Sensitive field exposure (passwords, internal IDs) |
+| Files | `FileValidatorService` | Extension whitelist bypass, disk exhaustion via oversized uploads |
+
+### Production Console Silencing
+
+When `NODE_ENV=production`, all `console.*` methods are automatically no-ops after `setupInterceptors(app)` is called. This prevents accidental logging of tokens, passwords, or PII in production. Use NestJS `Logger` for structured production logging instead.
+
+---
+
+## Environment Variable Reference
+
+### Redis
+
+| Variable | Default | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `recipientId` | `string` | Yes | Target identifier (Email, Phone, ChatID, Token). |
-| `body` | `string` | Yes | The text content of the message. |
-| `title` | `string` | No | Subject line or Push title. |
-| `subject` | `string` | No | Explicit field for Email subjects. |
-| `channelOptions`| `any` | No | Provider-specific properties (HTML, Embeds, etc.). |
+| `REDIS_HOST` | `localhost` | No | Redis hostname |
+| `REDIS_PORT` | `6379` | No | Redis port |
+| `REDIS_PASSWORD` | — | No | Authentication password |
+| `REDIS_DB` | `0` | No | Database index (0-15) |
+| `REDIS_TTL` | `3600` | No | Default cache TTL in seconds |
 
-### 2. `UploadResult`
-| Property | Type | Description |
+### Notifications
+
+| Variable | Description |
+| :--- | :--- |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_SENDER` | SMTP configuration |
+| `EMAIL_PROVIDER` | `nodemailer`, `twilio-mail`, or `ses` |
+| `SENDGRID_API_KEY` | SendGrid API key |
+| `AWS_SES_ACCESS_KEY_ID`, `AWS_SES_SECRET_ACCESS_KEY`, `AWS_SES_REGION` | Amazon SES credentials |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_NUMBER`, `TWILIO_WHATSAPP_NUMBER` | Twilio credentials |
+| `SMS_PROVIDER` | `twilio`, `smsmisr`, or `vonage` |
+| `SMSMISR_USERNAME`, `SMSMISR_PASSWORD`, `SMSMISR_SENDER` | SMS Misr credentials |
+| `VONAGE_API_KEY`, `VONAGE_API_SECRET`, `VONAGE_SENDER` | Vonage credentials |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot API token |
+| `DISCORD_WEBHOOK_URL` | Discord default webhook URL |
+| `TEAMS_WEBHOOK_URL` | Microsoft Teams webhook URL |
+| `SLACK_WEBHOOK_URL`, `SLACK_BOT_TOKEN`, `SLACK_DEFAULT_CHANNEL` | Slack integration |
+| `FB_PAGE_ACCESS_TOKEN`, `FB_GRAPH_API_VERSION` | Facebook Messenger (default: `v18.0`) |
+| `FIREBASE_SERVICE_ACCOUNT_PATH` | Path to Firebase Admin SDK JSON file |
+| `ONESIGNAL_APP_ID`, `ONESIGNAL_REST_API_KEY` | OneSignal credentials |
+| `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` | VAPID keys for Web Push |
+| `IN_APP_PROVIDER` | `pusher` |
+| `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, `PUSHER_CLUSTER` | Pusher Channels credentials |
+| `WEBHOOK_DEFAULT_SIGNING_SECRET` | Webhook payload signing secret |
+
+### Upload
+
+| Variable | Default | Description |
 | :--- | :--- | :--- |
-| `url` | `string` | The secure, absolute URL of the hosted asset. |
-| `size` | `number` | File size in bytes. |
-| `filename` | `string` | Original filename as provided. |
-| `type` | `string` | Media type (image, video, etc.). |
-| `public_id` | `string` | Cloudinary unique identifier. |
-
-### 3. `IRedisInterface` (Extended)
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `client` | `any` | Access to the raw ioredis client for edge cases. |
-| `prefix` | `string` | The global key prefix used in the current instance. |
-
----
-
-## Advanced Architecture: Observer Implementation Guide
-
-To create a custom observer for the upload module, implement the `IUploadObserver` interface:
-
-```typescript
-import { IUploadObserver } from '@bts-soft/core';
-
-export class DatabaseSyncObserver implements IUploadObserver {
-  onUploadSuccess(result: any) {
-    // Sync logic
-  }
-  onUploadError(err: Error) {
-    // Error handling logic
-  }
-  onDeleteSuccess(res: any) {}
-  onDeleteError(err: Error) {}
-}
-```
+| `UPLOAD_PROVIDER` | `local` | `local` or `cloudinary` |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | — | Cloudinary credentials |
+| `UPLOAD_LOCAL_PATH` | `./uploads` | Local storage directory path |
+| `UPLOAD_MAX_IMAGE_SIZE` | `5242880` | Max image size in bytes (5 MB) |
+| `UPLOAD_MAX_VIDEO_SIZE` | `104857600` | Max video size in bytes (100 MB) |
+| `UPLOAD_MAX_AUDIO_SIZE` | `52428800` | Max audio size in bytes (50 MB) |
+| `UPLOAD_MAX_FILE_SIZE` | `10485760` | Max raw file size in bytes (10 MB) |
+| `UPLOAD_MAX_MODEL_3D_SIZE` | `104857600` | Max 3D model size in bytes (100 MB) |
+| `UPLOAD_RATE_LIMIT_CAPACITY` | `10` | Token bucket capacity for chunked uploads |
+| `UPLOAD_RATE_LIMIT_REFILL_RATE` | `2` | Tokens refilled per second |
 
 ---
 
-## Technical Appendix: Final Developer Notes
+## Testing and Verification
 
-### Performance Checklist
-- [ ] Use `mSet` and `mGet` when handling groups of keys.
-- [ ] Ensure `CLOUDINARY_AUTO` is enabled for images.
-- [ ] Use `BullMQ` for all user-facing notification flows.
-- [ ] Regularly monitor Redis memory usage using `info memory`.
+Each sub-package ships with its own unit and end-to-end test suites. Unit tests use mocked dependencies; E2E tests target real infrastructure via Docker Compose.
 
-### Security Hardening
-- [ ] Rotate `TWILIO_AUTH_TOKEN` every 6 months.
-- [ ] Use `app-specific passwords` for SMTP connections.
-- [ ] Ensure `SQL_INJECTION_REGEX` matches your domain-specific forbidden characters.
+| Package | Unit Tests | E2E Tests | Infrastructure Required |
+| :--- | :--- | :--- | :--- |
+| `@bts-soft/validation` | Yes | Yes | None (mocked NestJS application) |
+| `@bts-soft/cache` | Yes (ioredis-mock) | Yes | Redis server on port 6380 |
+| `@bts-soft/notifications` | Yes | Yes | Redis via Docker Compose |
+| `@bts-soft/upload` | Yes | Yes | None (filesystem mocks) |
+| `@bts-soft/common` | Yes | Yes | PostgreSQL and Redis via Docker Compose |
 
----
+Running tests in each package directory:
 
-## Notification Channel Deep Configuration Reference
-
-This section provides an exhaustive property-by-property reference for the `channelOptions` of every supported notification provider.
-
----
-
-### 1. Email (Nodemailer Options)
-When using the Email channel, `channelOptions` is passed directly to `transporter.sendMail()`.
-
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `from` | `string` | Override the default sender email. |
-| `replyTo` | `string` | Address for user replies. |
-| `cc` | `string \| string[]` | Carbon copy recipients. |
-| `bcc` | `string \| string[]` | Blind carbon copy recipients. |
-| `headers` | `object` | Custom SMTP headers. |
-| `attachments` | `Attachment[]` | Array of Nodemailer attachment objects. |
-| `html` | `string` | HTML content of the email. |
-| `priority` | `'high' \| 'low' \| 'normal'` | Email priority header. |
-
----
-
-### 2. WhatsApp & SMS (Twilio Options)
-These options are passed to the Twilio Message creation API.
-
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `mediaUrl` | `string[]` | URLs of media files to send (WhatsApp only). |
-| `statusCallback` | `string` | URL for Twilio to send delivery status events. |
-| `validityPeriod` | `number` | How long the message should stay in the queue (seconds). |
-| `smartEncoded` | `boolean` | Automatic Unicode detection and conversion. |
-| `provideFeedback` | `boolean` | Whether Twilio should track user interaction. |
-
----
-
-### 3. Firebase Cloud Messaging (FCM Options)
-These options follow the `admin.messaging.MessagingOptions` and `admin.messaging.Message` structures.
-
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `data` | `Record<string, string>` | Custom key-value pairs for the app. |
-| `notification` | `Notification` | Visual notification properties (Icon, Sound, Badge). |
-| `android` | `AndroidConfig` | Android-specific delivery options (ChannelId, Priority). |
-| `apns` | `ApnsConfig` | iOS-specific delivery options (Payload, Headers). |
-| `webpush` | `WebpushConfig` | Web-specific delivery options (FCM options, Headers). |
-| `condition` | `string` | Topic condition (e.g., `'topicA' in topics && 'topicB' in topics`). |
-
----
-
-### 4. Telegram Bot API Options
-Passed directly to `bot.sendMessage()`.
-
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `parse_mode` | `'Markdown' \| 'HTML' \| 'MarkdownV2'` | How to parse the message body. |
-| `disable_web_page_preview` | `boolean` | Hide link previews in the chat. |
-| `disable_notification` | `boolean` | Send the message silently. |
-| `reply_to_message_id` | `number` | Target of a reply message. |
-| `reply_markup` | `object` | Inline keyboards or custom reply buttons. |
-
----
-
-## Redis Service Logic Internals: A Comprehensive Walkthrough
-
-The `RedisService` is a sophisticated wrapper that handles complex serialization logic. Let's walk through the `set` method line-by-line.
-
-```typescript
-// Line 25: The Entry Point
-public async set(key: string, value: any, ttl: number = 3600): Promise<void> {
-  // Line 27: Performance Logging
-  // We log the operation start time to our internal Prometheus metrics.
-  const start = Date.now();
-
-  // Line 30: Serialization Logic
-  // We check if the value is an object. If so, we JSON.stringify it.
-  // This ensures that complex DTOs are stored as retrievable strings.
-  let stringValue: string;
-  if (typeof value === 'object') {
-    stringValue = JSON.stringify(value);
-  } else {
-    stringValue = String(value);
-  }
-
-  // Line 40: Cache-Manager Handshake
-  // We delegate the storage to the underlying cache-manager bridge.
-  // This allows us to use Redis today and potentially Memcached tomorrow.
-  await this.cacheManager.set(key, stringValue, { ttl });
-
-  // Line 45: Observability
-  // We track the latency of the operation.
-  this.logger.debug(`[REDIS_SET] ${key} completed in ${Date.now() - start}ms`);
-}
-```
-
----
-
-## Technical Appendix: Performance Tuning for Massive Scale
-
-When your application reaches 100,000 requests per minute, these optimizations become mandatory.
-
-### 1. Redis Pipelining
-Instead of sending 100 `SET` commands one by one, use `mSet` or the raw `client.pipeline()` method. This reduces network round-trips by 99%.
-
-### 2. Message Batching
-When sending marketing notifications, batch your jobs into groups of 500. This prevents the BullMQ Redis instance from becoming a CPU bottleneck.
-
-### 3. Connection Pooling
-Ensure that `maxConnections` in your `ioredis` config is set higher than the number of worker threads.
-
----
-
-## Technical Appendix: Security Hardening Master Checklist
-
-Follow this checklist before moving any project using `@bts-soft/core` to production.
-
-- [ ] **Redis Isolation**: Run Redis on a private VPC subnet. Disable public access.
-- [ ] **Password Strength**: Ensure `REDIS_PASSWORD` is at least 32 characters long.
-- [ ] **TLS Everywhere**: Force TLS for SMTP, Cloudinary, and Twilio connections.
-- [ ] **Sanitization Audit**: Verify that all incoming user strings are decorated with `@TextField` or similar.
-- [ ] **Rate Limiting**: Enable the `ThrottlerModule` with a maximum of 100 requests per minute per IP.
-- [ ] **Observer Security**: Ensure your `LoggingObserver` does not log sensitive data (Passwords, Tokens).
-- [ ] **Dependency Hygiene**: Run `npm audit` weekly to catch vulnerabilities in upstream packages.
-
----
-
-## Technical Appendix: SQL Injection Pattern Database (Advanced)
-
-Below is a list of the most sophisticated SQL injection patterns and how our regex neutralized them.
-
-### 1. The "Tautology" Attack
-**Payload**: `' OR 1=1 --`
-- **Detection**: The regex catches the `'`, the `OR`, and the `--` (comment initiator).
-- **Result**: `400 Bad Request`.
-
-### 2. The "Union-Based" Extraction
-**Payload**: `UNION SELECT username, password FROM users`
-- **Detection**: The regex identifies `UNION`, `SELECT`, and `FROM` as high-risk keywords.
-- **Result**: `400 Bad Request`.
-
-### 3. The "Time-Based Blind" Injection
-**Payload**: `; IF (1=1) WAITFOR DELAY '0:0:5' --`
-- **Detection**: The regex catches the `;`, `IF`, `WAITFOR`, `DELAY`, and `--`.
-- **Result**: `400 Bad Request`.
-
-### 4. The "Second-Order" Injection
-**Payload**: `admin'--` stored in a username field.
-- **Detection**: Even if it bypasses a weak front-end check, our `@TextField` decorator catches the `'` and `--` during DTO validation.
-
----
-
-## Technical Appendix: Infrastructure Health Check Scripts
-
-You can use these `curl` commands to verify your `@bts-soft/core` health.
-
-### 1. Check Redis Connection
 ```bash
-curl -X GET http://localhost:3000/health/redis
-```
+# Unit tests
+npm run test
 
-### 2. Check Notification Queue
-```bash
-curl -X GET http://localhost:3000/health/notifications
-```
+# Coverage report
+npm run test:cov
 
-### 3. Test SQL Injection Protection
-```bash
-curl -X POST http://localhost:3000/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"username": "admin\" OR 1=1", "password": "any"}'
+# End-to-end integration tests
+npm run test:e2e
 ```
 
 ---
 
-## Technical Appendix: Custom Observer Workshop
+## FAQ
 
-Learn how to build a Slack Notification Observer for your upload module.
+**Can I install individual sub-packages instead of @bts-soft/core?**
+Yes. Each sub-package is independently published on npm and can be installed in isolation. `@bts-soft/core` is a convenience wrapper for when you need the Back-End.
 
-```typescript
-import { IUploadObserver } from '@bts-soft/core';
-import { HttpService } from '@nestjs/axios';
+**Does @bts-soft/core support NestJS 10?**
+No. Version 3.x requires NestJS 11 or later due to peer dependency alignment across all sub-packages.
 
-export class SlackUploadObserver implements IUploadObserver {
-  constructor(private http: HttpService, private webhookUrl: string) {}
+**How do I switch from Cloudinary to local storage?**
+Set `UPLOAD_PROVIDER=local` in your environment. No code changes are required.
 
-  async onUploadSuccess(result: any) {
-    await this.http.post(this.webhookUrl, {
-      text: `🚀 File uploaded successfully: ${result.url}`
-    }).toPromise();
-  }
+**What happens if Redis is unavailable?**
+The rate limiter in `@bts-soft/validation` automatically falls back to in-memory storage with a warning log. The `RedisService` in `@bts-soft/cache` will throw on all operation calls; wrap cache calls in `try/catch` and implement a circuit breaker if the application must remain functional without the cache layer.
 
-  onUploadError(err: Error) {
-    // Log to Slack as an error alert
-  }
+**Can I use @bts-soft/common's ORM adapters without a specific ORM installed?**
+Yes. The ORM adapters are exposed through sub-path exports such as `@bts-soft/common/typeorm`, `/mongoose`, `/sequelize`, and `/prisma`. The main entry point does not require any specific ORM at runtime. Only the sub-path you explicitly import is loaded.
 
-  onDeleteSuccess(res: any) {}
-  onDeleteError(err: Error) {}
-}
-```
+**How does the notification rate limiter interact with the validation rate limiter?**
+They are independent systems. The notification rate limiter operates inside the notification pre-flight pipeline using Redis sorted sets with a sliding window per recipient per channel. The validation `@RateLimit` decorator operates at the NestJS guard level on incoming HTTP or GraphQL requests.
+
+**Is there a way to extend the notification system with a new channel?**
+Yes. Implement the channel interface and register it with the channel factory. The pre-flight pipeline and BullMQ processor automatically route to your channel based on the `ChannelType` value.
 
 ---
-
-## Technical Appendix: Redis Persistence & Snapshotting Guide
-
-For mission-critical data, you must configure how Redis saves your state to disk.
-
-### 1. RDB (Redis Database)
-- **Concept**: A point-in-time snapshot.
-- **Config**: `save 900 1` (Save every 15 mins if 1 key changed).
-- **BTS Soft Recommendation**: Use for secondary cache instances where a few minutes of data loss is acceptable.
-
-### 2. AOF (Append Only File)
-- **Concept**: Logs every write operation.
-- **Config**: `appendfsync everysec`.
-- **BTS Soft Recommendation**: Mandatory for the Redis instance handling **BullMQ Notification Queues**. This ensures that even in a crash, no job is lost.
-
-### 3. Hybrid (RDB + AOF)
-- **Concept**: Fast restarts with AOF durability.
-- **BTS Soft Recommendation**: The "Gold Standard" for production.
-
----
-
-## Technical Appendix: Notification Retry & Backoff Mathematics
-
-The `NotificationService` uses an exponential backoff formula for retries.
-
-### The Formula
-`delay = initialDelay * (multiplier ^ retryCount)`
-
-### Standard Configuration
-| Retry Count | Multiplier | Delay (Seconds) |
-| :--- | :--- | :--- |
-| 1 | 2 | 1.0 |
-| 2 | 2 | 2.0 |
-| 3 | 2 | 4.0 |
-| 4 | 2 | 8.0 |
-| 5 | 2 | 16.0 |
-
-### Why Exponential?
-Linear retries often cause "Rejection Loops" where the provider (Twilio/WhatsApp) keeps rejecting the same surge of traffic. Exponential backoff allows the provider's systems to breathe and clear bottlenecks before the next attempt.
-
----
-
-## Technical Appendix: The Giant SQL Injection Pattern Wiki (Part 2)---
-
-## Technical Appendix: Enterprise Support & Custom Development
-
-If your organization requires specialized support or custom module development within the `@bts-soft` ecosystem, we offer several enterprise-grade engagement models.
-
-### 1. Dedicated Support SLA
-- **Response Time**: Same-day response for critical (P0) infrastructure issues.
-- **Consultancy**: Monthly architectural reviews of your microservices that utilize `@bts-soft/core`.
-- **Custom Adapters**: Development of specialized notification channels (e.g., custom SMS gateways for specific MENA regions).
-
-### 2. Security Hardening & Penetration Testing
-- **Audit**: Biannual security audits of your codebase to ensure all `@bts-soft` decorators are correctly applied.
-- **Reporting**: Detailed vulnerability reports and remediation strategies.
-
----
-
-
-## Epilogue: The BTS Soft Legacy
-The `@bts-soft/core` package represents years of combined engineering experience in the Middle Eastern tech market. It is built to solve the unique challenges of local connectivity, right-to-left language support, and high-availability requirements.
-
----
-
-## Credits & License
-Created and maintained by **Omar Sabry** for **BTS Soft**.
-Licensed under the **MIT License**.
-© 2026 BTS Soft. All Rights Reserved.
-
-### 3. `@bts-soft/cache`
-
-#### `RedisService.ts`
-- **Purpose**: High-performance caching wrapper.
-- **Logic**: Handles JSON serialization, TTL management, and atomic operations.
-
-#### `CacheConfigService.ts`
-- **Purpose**: Configuration provider for Redis connection strings.
-
----
-
-### 4. `@bts-soft/upload`
-
-#### `UploadService.ts`
-- **Purpose**: The main API for asset management.
-- **Logic**: Executes `UploadImageCommand` or `DeleteImageCommand`.
-
-#### `CloudinaryUploadStrategy.ts`
-- **Purpose**: Cloudinary-specific implementation.
-- **Logic**: Stream-pipes files to `cloudinary.uploader.upload_stream`.
-
-#### `uploadImage.command.ts`
-- **Purpose**: Command object for uploading images.
-- **Logic**: Orchestrates the strategy and notifies observers.
-
----
-
-### 5. `@bts-soft/common`
-
-#### `BaseEntity.ts`
-- **Purpose**: Global abstract class for all TypeORM entities.
-- **Logic**: Provides `id` (ULID), `createdAt`, `updatedAt`.
-
-#### `GeneralResponseInterceptor.ts`
-- **Purpose**: Standardizes API output envelopes.
-- **Logic**: Maps success and error states into a uniform JSON structure.
-
-#### `SqlInjectionInterceptor.ts`
-- **Purpose**: Global request scrubber.
-- **Logic**: Recursively walks request objects and executes regex checks.
-
----
-
-## Technical Appendix: Global Event & Microservices Dictionary
-
-This section provides a complete map of every event emitted and consumed within the BTS Soft ecosystem.
-
-| Event ID | Emitted By | Payload | Consumer | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| uth.user.login | AuthService | { userId, ip } | AuditLogService | Tracks login attempts. |
-| uth.user.logout | AuthService | { userId } | RedisService | Invalidates session tokens. |
-| cache.key.set | RedisService | { key, ttl } | MetricsService | Tracks cache fill rate. |
-| cache.key.hit | RedisService | { key } | MetricsService | Tracks cache hit ratio. |
-| 
-otif.queue.add | NotifService | { jobId } | BullMQ | Enqueues a notification. |
-| 
-otif.job.start | WorkerService | { jobId } | LoggerService | Marks start of processing. |
-| 
-otif.job.done | WorkerService | { jobId } | LoggerService | Success entry. |
-| 
-otif.job.fail | WorkerService | { jobId, err } | ErrorHub | Triggers retry/alerting. |
-| upload.local.tmp | UploadService | { path } | FileSystem | Local staging of file. |
-| upload.cloud.req | CloudService | { provider } | MetricsService | Outbound API call tracking. |
-| upload.asset.new | UploadService | { url } | DatabaseService | Permanent link storage. |
-
----
-
-## Technical Appendix: SQL Injection Pattern Database (Giant Wiki Edition)
-
-### Detailed Regex Walkthrough
-Our regex /(\b(SELECT|INSERT...)/gi is optimized for V8 engine performance.
-
-| Part | Meaning | Performance Note |
-| :--- | :--- | :--- |
-| \b | Word Boundary | Prevents partial matches like 'SELECTIVE'. |
-| SELECT | DML keyword | Case-insensitive match. |
-| (--) | SQL Comment | Catches termination attempts. |
-| \/\* | Multiline Com | Blocks bypass strategies. |
-
----
-
-## Detailed Line-by-Line Code Audit (Part 3)
-
-### GeneralResponseInterceptor.ts
-- **Line 1-10**: Setup RxJS map operator.
-- **Line 11-20**: Extract request context (REST vs GQL).
-- **Line 21-30**: Structure the SuccessResponse object.
-- **Line 31-40**: Inject server timestamp.
-- **Line 41-50**: Execute the handleError fallback.
-
-
-## The 100-Question Technical FAQ Registry (Part 1/2)
-
-**Q1: How does the RedisService handle JSON serialization?**
-A: It uses the native JSON.stringify and JSON.parse. Surfaces are typed as T using TypeScript generics to ensure that when you pull data out, it matches the interface you expect. This is handled centrally in the get and set methods to ensure consistency across the entire application ecosystem.
-
-**Q2: What is the benefit of using ULIDs over UUIDs in @bts-soft/common?**
-A: ULIDs (Universally Unique Lexicographically Sortable Identifiers) are sortable by creation time. This is a critical advantage for database indexing (especially in TypeORM/PostgreSQL) because it prevents the high index fragmentation caused by random UUIDs, while still providing the same collision resistance.
-
-**Q3: How does the SQL injection regex detect 'Time-based' attacks?**
-A: It looks for high-risk SQL functions like SLEEP(), WAITFOR DELAY, and BENCHMARK(). By blocking these strings in the SqlInjectionInterceptor, we prevent attackers from using timing differentials to infer data from the database even when error messages are suppressed.
-
-**Q4: Can I use the UploadService with local storage instead of Cloudinary?**
-A: Yes. You must implement the IUploadStrategy interface and create a LocalStorageStrategy. Then, swap the injection in the UploadModule. The UploadService is entirely decoupled from the actual storage implementation thanks to the Strategy Pattern.
-
-**Q5: What happens if a notification job fails in BullMQ?**
-A: The job is moved to the 'delayed' state and retried using an exponential backoff strategy (default: 3 retries, starting at 5s). After all retries are exhausted, it is moved to the 'failed' set, where it can be inspected via tools like Bull-Board for manual intervention or debugging.
-
-**Q6: Is the GeneralResponseInterceptor compatible with GraphQL?**
-A: Yes. The interceptor detects the request context. For GraphQL, it allows errors to pass through as GraphQLError objects (with correct extensions), while for REST it wraps responses in the success/data/items envelope. It is designed to provide a unified API experience across both protocols.
-
-**Q7: How do I configure multiple email senders?**
-A: The EmailChannel uses a single SMTP configuration. To support multiple senders, you can override the rom field in the channelOptions of the 
-otificationService.send call. Note that your SMTP provider (e.g., SendGrid) must allow the secondary email as a verified sender.
-
-**Q8: Does the WhatsApp channel support document attachments?**
-A: Yes. Pass the mediaUrl array in the channelOptions. Twilio will then fetch the media from that URL and send it as a WhatsApp message. Supported formats include PDF, DOCX, and common image formats.
-
-**Q9: How do I implement "Sliding Window" rate limiting?**
-A: Use the ThrottlerModule from @bts-soft/common. It is pre-configured to use Redis as the storage backend, ensuring that rate limits are enforced across all horizontal instances of your microservice, rather than just per-process.
-
-**Q10: What is the P99 latency of the RedisService.get method?**
-A: In our benchmarks on AWS (c5.large instances) with a co-located Redis ElastiCache instance, P99 latency is consistently below 1.2ms for keys under 10KB. This makes it suitable for high-frequency sub-millisecond data retrieval.
-
-
-## Internal Logic Architecture Wiki: Deep Class Registry
-
-This section provide a line-by-line architectural analysis of the core classes in the @bts-soft/core monorepo.
-
----
-
-### 1. @bts-soft/validation - Core Classes
-
-#### BaseFieldDecorator (Abstract)
-- **Lines of Code**: ~50
-- **Purpose**: Provides a unified interface for all custom field decorators.
-- **Key Methods**:
-  - pplyValidators(): Composes the array of class-validator decorators.
-  - pplyTransformers(): Composes the array of class-transformer operators.
-- **Architectural Note**: This class ensures that all decorators maintain a consistent 'security-first' posture by enforcing SQL injection checks at the base level.
-
-#### EmailFieldDecorator (Implementation)
-- **Lines of Code**: ~35
-- **Purpose**: Specialized logic for email address sanitization.
-- **Key Logic**:
-  - 	oLower(): Ensures that all emails are stored and compared in lowercase to prevent case-sensitivity bugs.
-  - IsEmail(): Standard RFC compliance check.
-- **Security Note**: This is part of the 'Critical Data Pathway' and has a 100% test coverage requirement.
-
-#### PasswordFieldDecorator (Implementation)
-- **Lines of Code**: ~60
-- **Purpose**: Enforces the enterprise security policy for passwords.
-- **Policy Details**:
-  - Minimum 8 characters.
-  - Maximum 64 characters (to prevent Deny-of-Service attacks on bcrypt).
-  - One non-alphanumeric character required.
-- **Logic Flow**: Rejects common passwords via a lookup table (if enabled) and validates complexity.
-
-#### NationalIdDecorator (Implementation)
-- **Lines of Code**: ~40
-- **Domain**: Egyptian National Identity.
-- **Logic**:
-  - Digit 1: Century (2 for 1900-1999, 3 for 2000-2099).
-  - Digits 2-7: Date of Birth.
-  - Digits 8-13: Serial number.
-  - Digit 14: Check digit.
-- **Implementation**: Uses a complex regex and a transform function to strip non-numeric characters.
-
----
-
-### 2. @bts-soft/notifications - Core Classes
-
-#### NotificationChannelFactory
-- **Lines of Code**: ~110
-- **Purpose**: Central hub for creating notification channel instances.
-- **Technical Logic**:
-  - Uses the ChannelType enum to determine the target strategy.
-  - Injects ConfigService to retrieve API keys securely.
-  - Returns a singleton instance for channels that are thread-safe (like Email).
-
-#### EmailChannel
-- **Lines of Code**: ~150
-- **Purpose**: Nodemailer bridge.
-- **Implementation Details**:
-  - Supports multiple transport protocols (SMTP, AWS SES, Mailgun).
-  - Handles HTML and Plain Text versions of messages.
-  - Provides detailed error logging via the Logger service.
-
-#### BullMQWorkerService
-- **Lines of Code**: ~200
-- **Purpose**: High-performance consumer for the notification queue.
-- **Logic Flow**:
-  1. Pulls job from Redis.
-  2. Identifies the correct channel.
-  3. Executes the send() method.
-  4. Updates the job state (Done/Failed).
-- **Metric Tracking**: Reports job processing time to our internal Prometheus dashboard.
-
-
-## Technical Audit: Internal Service Logic (Line-by-Line)
-
-This section provides an exhaustive walk-through of the critical source code within @bts-soft/core.
-
----
-
-### 1. RedisService.ts Audit
-
-| Line | Code | Technical Analysis |
-| :--- | :--- | :--- |
-| 1 | import { Injectable, Logger } from '@nestjs/common'; | Standard NestJS dependency injection and logging. |
-| 2 | import { Redis } from 'ioredis'; | The underlying high-performance Redis client. |
-| ... | ... | ... |
-| 25 | public async get<T>(key: string): Promise<T | null> { | Entry point for typed data retrieval. |
-| 26 |   const data = await this.client.get(key); | Raw I/O call to the Redis cluster. |
-| 27 |   if (!data) return null; | Handle non-existent keys defensively. |
-| 28 |   try { return JSON.parse(data) as T; } | Attempt deserialization of potential objects. |
-| 29 |   catch { return data as unknown as T; } | Fallback to raw string if JSON parsing fails. |
-| 30 | } | Method termination. |
-
----
-
-### 2. NotificationService.ts Audit
-
-| Line | Code | Technical Analysis |
-| :--- | :--- | :--- |
-| 45 | public async send(type: ChannelType, msg: IMessage): Promise<void> { | Main entry point for the Notification dispatcher. |
-| 46 |   const start = Date.now(); | Performance tracking for the BullMQ payload. |
-| 47 |   await this.notificationQueue.add('sendMail', { type, msg }); | Atomically enqueues the job into Redis. |
-| 48 |   this.logger.log(Job queued in ms); | Log the overhead of the queueing operation (p99 < 5ms). |
-| 49 | } | End of method. |
-
----
-
-### 3. GeneralResponseInterceptor.ts Audit
-
-| Line | Code | Technical Analysis |
-| :--- | :--- | :--- |
-| 15 | intercept(context: ExecutionContext, next: CallHandler): Observable<any> { | Implement the NestJS Interceptor interface. |
-| 16 |   const request = context.switchToHttp().getRequest(); | Extract the HTTP request object. |
-| 17 |   return next.handle().pipe( | Start the RxJS processing pipeline. |
-| 18 |     map((data) => ({ | Map raw data into the standard BTS Soft envelope. |
-| 19 |       success: true, | Set global success flag. |
-| 20 |       statusCode: context.switchToHttp().getResponse().statusCode, | Sync status code with the response object. |
-| 21 |       data, | Place payload in the data field. |
-| 22 |       timeStamp: new Date().toISOString(), | Add server-side ISO timestamp. |
-| 23 |     })), | Close the map function. |
-| 24 |   ); | Close the pipeline. |
-
----
-
-### 4. UploadService.ts Audit
-
-| Line | Code | Technical Analysis |
-| :--- | :--- | :--- |
-| 10 | @Injectable() | Marks class for singleton injection. |
-| 11 | export class UploadService { | Main class definition. |
-| 12 |   constructor(private strategy: CloudinaryStrategy) {} | Injects the storage strategy via the constructor. |
-| 13 |   async upload(file: any): Promise<UploadResult> { | Orchestrates the upload command and strategy. |
-| 14 |     return await this.strategy.upload(file); | Direct delegation to the chosen strategy. |
-
----
-
-
-## Technical Audit: Internal Service Logic (Exhaustive Part 2)
-
-### 1. RedisService.ts Deep Walkthrough
-
-| Line | Component | Purpose | Technical Summary |
-| :--- | :--- | :--- | :--- |
-| 1 | Header | Licensing & Credits | Copyright BTS Soft 2026. |
-| 2 | Imports | Core Dependencies | NestJS Common, IOredis, Cache-Manager. |
-| 3 | Metadata | Service Identity | Decorated with @Injectable. |
-| 4 | Class | RedisService | Main singleton definition. |
-| 5 | Prop | client | The ioredis connection instance. |
-| 6 | Prop | logger | Standard NestJS logging hub. |
-| 7 | Constructor | Init Logic | Dependency injection of cache manager. |
-| 8 | Init | Log | Prints 'Redis Service Initialized' on boot. |
-| ... | ... | ... | ... |
-| 100 | Get | Logic | Reads key from Redis memory. |
-| 101 | Get | If | Checks if key exists. |
-| 102 | Get | Parse | Converts string to JSON object. |
-| 103 | Get | Catch | Error handling for malformed JSON. |
-| 104 | Get | Return | Returns T or null. |
-
----
-
-### 2. NotificationService.ts Deep Walkthrough
-
-| Line | Component | Purpose | Technical Summary |
-| :--- | :--- | :--- | :--- |
-| 1 | Header | Licensing | BTS Soft proprietary code. |
-| 2 | Imports | Queue & Strategy | BullMQ, Factory, Internal Interfaces. |
-| 3 | Class | NotificationService | The main dispatcher class. |
-| 4 | Constructor | Setup | Injecting the BullMQ 'notifications' queue. |
-| 5 | Method | send() | High-level API for all messaging. |
-| 6 | Method | sendEmail() | Proxies to EmailChannel provider. |
-| 7 | Method | sendSms() | Proxies to Twilio provider. |
-| 8 | Method | sendWhatsapp() | Proxies to Twilio WA provider. |
-| 9 | Method | sendFirebase() | Proxies to FCM provider. |
-| 10 | Method | sendTelegram() | Proxies to Bot API provider. |
-| 11 | Method | sendDiscord() | Proxies to Webhook provider. |
-| 12 | Method | sendTeams() | Proxies to Webhook provider. |
-| 13 | Method | sendMessenger() | Proxies to Graph API provider. |
-
----
-
-### 3. GeneralResponseInterceptor.ts Deep Walkthrough
-
-| Line | Component | Purpose | Technical Summary |
-| :--- | :--- | :--- | :--- |
-| 40 | Pipe | Start | Begins the RxJS pipeline processing. |
-| 41 | Map | Structure | Defines the shared JSON envelope. |
-| 42 | Key | Success | Hardcoded boolean true on success. |
-| 43 | Key | StatusCode | Mirroring the HTTP status from context. |
-| 44 | Key | Message | Defaults to 'Request successful'. |
-| 45 | Key | Data | The payload from the controller. |
-| 46 | Key | Items | Optional list field for arrays. |
-| 47 | Key | Pagination | Metadata for lists (total, page, limit). |
-| 48 | Key | TimeStamp | ISO string from current system clock. |
-
----
-
-### 4. UploadService.ts Deep Walkthrough
-
-| Line | Component | Purpose | Technical Summary |
-| :--- | :--- | :--- | :--- |
-| 1 | Header | Licensing | BTS Soft 2026. |
-| 2 | Imports | Command Pattern | IUploadCommand, IUploadStrategy. |
-| 3 | Class | UploadService | Facade for asset management. |
-| 4 | Method | upload() | Executes the 'Upload' logic flow. |
-| 5 | Method | delete() | Executes the 'Delete' logic flow. |
-| 6 | Hook | onSuccess | Reactive callback for completion. |
-| 7 | Hook | onError | Reactive callback for failures. |
-
-
----
-
-## Technical Appendix: High-Availability (HA) Tuning Guide for MENA Region
-
-When deploying @bts-soft/core in the Middle East & North Africa (MENA), specific network characteristics and peering issues must be addressed.
-
-### Network Profile 1: Low-Latency Redis Cluster (GCC Regions)
-- **Primary Host**: Bahrain (AWS)
-- **Replica Nodes**: UAE (Azure), Saudi (Google Cloud)
-- **Tuning Strategy**:
-  - 	cp_keepalive: 30 seconds.
-  - client_timeout: 500ms.
-  - **Reasoning**: Intra-GCC fiber is fast, but cross-cloud peering can be jittery.
-
-### Network Profile 2: High-Durability SMTP (North Africa)
-- **Primary Host**: Damietta
-- **Gateway**: SendGrid (Relay via London)
-- **Tuning Strategy**:
-  - dns_lookup: Prefer IPv4 (Avoid IPv6 propagation lag).
-  - smtp_timeout: 10,000ms.
-  - **Reasoning**: Residential ISPs in Northern Africa often have legacy DNS resolvers.
-
-[... Generating Profiler 3 to 20 with similar technical detail ...]
-
----
-
-## Support
-
-### Documentation
-- Complete API documentation available for each package
-- Examples and tutorials in GitHub repositories
-- TypeScript definitions for all exports
-
-### Community
-- GitHub Issues for bug reports and feature requests
-- Regular updates and maintenance
-- Active development and support
-
-### Enterprise
-- Dedicated support available
-- Custom implementations and consulting
-- Training and integration services
 
 ## License
 
-All packages are licensed under the MIT License unless otherwise specified. Developed and maintained by BTS Soft.
+This project is licensed under the MIT License. See the [license](./license) file for details.
 
-## Contact
+---
 
-**Author:** Omar Sabry  
-**Email:** [omar.sabry.dev@gmail.com](mailto:omar.sabry.dev@gmail.com)  
-**LinkedIn:** [Omar Sabry](https://www.linkedin.com/in/omarsa6ry/)  
-**Portfolio:** [https://omarsabry.netlify.app/](https://omarsabry.netlify.app/)
+## Author
 
-## Repository
+**Omar Sabry**
 
-**GitHub Organization For All BTS Packages:** [Omar-Sa6ry/bts-soft: BTS Soft provides a comprehensive suite of professional, enterprise-grade Node.js packages designed for building scalable, maintainable backend systems with NestJS. Our packages are production-ready, thoroughly tested, and follow industry best practices.](https://github.com/Omar-Sa6ry/bts-soft)
+- Portfolio: [omarsabry.vercel.app](https://omarsabry.vercel.app/)
+- GitHub: [Omar-Sa6ry](https://github.com/Omar-Sa6ry)
+- npm: [@bts-soft](https://www.npmjs.com/~bts-soft)
