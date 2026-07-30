@@ -1,6 +1,6 @@
 # BTS Soft — NestJS Enterprise Infrastructure Ecosystem
 
-**Author: [Omar Sabry](https://omarsabry.vercel.app/) — Full Stack Engineer**
+**Author: [Omar Sabry](https://omarsabry.vercel.app/) — Backend Engineer**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/badge/Node->%3D20.17.0-339933?style=flat-square&logo=node.js)](https://nodejs.org)
