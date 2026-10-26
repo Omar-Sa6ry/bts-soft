@@ -56,7 +56,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
         BullModule.forRoot({
           connection: {
             host: process.env.REDIS_HOST || 'localhost',
-            port: parseInt(process.env.REDIS_PORT || '6379'),
+            port: parseInt(process.env.REDIS_PORT || '6380'),
           },
         }),
         BullModule.registerQueue(
@@ -132,6 +132,14 @@ describe('NotificationSystem Full Integration (E2E)', () => {
     Object.values(mockChannels).forEach(c => c.send.mockClear());
   });
 
+  const waitForSendCalls = async (channel: ChannelType, expectedCalls = 1) => {
+    const timeoutAt = Date.now() + 15_000;
+    while (mockChannels[channel].send.mock.calls.length < expectedCalls && Date.now() < timeoutAt) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    expect(mockChannels[channel].send).toHaveBeenCalledTimes(expectedCalls);
+  };
+
   const testChannel = async (type: ChannelType, recipient: string) => {
     const message = {
       recipientId: recipient,
@@ -140,9 +148,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
     };
 
     await service.send(type, message);
-    await new Promise((r) => setTimeout(r, 2000)); // Wait for processing
-
-    expect(mockChannels[type].send).toHaveBeenCalled();
+    await waitForSendCalls(type);
   };
 
   it('should process EMAIL notifications', () => testChannel(ChannelType.EMAIL, 'user@mail.com'));
@@ -169,8 +175,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
       body: 'Retry me'
     });
 
-    await new Promise((r) => setTimeout(r, 4000));
-    expect(mockChannels[ChannelType.EMAIL].send).toHaveBeenCalledTimes(2);
+    await waitForSendCalls(ChannelType.EMAIL, 2);
   });
 
   it('should stop retries on Client Errors (Unrecoverable)', async () => {
@@ -181,8 +186,9 @@ describe('NotificationSystem Full Integration (E2E)', () => {
       body: 'No retry'
     });
 
-    await new Promise((r) => setTimeout(r, 3000));
     // Should only attempt ONCE despite the policy of 2 attempts
+    await waitForSendCalls(ChannelType.SMS);
+    await new Promise((r) => setTimeout(r, 500));
     expect(mockChannels[ChannelType.SMS].send).toHaveBeenCalledTimes(1);
   });
 });

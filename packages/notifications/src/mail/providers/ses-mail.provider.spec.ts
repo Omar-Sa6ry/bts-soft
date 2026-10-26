@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from "@nestjs/testing";
 import { SesMailProvider } from "./ses-mail.provider";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { NotificationClientError, NotificationProviderError } from "../../core/errors/NotificationError";
 
-jest.mock("@aws-sdk/client-ses");
+vi.mock("@aws-sdk/client-ses");
 
 describe("SesMailProvider", () => {
   let provider: SesMailProvider;
@@ -15,7 +16,9 @@ describe("SesMailProvider", () => {
     mockSesClient = {
       send: jest.fn().mockResolvedValue({ MessageId: "msg-123" }),
     };
-    (SESClient as jest.Mock).mockReturnValue(mockSesClient);
+    (SESClient as jest.Mock).mockImplementation(function () {
+      return mockSesClient;
+    });
 
     configService = {
       awsSesAccessKeyId: "test-access-key",
@@ -58,7 +61,9 @@ describe("SesMailProvider", () => {
 
   it("should support dynamic credentials overrides", async () => {
     const dynamicClient = { send: jest.fn().mockResolvedValue({ MessageId: "dynamic-123" }) };
-    (SESClient as jest.Mock).mockReturnValueOnce(dynamicClient);
+    (SESClient as jest.Mock).mockImplementationOnce(function () {
+      return dynamicClient;
+    });
 
     await provider.send(
       {
@@ -86,7 +91,7 @@ describe("SesMailProvider", () => {
   });
 
   it("should throw NotificationProviderError if client fails to initialize", async () => {
-    (SESClient as jest.Mock).mockImplementationOnce(() => {
+    (SESClient as jest.Mock).mockImplementationOnce(function () {
       throw new Error("AWS SES Init failed");
     });
 

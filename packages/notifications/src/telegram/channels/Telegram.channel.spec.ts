@@ -1,11 +1,17 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelegramChannel } from './Telegram.channel';
 import { NotificationConfigService } from '../../core/config/notification.config';
 import { ChannelRegistry } from '../../core/registry/channel.registry';
-import * as TelegramBot from 'node-telegram-bot-api';
 import { NotificationClientError, NotificationProviderError } from '../../core/errors/NotificationError';
 
-jest.mock('node-telegram-bot-api');
+const { mockTelegramBotCtor } = vi.hoisted(() => ({
+  mockTelegramBotCtor: vi.fn(),
+}));
+
+vi.mock('node-telegram-bot-api', () => ({
+  default: mockTelegramBotCtor,
+}));
 
 describe('TelegramChannel', () => {
   let channel: TelegramChannel;
@@ -16,7 +22,9 @@ describe('TelegramChannel', () => {
     mockBot = {
       sendMessage: jest.fn().mockResolvedValue({ message_id: 123 }),
     };
-    (TelegramBot as unknown as jest.Mock).mockReturnValue(mockBot);
+    mockTelegramBotCtor.mockImplementation(function () {
+      return mockBot;
+    });
 
     configService = {
       telegramToken: 'token123',
@@ -45,7 +53,9 @@ describe('TelegramChannel', () => {
 
   it('should support dynamic bot token override', async () => {
     const dynamicBot = { sendMessage: jest.fn().mockResolvedValue({}) };
-    (TelegramBot as unknown as jest.Mock).mockReturnValueOnce(dynamicBot);
+    mockTelegramBotCtor.mockImplementationOnce(function () {
+      return dynamicBot;
+    });
 
     await channel.send({
       recipientId: 'chat123',
@@ -53,7 +63,7 @@ describe('TelegramChannel', () => {
       channelOptions: { botToken: 'new_token' }
     });
 
-    expect(TelegramBot).toHaveBeenCalledWith('new_token', expect.any(Object));
+    expect(mockTelegramBotCtor).toHaveBeenCalledWith('new_token', expect.any(Object));
     expect(dynamicBot.sendMessage).toHaveBeenCalledWith('chat123', 'Override', expect.any(Object));
   });
 

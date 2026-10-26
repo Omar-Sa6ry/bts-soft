@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from "@nestjs/testing";
 import { NodemailerMailProvider } from "./nodemailer.provider";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import * as nodemailer from "nodemailer";
 import { NotificationClientError, NotificationProviderError } from "../../core/errors/NotificationError";
 
-jest.mock("nodemailer");
+vi.mock("nodemailer");
 
 describe("NodemailerMailProvider", () => {
   let provider: NodemailerMailProvider;

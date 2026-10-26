@@ -6,6 +6,12 @@ import { NotificationConfigService } from "../../core/config/notification.config
 import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { NotificationClientError, NotificationProviderError } from "../../core/errors/NotificationError";
 
+// `node-telegram-bot-api` is a CommonJS package whose `module.exports` is the
+// constructor itself. Under ESM interop (vitest, bundlers) that constructor is
+// exposed as `default` instead, so resolve both shapes before constructing.
+const TelegramBotCtor = ((TelegramBot as any).default ??
+  TelegramBot) as typeof TelegramBot;
+
 @Injectable()
 export class TelegramChannel implements INotificationChannel, OnModuleInit {
   public name: string = "telegram";
@@ -25,7 +31,7 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
   private initializeBot() {
     const token = this.configService.telegramToken;
     if (token) {
-      this.bot = new TelegramBot(token, { polling: false });
+      this.bot = new TelegramBotCtor(token, { polling: false });
     } else {
       this.logger.warn("Telegram token missing. TelegramChannel will not function.");
     }
@@ -40,7 +46,7 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
     let botToUse = this.bot;
     if (dynamicToken) {
       this.logger.debug('Using dynamic bot token for Telegram message.');
-      botToUse = new TelegramBot(dynamicToken, { polling: false });
+      botToUse = new TelegramBotCtor(dynamicToken, { polling: false });
     }
 
     if (!botToUse) throw new NotificationProviderError("Telegram bot is not initialized and no dynamic token provided.");

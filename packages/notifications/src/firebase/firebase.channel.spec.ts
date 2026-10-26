@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { FirebaseChannel } from './firebase.channel';
 import { NotificationConfigService } from '../core/config/notification.config';
@@ -5,7 +6,7 @@ import { ChannelRegistry } from '../core/registry/channel.registry';
 import * as admin from 'firebase-admin';
 import { NotificationClientError, NotificationProviderError } from '../core/errors/NotificationError';
 
-jest.mock('firebase-admin', () => {
+vi.mock('firebase-admin', () => {
   const mockMessaging = {
     send: jest.fn().mockResolvedValue('msg_123'),
   };

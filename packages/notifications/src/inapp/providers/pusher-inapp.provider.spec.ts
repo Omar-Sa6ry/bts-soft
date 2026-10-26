@@ -1,12 +1,17 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from "@nestjs/testing";
 import { PusherInAppProvider } from "./pusher-inapp.provider";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import Pusher from "pusher";
 import { NotificationClientError, NotificationProviderError } from "../../core/errors/NotificationError";
 
-jest.mock("pusher", () => {
-  const mockTrigger = jest.fn().mockResolvedValue({});
-  const mockPusherConstructor = jest.fn().mockImplementation(() => {
+const { mockTrigger, mockPusherConstructor } = vi.hoisted(() => ({
+  mockTrigger: vi.fn(),
+  mockPusherConstructor: vi.fn(),
+}));
+
+vi.mock("pusher", () => {
+  mockPusherConstructor.mockImplementation(function () {
     return {
       trigger: mockTrigger,
     };
@@ -14,13 +19,8 @@ jest.mock("pusher", () => {
   return {
     __esModule: true,
     default: mockPusherConstructor,
-    mockTrigger,
-    mockPusherConstructor,
   };
 });
-
-const mockTrigger = (require("pusher") as any).mockTrigger;
-const mockPusherConstructor = (require("pusher") as any).mockPusherConstructor;
 
 describe("PusherInAppProvider", () => {
   let provider: PusherInAppProvider;
@@ -103,7 +103,7 @@ describe("PusherInAppProvider", () => {
 
   it("should support dynamic credentials overrides", async () => {
     const dynamicTrigger = jest.fn().mockResolvedValue({});
-    mockPusherConstructor.mockImplementationOnce(() => {
+    mockPusherConstructor.mockImplementationOnce(function () {
       return {
         trigger: dynamicTrigger,
       };

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { WhatsAppChannel } from './whatsapp.channel';
 import { NotificationConfigService } from '../../core/config/notification.config';
@@ -5,7 +6,10 @@ import { ChannelRegistry } from '../../core/registry/channel.registry';
 import { Twilio } from 'twilio';
 import { NotificationClientError, NotificationProviderError } from '../../core/errors/NotificationError';
 
-jest.mock('twilio');
+vi.mock('twilio', () => {
+  const TwilioMock = vi.fn();
+  return { Twilio: TwilioMock, default: TwilioMock };
+});
 
 describe('WhatsAppChannel', () => {
   let channel: WhatsAppChannel;
@@ -18,7 +22,9 @@ describe('WhatsAppChannel', () => {
         create: jest.fn().mockResolvedValue({ sid: 'WA123' }),
       },
     };
-    (Twilio as unknown as jest.Mock).mockReturnValue(mockTwilioClient);
+    (Twilio as unknown as jest.Mock).mockImplementation(function () {
+      return mockTwilioClient;
+    });
 
     configService = {
       twilioAccountSid: 'AC123',
@@ -55,7 +61,9 @@ describe('WhatsAppChannel', () => {
 
   it('should support dynamic credentials and from number', async () => {
     const dynamicClient = { messages: { create: jest.fn().mockResolvedValue({}) } };
-    (Twilio as unknown as jest.Mock).mockReturnValueOnce(dynamicClient);
+    (Twilio as unknown as jest.Mock).mockImplementationOnce(function () {
+      return dynamicClient;
+    });
 
     await channel.send({
       recipientId: '123',

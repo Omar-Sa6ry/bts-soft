@@ -10,7 +10,6 @@ import {
 import { TelegramWebhookDto } from "./dto/Telegram-webhook.dto";
 import { ChannelType } from "../core/enums/ChannelType.enum";
 import { NotificationService } from "../notification.service";
-console.log(`Telegram account linked successfully for user .`);
 
 @Controller("telegram/webhook")
 export class TelegramController {

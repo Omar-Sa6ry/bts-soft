@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { OneSignalChannel } from './onesignal.channel';
 import { NotificationConfigService } from '../core/config/notification.config';
@@ -5,16 +6,16 @@ import { ChannelRegistry } from '../core/registry/channel.registry';
 import * as OneSignal from '@onesignal/node-onesignal';
 import { NotificationClientError, NotificationProviderError } from '../core/errors/NotificationError';
 
-jest.mock('@onesignal/node-onesignal', () => {
-  const mockCreateNotification = jest.fn().mockResolvedValue({ id: 'onesignal_notification_id' });
+vi.mock('@onesignal/node-onesignal', () => {
+  const mockCreateNotification = vi.fn().mockResolvedValue({ id: 'onesignal_notification_id' });
   return {
-    createConfiguration: jest.fn().mockReturnValue({}),
-    DefaultApi: jest.fn().mockImplementation(() => {
+    createConfiguration: vi.fn().mockReturnValue({}),
+    DefaultApi: vi.fn().mockImplementation(function () {
       return {
         createNotification: mockCreateNotification,
       };
     }),
-    Notification: jest.fn().mockImplementation(() => {
+    Notification: vi.fn().mockImplementation(function () {
       return {};
     }),
   };

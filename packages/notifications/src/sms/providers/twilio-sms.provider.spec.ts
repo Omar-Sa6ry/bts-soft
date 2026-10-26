@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from "@nestjs/testing";
 import { TwilioSmsProvider } from "./twilio-sms.provider";
 import { NotificationConfigService } from "../../core/config/notification.config";
@@ -5,7 +6,10 @@ import { Twilio } from "twilio";
 import { NotificationClientError, NotificationProviderError } from "../../core/errors/NotificationError";
 import { PhoneValidationService } from "../../core/validation/phone-validation.service";
 
-jest.mock("twilio");
+vi.mock("twilio", () => {
+  const TwilioMock = vi.fn();
+  return { Twilio: TwilioMock, default: TwilioMock };
+});
 
 describe("TwilioSmsProvider", () => {
   let provider: TwilioSmsProvider;
@@ -18,7 +22,9 @@ describe("TwilioSmsProvider", () => {
         create: jest.fn().mockResolvedValue({ sid: "SM123" }),
       },
     };
-    (Twilio as unknown as jest.Mock).mockReturnValue(mockTwilioClient);
+    (Twilio as unknown as jest.Mock).mockImplementation(function () {
+      return mockTwilioClient;
+    });
 
     configService = {
       twilioAccountSid: "AC123",
@@ -56,7 +62,9 @@ describe("TwilioSmsProvider", () => {
 
   it("should support dynamic credentials and from number", async () => {
     const dynamicClient = { messages: { create: jest.fn().mockResolvedValue({}) } };
-    (Twilio as unknown as jest.Mock).mockReturnValueOnce(dynamicClient);
+    (Twilio as unknown as jest.Mock).mockImplementationOnce(function () {
+      return dynamicClient;
+    });
 
     await provider.send({
       recipientId: "123",

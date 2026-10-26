@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from "@nestjs/testing";
 import { WebPushChannel } from "./webpush.channel";
 import { NotificationConfigService } from "../core/config/notification.config";
@@ -5,7 +6,13 @@ import { ChannelRegistry } from "../core/registry/channel.registry";
 import { NotificationClientError, NotificationProviderError } from "../core/errors/NotificationError";
 import * as webpush from "web-push";
 
-jest.mock("web-push");
+vi.mock("web-push", () => {
+  const sendNotification = vi.fn();
+  return {
+    sendNotification,
+    default: { sendNotification },
+  };
+});
 
 describe("WebPushChannel", () => {
   let channel: WebPushChannel;
