@@ -55,7 +55,7 @@ describe('NotificationSystem Full Integration (E2E)', () => {
       imports: [
         BullModule.forRoot({
           connection: {
-            host: process.env.REDIS_HOST || 'localhost',
+            host: process.env.REDIS_HOST || '127.0.0.1',
             port: parseInt(process.env.REDIS_PORT || '6380'),
           },
         }),
@@ -117,6 +117,28 @@ describe('NotificationSystem Full Integration (E2E)', () => {
     }).compile();
 
     await moduleFixture.init();
+
+    const processorTypes = [
+      NotificationProcessor,
+      FirebaseFcmProcessor,
+      FacebookMessengerProcessor,
+      WhatsAppProcessor,
+      TelegramProcessor,
+      DiscordProcessor,
+      TeamsProcessor,
+      EmailProcessor,
+      SmsProcessor,
+      SlackProcessor,
+      WebhookProcessor,
+      OneSignalProcessor,
+      WebPushProcessor,
+      InAppProcessor,
+    ];
+    await Promise.all(
+      processorTypes.map((processorType) =>
+        moduleFixture.get<any>(processorType).worker.waitUntilReady(),
+      ),
+    );
 
     service = moduleFixture.get<NotificationService>(NotificationService);
     logRepo = moduleFixture.get<InMemoryNotificationLogRepository>(NOTIFICATION_LOG_REPOSITORY);

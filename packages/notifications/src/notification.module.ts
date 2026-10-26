@@ -3,7 +3,10 @@ import { HttpModule } from "@nestjs/axios";
 import { BullModule } from "@nestjs/bullmq";
 import { RedisModule } from "@bts-soft/cache";
 
-import { NotificationService, NOTIFICATION_QUEUE_NAME } from "./notification.service";
+import {
+  NotificationService,
+  NOTIFICATION_QUEUE_NAME,
+} from "./notification.service";
 import { NotificationProcessor } from "./notification.processor";
 import { ChannelType } from "./core/enums/ChannelType.enum";
 import {
@@ -30,26 +33,26 @@ import { LoggingNotificationObserver } from "./core/observer/LoggingNotification
 import { RedisRateLimiter } from "./core/rate-limiter/RedisRateLimiter.service";
 import { RedisDeduplicationStore } from "./core/deduplication/RedisDeduplicationStore";
 import { RedisUserPreferenceRepository } from "./core/preferences/RedisUserPreferenceRepository";
-import { EmailChannel } from "./mail/mail.channel";
-import { NodemailerMailProvider } from "./mail/providers/nodemailer.provider";
-import { TwilioMailProvider } from "./mail/providers/twilio-mail.provider";
-import { SesMailProvider } from "./mail/providers/ses-mail.provider";
-import { SmsChannel } from "./sms/sms.channel";
-import { TwilioSmsProvider } from "./sms/providers/twilio-sms.provider";
-import { SmsMisrProvider } from "./sms/providers/smsmisr.provider";
-import { VonageSmsProvider } from "./sms/providers/vonage-sms.provider";
-import { WhatsAppChannel } from "./whatsapp/channel/whatsapp.channel";
-import { TelegramChannel } from "./telegram/channels/Telegram.channel";
-import { FirebaseChannel } from "./firebase/firebase.channel";
-import { DiscordChannel } from "./discord/discord.channel";
-import { TeamsChannel } from "./teams/teams.channel";
-import { FacebookMessengerChannel } from "./messenger/messenger.channel";
-import { SlackChannel } from "./slack/slack.channel";
-import { WebhookChannel } from "./webhook/webhook.channel";
-import { OneSignalChannel } from "./onesignal/onesignal.channel";
-import { WebPushChannel } from "./webpush/webpush.channel";
-import { InAppChannel } from "./inapp/inapp.channel";
-import { PusherInAppProvider } from "./inapp/providers/pusher-inapp.provider";
+import { EmailChannel } from "./channels/mail/mail.channel";
+import { NodemailerMailProvider } from "./channels/mail/providers/nodemailer.provider";
+import { TwilioMailProvider } from "./channels/mail/providers/twilio-mail.provider";
+import { SesMailProvider } from "./channels/mail/providers/ses-mail.provider";
+import { SmsChannel } from "./channels/sms/sms.channel";
+import { TwilioSmsProvider } from "./channels/sms/providers/twilio-sms.provider";
+import { SmsMisrProvider } from "./channels/sms/providers/smsmisr.provider";
+import { VonageSmsProvider } from "./channels/sms/providers/vonage-sms.provider";
+import { WhatsAppChannel } from "./channels/whatsapp/channel/whatsapp.channel";
+import { TelegramChannel } from "./channels/telegram/channels/Telegram.channel";
+import { FirebaseChannel } from "./channels/firebase/firebase.channel";
+import { DiscordChannel } from "./channels/discord/discord.channel";
+import { TeamsChannel } from "./channels/teams/teams.channel";
+import { FacebookMessengerChannel } from "./channels/messenger/messenger.channel";
+import { SlackChannel } from "./channels/slack/slack.channel";
+import { WebhookChannel } from "./channels/webhook/webhook.channel";
+import { OneSignalChannel } from "./channels/onesignal/onesignal.channel";
+import { WebPushChannel } from "./channels/webpush/webpush.channel";
+import { InAppChannel } from "./channels/inapp/inapp.channel";
+import { PusherInAppProvider } from "./channels/inapp/providers/pusher-inapp.provider";
 import {
   NOTIFICATION_RATE_LIMITER,
   NOTIFICATION_DEDUP_STORE,
@@ -65,7 +68,7 @@ import {
       { name: NOTIFICATION_QUEUE_NAME },
       ...Object.values(ChannelType).map((channel) => ({
         name: `send-notification-${channel}`,
-      }))
+      })),
     ),
   ],
   providers: [
@@ -98,7 +101,10 @@ import {
     { provide: NOTIFICATION_DEDUP_STORE, useExisting: RedisDeduplicationStore },
 
     RedisUserPreferenceRepository,
-    { provide: USER_PREFERENCE_REPOSITORY, useExisting: RedisUserPreferenceRepository },
+    {
+      provide: USER_PREFERENCE_REPOSITORY,
+      useExisting: RedisUserPreferenceRepository,
+    },
 
     NodemailerMailProvider,
     TwilioMailProvider,

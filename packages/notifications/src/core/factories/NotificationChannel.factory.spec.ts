@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NotificationChannelFactory } from './NotificationChannel.factory';
-import { ChannelRegistry } from '../registry/channel.registry';
-import { INotificationChannel } from '../../telegram/channels/INotificationChannel.interface';
+import { Test, TestingModule } from "@nestjs/testing";
+import { NotificationChannelFactory } from "./NotificationChannel.factory";
+import { ChannelRegistry } from "../registry/channel.registry";
+import { INotificationChannel } from "../../channels/telegram/channels/INotificationChannel.interface";
 
-describe('NotificationChannelFactory', () => {
+describe("NotificationChannelFactory", () => {
   let factory: NotificationChannelFactory;
   let registry: ChannelRegistry;
 
@@ -17,31 +17,35 @@ describe('NotificationChannelFactory', () => {
             getChannel: jest.fn(),
           },
         },
-
       ],
     }).compile();
 
-    factory = module.get<NotificationChannelFactory>(NotificationChannelFactory);
+    factory = module.get<NotificationChannelFactory>(
+      NotificationChannelFactory,
+    );
     registry = module.get<ChannelRegistry>(ChannelRegistry);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(factory).toBeDefined();
   });
 
-  it('should return a channel if registered', () => {
-    const mockChannel: INotificationChannel = { name: 'email', send: jest.fn() };
-    jest.spyOn(registry, 'getChannel').mockReturnValue(mockChannel);
+  it("should return a channel if registered", () => {
+    const mockChannel: INotificationChannel = {
+      name: "email",
+      send: jest.fn(),
+    };
+    jest.spyOn(registry, "getChannel").mockReturnValue(mockChannel);
 
-    const result = factory.getChannel('email');
+    const result = factory.getChannel("email");
     expect(result).toBe(mockChannel);
   });
 
-  it('should throw error if channel is not registered', () => {
-    jest.spyOn(registry, 'getChannel').mockImplementation(() => {
-      throw new Error('Not found');
+  it("should throw error if channel is not registered", () => {
+    jest.spyOn(registry, "getChannel").mockImplementation(() => {
+      throw new Error("Not found");
     });
 
-    expect(() => factory.getChannel('unknown')).toThrow('Not found');
+    expect(() => factory.getChannel("unknown")).toThrow("Not found");
   });
 });

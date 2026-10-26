@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ChannelRegistry } from './channel.registry';
-import { INotificationChannel } from '../../telegram/channels/INotificationChannel.interface';
+import { Test, TestingModule } from "@nestjs/testing";
+import { ChannelRegistry } from "./channel.registry";
+import { INotificationChannel } from "../../channels/telegram/channels/INotificationChannel.interface";
 
-describe('ChannelRegistry', () => {
+describe("ChannelRegistry", () => {
   let registry: ChannelRegistry;
 
   beforeEach(async () => {
@@ -13,27 +13,29 @@ describe('ChannelRegistry', () => {
     registry = module.get<ChannelRegistry>(ChannelRegistry);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(registry).toBeDefined();
   });
 
-  it('should register and retrieve a channel', () => {
+  it("should register and retrieve a channel", () => {
     const mockChannel: INotificationChannel = {
-      name: 'mock',
+      name: "mock",
       send: jest.fn(),
     };
 
     registry.register(mockChannel);
-    expect(registry.getChannel('mock')).toBe(mockChannel);
+    expect(registry.getChannel("mock")).toBe(mockChannel);
   });
 
-  it('should throw error for non-existent channel', () => {
-    expect(() => registry.getChannel('non-existent')).toThrow('Notification channel not found: non-existent');
+  it("should throw error for non-existent channel", () => {
+    expect(() => registry.getChannel("non-existent")).toThrow(
+      "Notification channel not found: non-existent",
+    );
   });
 
-  it('should list all registered channels', () => {
-    const channel1: INotificationChannel = { name: 'c1', send: jest.fn() };
-    const channel2: INotificationChannel = { name: 'c2', send: jest.fn() };
+  it("should list all registered channels", () => {
+    const channel1: INotificationChannel = { name: "c1", send: jest.fn() };
+    const channel2: INotificationChannel = { name: "c2", send: jest.fn() };
 
     registry.register(channel1);
     registry.register(channel2);

@@ -46,22 +46,20 @@ export * from "./core/factories/NotificationChannel.factory";
 export * from "./core/templates/template.service";
 
 // Channels
-export * from "./telegram/channels/Telegram.channel";
-export * from "./whatsapp/channel/whatsapp.channel";
-export * from "./sms/sms.channel";
-export * from "./mail/mail.channel";
-export * from "./discord/discord.channel";
-export * from "./teams/teams.channel";
-export * from "./firebase/firebase.channel";
-export * from "./messenger/messenger.channel";
-export * from "./slack/slack.channel";
-export * from "./webhook/webhook.channel";
-export * from "./onesignal/onesignal.channel";
-export * from "./webpush/webpush.channel";
-export * from "./inapp/inapp.channel";
-export * from "./inapp/providers/pusher-inapp.provider";
-
-
+export * from "./channels/telegram/channels/Telegram.channel";
+export * from "./channels/whatsapp/channel/whatsapp.channel";
+export * from "./channels/sms/sms.channel";
+export * from "./channels/mail/mail.channel";
+export * from "./channels/discord/discord.channel";
+export * from "./channels/teams/teams.channel";
+export * from "./channels/firebase/firebase.channel";
+export * from "./channels/messenger/messenger.channel";
+export * from "./channels/slack/slack.channel";
+export * from "./channels/webhook/webhook.channel";
+export * from "./channels/onesignal/onesignal.channel";
+export * from "./channels/webpush/webpush.channel";
+export * from "./channels/inapp/inapp.channel";
+export * from "./channels/inapp/providers/pusher-inapp.provider";
 
 // Module, service, processor
 export * from "./notification.module";
@@ -70,8 +68,8 @@ export * from "./notification.processor";
 export * from "./notification.processors";
 
 // Telegram integration
-export * from "./telegram/telegram.module";
-export * from "./telegram/telegram.service";
-export * from "./telegram/telegram.controller";
-export * from "./telegram/dto/Telegram-webhook.dto";
-export * from "./telegram/interfaces/telegram-user-repository.interface";
+export * from "./channels/telegram/telegram.module";
+export * from "./channels/telegram/telegram.service";
+export * from "./channels/telegram/telegram.controller";
+export * from "./channels/telegram/dto/Telegram-webhook.dto";
+export * from "./channels/telegram/interfaces/telegram-user-repository.interface";
