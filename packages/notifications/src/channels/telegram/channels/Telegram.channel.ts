@@ -35,10 +35,6 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
     const token = this.configService.telegramToken;
     if (token) {
       this.bot = new TelegramBotCtor(token, { polling: false });
-    } else {
-      this.logger.warn(
-        "Telegram token missing. TelegramChannel will not function.",
-      );
     }
   }
 

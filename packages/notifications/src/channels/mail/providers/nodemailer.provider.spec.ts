@@ -58,6 +58,21 @@ describe("NodemailerMailProvider", () => {
     );
   });
 
+  it("should not warn when Nodemailer is entirely unconfigured", () => {
+    const unconfiguredProvider = new NodemailerMailProvider({
+      emailUser: undefined,
+      emailPass: undefined,
+      emailService: undefined,
+      emailHost: undefined,
+      emailPort: undefined,
+    } as any);
+    const warnSpy = vi.spyOn((unconfiguredProvider as any).logger, "warn");
+
+    unconfiguredProvider.onModuleInit();
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
   it("should support dynamic SMTP override", async () => {
     const dynamicTransporter = { sendMail: jest.fn().mockResolvedValue({}) };
     (nodemailer.createTransport as jest.Mock).mockReturnValueOnce(

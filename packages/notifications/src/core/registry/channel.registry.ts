@@ -8,7 +8,9 @@ export class ChannelRegistry {
   private readonly channels = new Map<string, INotificationChannel>();
 
   public register(channel: INotificationChannel) {
-    this.logger.log(`Registering notification channel: ${channel.name}`);
+    // Registration is internal setup, not a notification delivery event.
+    // Keep it at debug level so unused channels do not clutter application logs.
+    this.logger.debug(`Registering notification channel: ${channel.name}`);
     this.channels.set(channel.name, channel);
   }
 

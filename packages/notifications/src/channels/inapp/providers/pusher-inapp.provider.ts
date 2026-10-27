@@ -38,9 +38,9 @@ export class PusherInAppProvider implements IInAppProvider {
           `Failed to initialize default Pusher client: ${err.message}`,
         );
       }
-    } else {
+    } else if (appId || key || secret || cluster) {
       this.logger.warn(
-        "Pusher credentials missing. PusherInAppProvider will not function without dynamic credentials.",
+        "Pusher configuration is incomplete; configure PUSHER_APP_ID, PUSHER_KEY, PUSHER_SECRET, and PUSHER_CLUSTER.",
       );
     }
   }

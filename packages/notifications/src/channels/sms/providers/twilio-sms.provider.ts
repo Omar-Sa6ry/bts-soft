@@ -27,9 +27,9 @@ export class TwilioSmsProvider implements ISmsProvider {
 
     if (sid && token) {
       this.client = new Twilio(sid, token);
-    } else {
+    } else if (sid || token || this.configService.twilioSmsNumber) {
       this.logger.warn(
-        "Twilio credentials missing. TwilioSmsProvider will not function without dynamic credentials.",
+        "Twilio SMS configuration is incomplete; configure both TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.",
       );
     }
   }

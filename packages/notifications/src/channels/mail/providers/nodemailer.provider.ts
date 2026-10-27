@@ -27,9 +27,11 @@ export class NodemailerMailProvider implements IMailProvider, OnModuleInit {
     const port = this.configService.emailPort;
 
     if (!user || !pass) {
-      this.logger.warn(
-        "Email credentials missing, Nodemailer transporter will not function correctly.",
-      );
+      if (user || pass || service || host || port) {
+        this.logger.warn(
+          "Email credentials are incomplete; Nodemailer will be unavailable until EMAIL_USER and EMAIL_PASS are configured.",
+        );
+      }
       return;
     }
 

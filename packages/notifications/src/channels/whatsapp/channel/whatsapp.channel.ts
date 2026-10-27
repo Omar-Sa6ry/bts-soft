@@ -31,9 +31,9 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
 
     if (sid && token) {
       this.client = new Twilio(sid, token);
-    } else {
+    } else if (sid || token || this.configService.twilioWhatsappNumber) {
       this.logger.warn(
-        "Twilio credentials missing. WhatsAppChannel will not function.",
+        "Twilio WhatsApp configuration is incomplete; configure both TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.",
       );
     }
   }

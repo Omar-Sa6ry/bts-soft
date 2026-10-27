@@ -47,8 +47,10 @@ export class FirebaseChannel implements INotificationChannel, OnModuleInit {
           });
           this.initialized = true;
           this.logger.log("Firebase Admin SDK initialized from inline credentials.");
-        } else {
-          this.logger.warn("Firebase credentials missing. FirebaseChannel will not function.");
+        } else if (serviceAccountPath || projectId || clientEmail || privateKey) {
+          this.logger.warn(
+            "Firebase credentials are incomplete; provide FIREBASE_SERVICE_ACCOUNT_PATH or PROJECT_ID, CLIENT_EMAIL, and PRIVATE_KEY.",
+          );
         }
       } else {
         this.initialized = true;

@@ -23,6 +23,9 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
 
   onModuleInit() {
     this.registry.register(this);
+    if (this.configService.discordWebhookUrl) {
+      this.logger.log("Discord notification channel is configured.");
+    }
   }
 
   public async send(message: NotificationMessage): Promise<void> {
