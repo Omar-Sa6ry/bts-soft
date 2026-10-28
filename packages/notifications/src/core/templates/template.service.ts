@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
 import * as Handlebars from 'handlebars';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { LruCache } from './lru-cache';
 
 export interface TemplateRenderOptions {
   template: string;
@@ -18,6 +19,7 @@ export interface TemplateFileRenderOptions {
  * ---------------
  * Provides Handlebars-based template rendering for notifications.
  * Supports inline templates, template files from disk, partials, helpers, and pre-compiled templates.
+ * Uses a bounded LRU cache to prevent memory leaks with dynamic template strings.
  *
  * Usage:
  *   const html = templateService.render({ template: '<h1>Hello {{name}}</h1>', context: { name: 'Omar' } });
@@ -26,9 +28,10 @@ export interface TemplateFileRenderOptions {
 @Injectable()
 export class TemplateService {
   private readonly logger = new Logger(TemplateService.name);
-  private readonly compiledCache = new Map<string, HandlebarsTemplateDelegate>();
+  private readonly compiledCache: LruCache<string, HandlebarsTemplateDelegate>;
 
-  constructor() {
+  constructor(@Optional() @Inject('TEMPLATE_CACHE_CAPACITY') maxCacheEntries?: number) {
+    this.compiledCache = new LruCache<string, HandlebarsTemplateDelegate>(maxCacheEntries ?? 500);
     this.registerDefaultHelpers();
   }
 

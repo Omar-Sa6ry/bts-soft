@@ -10,6 +10,23 @@ export interface QuietHoursConfig {
   timezone?: string;
 }
 
+export interface NotificationAttachment {
+  /** File name to be presented to recipient (e.g. 'invoice.pdf'). */
+  filename: string;
+  /** Content buffer or string (plain or base64). */
+  content?: string | Buffer;
+  /** Local file system path if reading from disk. */
+  path?: string;
+  /** MIME type (e.g. 'application/pdf', 'image/png'). */
+  contentType?: string;
+  /** Content transfer encoding, e.g. 'base64'. */
+  encoding?: string;
+  /** Content-Disposition: 'attachment' or 'inline'. Defaults to 'attachment'. */
+  disposition?: "attachment" | "inline";
+  /** Content ID for referencing inline images (e.g. '<my-img-cid>'). */
+  cid?: string;
+}
+
 export interface NotificationMessage {
   /** Recipient identifier (email address, phone number, FCM token, chat ID, etc.). */
   recipientId: string;
@@ -22,6 +39,27 @@ export interface NotificationMessage {
 
   /** Email subject line. Required for the email channel. */
   subject?: string;
+
+  /** Carbon Copy (CC) recipients for email delivery. */
+  cc?: string | string[];
+
+  /** Blind Carbon Copy (BCC) recipients for email delivery. */
+  bcc?: string | string[];
+
+  /** Reply-To email address. */
+  replyTo?: string;
+
+  /** File attachments supported across email providers. */
+  attachments?: NotificationAttachment[];
+
+  /** Distributed tracing W3C traceparent header value (e.g. '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'). */
+  traceparent?: string;
+
+  /** Distributed tracing W3C tracestate header value. */
+  tracestate?: string;
+
+  /** Distributed correlation identifier across asynchronous workflows. */
+  correlationId?: string;
 
   /**
    * Notification Category (e.g. TRANSACTIONAL, MARKETING, SECURITY, SYSTEM).

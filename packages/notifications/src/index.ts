@@ -53,6 +53,14 @@ export * from "./core/retention/NotificationLogRetentionService";
 export * from "./core/registry/channel.registry";
 export * from "./core/factories/NotificationChannel.factory";
 export * from "./core/templates/template.service";
+export * from "./core/templates/lru-cache";
+
+// Resilience & DLQ
+export * from "./core/resilience/CircuitBreaker.service";
+export * from "./core/dlq/DeadLetterQueue.service";
+
+// Security
+export * from "./core/security/ssrf-validator";
 
 // Channels
 export * from "./channels/telegram/channels/Telegram.channel";

@@ -44,6 +44,7 @@ describe("DiscordChannel", () => {
     expect(httpService.post).toHaveBeenCalledWith(
       "https://discord.com/api/default",
       expect.objectContaining({ content: "Discord Hello" }),
+      expect.objectContaining({ timeout: 8000 }),
     );
   });
 
@@ -57,6 +58,7 @@ describe("DiscordChannel", () => {
     expect(httpService.post).toHaveBeenCalledWith(
       "https://discord.com/api/dynamic",
       expect.any(Object),
+      expect.objectContaining({ timeout: 8000 }),
     );
   });
 
@@ -69,6 +71,7 @@ describe("DiscordChannel", () => {
     expect(httpService.post).toHaveBeenCalledWith(
       "https://discord.com/api/recipient-url",
       expect.any(Object),
+      expect.objectContaining({ timeout: 8000 }),
     );
   });
 

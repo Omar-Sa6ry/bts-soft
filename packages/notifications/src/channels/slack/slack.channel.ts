@@ -11,6 +11,7 @@ import {
   NotificationProviderError,
 } from "../../core/errors/NotificationError";
 import { ChannelType } from "../../core/enums/ChannelType.enum";
+import { SsrfValidator } from "../../core/security/ssrf-validator";
 
 @Injectable()
 export class SlackChannel implements INotificationChannel, OnModuleInit {
@@ -62,14 +63,26 @@ export class SlackChannel implements INotificationChannel, OnModuleInit {
       let rawResponse: unknown;
       let providerMessageId: string | undefined;
 
+      const traceHeaders: Record<string, string> = {};
+      if (message.traceparent) traceHeaders["traceparent"] = message.traceparent;
+      if (message.tracestate) traceHeaders["tracestate"] = message.tracestate;
+      if (message.correlationId) traceHeaders["X-Correlation-Id"] = message.correlationId;
+
+      const timeout = Number(channelOptions?.timeout) || 8000;
+
       if (webhookUrl) {
+        if (recipientId && (recipientId.startsWith("http://") || recipientId.startsWith("https://"))) {
+          await SsrfValidator.validateUrl(webhookUrl, {
+            allowLocalhost: channelOptions?.allowLocalhost === true,
+          });
+        }
         this.logger.log("Sending Slack notification via Webhook.");
         const payload = {
           text: title ? `*${title}*\n${body}` : body,
           ...(blocks ? { blocks } : {}),
         };
         const res = await lastValueFrom(
-          this.httpService.post(webhookUrl, payload),
+          this.httpService.post(webhookUrl, payload, { headers: traceHeaders, timeout }),
         );
         rawResponse = res?.data;
       } else {
@@ -105,7 +118,9 @@ export class SlackChannel implements INotificationChannel, OnModuleInit {
               headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
+                ...traceHeaders,
               },
+              timeout,
             },
           ),
         );

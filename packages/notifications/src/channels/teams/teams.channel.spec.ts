@@ -44,6 +44,7 @@ describe("TeamsChannel", () => {
     expect(httpService.post).toHaveBeenCalledWith(
       "https://teams.com/api/default",
       expect.objectContaining({ text: "Teams Hello" }),
+      expect.objectContaining({ timeout: 8000 }),
     );
   });
 
@@ -57,6 +58,7 @@ describe("TeamsChannel", () => {
     expect(httpService.post).toHaveBeenCalledWith(
       "https://teams.com/api/dynamic",
       expect.any(Object),
+      expect.objectContaining({ timeout: 8000 }),
     );
   });
 
@@ -69,6 +71,7 @@ describe("TeamsChannel", () => {
     expect(httpService.post).toHaveBeenCalledWith(
       "https://teams.com/api/recipient-url",
       expect.any(Object),
+      expect.objectContaining({ timeout: 8000 }),
     );
   });
 

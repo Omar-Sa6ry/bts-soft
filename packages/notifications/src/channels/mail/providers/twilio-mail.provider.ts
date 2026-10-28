@@ -62,19 +62,47 @@ export class TwilioMailProvider implements IMailProvider {
       ...restSendgridOptions
     } = sendgridOptions || {};
 
+    const toAddresses = [{ email: to }];
+    const ccAddresses = message.cc
+      ? (Array.isArray(message.cc) ? message.cc : [message.cc]).map((c) => ({ email: c }))
+      : undefined;
+    const bccAddresses = message.bcc
+      ? (Array.isArray(message.bcc) ? message.bcc : [message.bcc]).map((b) => ({ email: b }))
+      : undefined;
+
+    const attachments = message.attachments?.map((att) => {
+      let contentBase64 = "";
+      if (Buffer.isBuffer(att.content)) {
+        contentBase64 = att.content.toString("base64");
+      } else if (typeof att.content === "string") {
+        contentBase64 = att.encoding === "base64" ? att.content : Buffer.from(att.content).toString("base64");
+      }
+      return {
+        content: contentBase64,
+        filename: att.filename,
+        type: att.contentType,
+        disposition: att.disposition || "attachment",
+        content_id: att.cid,
+      };
+    });
+
     const payload = {
       personalizations: [
         {
-          to: [{ email: to }],
+          to: toAddresses,
+          ...(ccAddresses && ccAddresses.length > 0 ? { cc: ccAddresses } : {}),
+          ...(bccAddresses && bccAddresses.length > 0 ? { bcc: bccAddresses } : {}),
           ...((personalizations?.[0] as Record<string, unknown>) || {}),
         },
       ],
       from: { email: sender },
+      ...(message.replyTo ? { reply_to: { email: message.replyTo } } : {}),
       subject,
       content: [
         { type: "text/plain", value: textContent },
         ...(htmlContent ? [{ type: "text/html", value: htmlContent }] : []),
       ],
+      ...(attachments && attachments.length > 0 ? { attachments } : {}),
       ...restSendgridOptions,
     };
 
@@ -82,16 +110,22 @@ export class TwilioMailProvider implements IMailProvider {
       `Sending email from ${sender} to ${to} via Twilio SendGrid | Subject: "${subject}"`,
     );
 
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    if (message.traceparent) headers["traceparent"] = message.traceparent;
+    if (message.tracestate) headers["tracestate"] = message.tracestate;
+    if (message.correlationId) headers["X-Correlation-Id"] = message.correlationId;
+
     try {
       const response = await lastValueFrom(
         this.httpService.post(
           "https://api.sendgrid.com/v3/mail/send",
           payload,
           {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
+            headers,
+            timeout: 8000,
           },
         ),
       );

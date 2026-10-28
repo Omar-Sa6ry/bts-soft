@@ -11,6 +11,7 @@ import {
   NotificationProviderError,
 } from "../../core/errors/NotificationError";
 import { ChannelType } from "../../core/enums/ChannelType.enum";
+import { SsrfValidator } from "../../core/security/ssrf-validator";
 
 @Injectable()
 export class TeamsChannel implements INotificationChannel, OnModuleInit {
@@ -56,13 +57,21 @@ export class TeamsChannel implements INotificationChannel, OnModuleInit {
         (recipientId.startsWith("http://") ||
           recipientId.startsWith("https://")))
     );
-    this.logger.log(
-      `Sending Teams notification via ${isDynamic ? "dynamic" : "default"} webhook.`,
-    );
+    if (isDynamic && webhookUrl) {
+      await SsrfValidator.validateUrl(webhookUrl, {
+        allowLocalhost: channelOptions?.allowLocalhost === true,
+      });
+    }
+
+    const headers: Record<string, string> = {};
+    if (message.traceparent) headers["traceparent"] = message.traceparent;
+    if (message.tracestate) headers["tracestate"] = message.tracestate;
+    if (message.correlationId) headers["X-Correlation-Id"] = message.correlationId;
 
     try {
+      const timeout = Number(channelOptions?.timeout) || 8000;
       const response = await lastValueFrom(
-        this.httpService.post(webhookUrl, { text: body }),
+        this.httpService.post(webhookUrl, { text: body }, { headers, timeout }),
       );
       this.logger.log(`Teams message sent successfully.`);
 

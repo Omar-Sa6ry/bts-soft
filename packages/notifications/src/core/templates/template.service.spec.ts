@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TemplateService } from './template.service';
 
@@ -81,15 +82,20 @@ describe('TemplateService', () => {
     expect(() => service.render({ template, context: {} })).toThrow('Failed to render template');
   });
 
-  it('should cache compiled templates', () => {
-    const template = 'Cached {{value}}';
-    const context = { value: '1' };
-    
-    // First call compiles and caches
-    service.render({ template, context });
-    
-    // Check if it's in the cache
-    expect((service as any).compiledCache.has(template)).toBeTruthy();
+  it('should cache compiled templates and evict oldest when capacity is exceeded', () => {
+    const limitedService = new TemplateService(2);
+    limitedService.render({ template: 'T1: {{val}}', context: { val: 1 } });
+    limitedService.render({ template: 'T2: {{val}}', context: { val: 2 } });
+
+    expect((limitedService as any).compiledCache.size).toBe(2);
+    expect((limitedService as any).compiledCache.has('T1: {{val}}')).toBe(true);
+
+    // Render 3rd -> evicts T1
+    limitedService.render({ template: 'T3: {{val}}', context: { val: 3 } });
+    expect((limitedService as any).compiledCache.size).toBe(2);
+    expect((limitedService as any).compiledCache.has('T1: {{val}}')).toBe(false);
+    expect((limitedService as any).compiledCache.has('T3: {{val}}')).toBe(true);
   });
 });
+
 

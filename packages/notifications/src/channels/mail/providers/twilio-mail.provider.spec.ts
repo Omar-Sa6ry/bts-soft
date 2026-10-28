@@ -54,10 +54,11 @@ describe("TwilioMailProvider", () => {
         ]),
       }),
       expect.objectContaining({
-        headers: {
+        headers: expect.objectContaining({
           Authorization: "Bearer SG.test_key",
           "Content-Type": "application/json",
-        },
+        }),
+        timeout: 8000,
       }),
     );
   });

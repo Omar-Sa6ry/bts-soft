@@ -12,6 +12,7 @@ import {
   NotificationProviderError,
 } from "../../core/errors/NotificationError";
 import { ChannelType } from "../../core/enums/ChannelType.enum";
+import { SsrfValidator } from "../../core/security/ssrf-validator";
 
 @Injectable()
 export class WebhookChannel implements INotificationChannel, OnModuleInit {
@@ -39,6 +40,9 @@ export class WebhookChannel implements INotificationChannel, OnModuleInit {
       subject,
       context,
       channelOptions,
+      traceparent,
+      tracestate,
+      correlationId,
     } = message;
 
     if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
@@ -46,6 +50,10 @@ export class WebhookChannel implements INotificationChannel, OnModuleInit {
         "Webhook recipientId must be a valid HTTP or HTTPS URL.",
       );
     }
+
+    // SSRF Guard: Validate recipient URL against private IPs, localhost and AWS metadata
+    const allowLocalhost = channelOptions?.allowLocalhost === true;
+    await SsrfValidator.validateUrl(url, { allowLocalhost });
 
     const signingSecret =
       (channelOptions?.signingSecret as string | undefined) ||
@@ -69,6 +77,10 @@ export class WebhookChannel implements INotificationChannel, OnModuleInit {
       "Content-Type": "application/json",
     };
 
+    if (traceparent) headers["traceparent"] = traceparent;
+    if (tracestate) headers["tracestate"] = tracestate;
+    if (correlationId) headers["X-Correlation-Id"] = correlationId;
+
     if (signingSecret) {
       const hmac = crypto.createHmac("sha256", signingSecret);
       hmac.update(payloadString);
@@ -80,8 +92,9 @@ export class WebhookChannel implements INotificationChannel, OnModuleInit {
     this.logger.log(`Sending Webhook notification to URL: ${url}`);
 
     try {
+      const timeout = Number(channelOptions?.timeout) || 8000;
       const response = await lastValueFrom(
-        this.httpService.post(url, payloadString, { headers }),
+        this.httpService.post(url, payloadString, { headers, timeout }),
       );
       this.logger.log(`Webhook notification sent successfully to ${url}`);
 

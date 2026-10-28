@@ -5,6 +5,7 @@ import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { NodemailerMailProvider } from "./providers/nodemailer.provider";
 import { TwilioMailProvider } from "./providers/twilio-mail.provider";
 import { SesMailProvider } from "./providers/ses-mail.provider";
+import { CircuitBreakerService } from "../../core/resilience/CircuitBreaker.service";
 
 describe("EmailChannel", () => {
   let channel: EmailChannel;
@@ -34,6 +35,7 @@ describe("EmailChannel", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EmailChannel,
+        CircuitBreakerService,
         { provide: NotificationConfigService, useValue: configService },
         { provide: ChannelRegistry, useValue: { register: jest.fn() } },
         { provide: NodemailerMailProvider, useValue: nodemailerProvider },

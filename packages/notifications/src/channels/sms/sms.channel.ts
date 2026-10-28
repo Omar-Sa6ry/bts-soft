@@ -8,6 +8,7 @@ import { TwilioSmsProvider } from "./providers/twilio-sms.provider";
 import { SmsMisrProvider } from "./providers/smsmisr.provider";
 import { VonageSmsProvider } from "./providers/vonage-sms.provider";
 import { NotificationClientError } from "../../core/errors/NotificationError";
+import { CircuitBreakerService } from "../../core/resilience/CircuitBreaker.service";
 
 @Injectable()
 export class SmsChannel implements INotificationChannel, OnModuleInit {
@@ -20,6 +21,7 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
     private readonly twilioProvider: TwilioSmsProvider,
     private readonly smsmisrProvider: SmsMisrProvider,
     private readonly vonageProvider: VonageSmsProvider,
+    private readonly circuitBreaker: CircuitBreakerService,
   ) {}
 
   onModuleInit() {
@@ -56,13 +58,15 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
         );
 
         let result: void | NotificationDispatchResult;
-        if (currentProvider === "smsmisr") {
-          result = await this.smsmisrProvider.send(message);
-        } else if (currentProvider === "vonage") {
-          result = await this.vonageProvider.send(message);
-        } else {
-          result = await this.twilioProvider.send(message);
-        }
+        result = await this.circuitBreaker.execute(`sms:${currentProvider}`, async () => {
+          if (currentProvider === "smsmisr") {
+            return this.smsmisrProvider.send(message);
+          } else if (currentProvider === "vonage") {
+            return this.vonageProvider.send(message);
+          } else {
+            return this.twilioProvider.send(message);
+          }
+        });
 
         return (
           result ?? {

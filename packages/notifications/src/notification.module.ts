@@ -56,6 +56,8 @@ import { OneSignalChannel } from "./channels/onesignal/onesignal.channel";
 import { WebPushChannel } from "./channels/webpush/webpush.channel";
 import { InAppChannel } from "./channels/inapp/inapp.channel";
 import { PusherInAppProvider } from "./channels/inapp/providers/pusher-inapp.provider";
+import { CircuitBreakerService } from "./core/resilience/CircuitBreaker.service";
+import { DeadLetterQueueService } from "./core/dlq/DeadLetterQueue.service";
 import {
   NOTIFICATION_RATE_LIMITER,
   NOTIFICATION_DEDUP_STORE,
@@ -78,6 +80,8 @@ import {
   providers: [
     NotificationConfigService,
     NotificationService,
+    CircuitBreakerService,
+    DeadLetterQueueService,
     NotificationOutboxRelay,
     NotificationLogRetentionService,
     NotificationProcessor,
@@ -152,6 +156,8 @@ import {
     NotificationMetricsObserver,
     NotificationOutboxRelay,
     NotificationLogRetentionService,
+    CircuitBreakerService,
+    DeadLetterQueueService,
   ],
 })
 export class NotificationModule {

@@ -9,7 +9,7 @@ import { NOTIFICATION_LOG_REPOSITORY, NOTIFICATION_RATE_LIMITER, USER_PREFERENCE
 
 describe("NotificationService", () => {
   let service: NotificationService;
-  let queue: jest.Mocked<{ add: jest.Mock; getFailed: jest.Mock; getJob: jest.Mock }>;
+  let queue: jest.Mocked<{ add: jest.Mock; addBulk: jest.Mock; getFailed: jest.Mock; getJob: jest.Mock }>;
   let logRepo: jest.Mocked<{ create: jest.Mock; updateByJobId: jest.Mock; findByJobId: jest.Mock }>;
   let rateLimiter: jest.Mocked<{ isAllowed: jest.Mock }>;
   let preferenceRepo: jest.Mocked<{ isOptedOut: jest.Mock }>;
@@ -18,6 +18,7 @@ describe("NotificationService", () => {
   beforeEach(async () => {
     queue = {
       add: jest.fn().mockResolvedValue({ id: "queue-id" }),
+      addBulk: jest.fn().mockResolvedValue([{ id: "bulk-1" }, { id: "bulk-2" }]),
       getFailed: jest.fn().mockResolvedValue([]),
       getJob: jest.fn().mockResolvedValue(null),
     };
@@ -232,5 +233,25 @@ describe("NotificationService", () => {
     const minimalService = minimalModule.get<NotificationService>(NotificationService);
     await expect(minimalService.send(ChannelType.SMS, { recipientId: "+201234567890", body: "hi" }))
       .resolves.toBeUndefined();
+  });
+
+  it("sendBatchFast enqueues bulk messages using queue.addBulk", async () => {
+    const requests = [
+      { channel: ChannelType.EMAIL, message: { recipientId: "u1@example.com", body: "Batch 1" } },
+      { channel: ChannelType.EMAIL, message: { recipientId: "u2@example.com", body: "Batch 2" } },
+    ];
+
+    const bulkResults = await service.sendBatchFast(requests);
+    expect(bulkResults.length).toBe(2);
+    expect(bulkResults[0].accepted).toBe(true);
+    expect(bulkResults[1].accepted).toBe(true);
+    expect(queue.addBulk).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: ChannelType.EMAIL,
+          data: expect.objectContaining({ channel: ChannelType.EMAIL }),
+        }),
+      ]),
+    );
   });
 });

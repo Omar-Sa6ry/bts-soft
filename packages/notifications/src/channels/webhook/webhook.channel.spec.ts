@@ -164,4 +164,13 @@ describe("WebhookChannel", () => {
       }),
     ).rejects.toThrow(NotificationProviderError);
   });
+
+  it("should reject private and loopback addresses due to SSRF protection", async () => {
+    await expect(
+      channel.send({
+        recipientId: "http://127.0.0.1:9000/internal-admin",
+        body: "SSRF exploit attempt",
+      }),
+    ).rejects.toThrow(/SSRF Protection/);
+  });
 });

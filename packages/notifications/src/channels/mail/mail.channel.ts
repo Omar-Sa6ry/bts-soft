@@ -8,11 +8,13 @@ import { NodemailerMailProvider } from "./providers/nodemailer.provider";
 import { TwilioMailProvider } from "./providers/twilio-mail.provider";
 import { SesMailProvider } from "./providers/ses-mail.provider";
 import { NotificationClientError } from "../../core/errors/NotificationError";
+import { CircuitBreakerService } from "../../core/resilience/CircuitBreaker.service";
 
 /**
  * EmailChannel
  * Acts as an orchestrator that switches between different mail providers
  * (Nodemailer, Twilio SendGrid, or AWS SES) using the Strategy Pattern.
+ * Protected by CircuitBreaker to instantly failover when a provider is degraded.
  */
 @Injectable()
 export class EmailChannel implements INotificationChannel, OnModuleInit {
@@ -25,6 +27,7 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
     private readonly nodemailerProvider: NodemailerMailProvider,
     private readonly twilioProvider: TwilioMailProvider,
     private readonly sesProvider: SesMailProvider,
+    private readonly circuitBreaker: CircuitBreakerService,
   ) {}
 
   onModuleInit() {
@@ -72,17 +75,19 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
         );
 
         let result: void | NotificationDispatchResult;
-        if (currentProvider === "twilio" || currentProvider === "sendgrid") {
-          result = await this.twilioProvider.send(message, sender);
-        } else if (
-          currentProvider === "ses" ||
-          currentProvider === "aws" ||
-          currentProvider === "aws-ses"
-        ) {
-          result = await this.sesProvider.send(message, sender);
-        } else {
-          result = await this.nodemailerProvider.send(message, sender);
-        }
+        result = await this.circuitBreaker.execute(`email:${currentProvider}`, async () => {
+          if (currentProvider === "twilio" || currentProvider === "sendgrid") {
+            return this.twilioProvider.send(message, sender);
+          } else if (
+            currentProvider === "ses" ||
+            currentProvider === "aws" ||
+            currentProvider === "aws-ses"
+          ) {
+            return this.sesProvider.send(message, sender);
+          } else {
+            return this.nodemailerProvider.send(message, sender);
+          }
+        });
 
         return (
           result ?? {

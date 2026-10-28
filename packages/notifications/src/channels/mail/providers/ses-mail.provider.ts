@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { SESClient, SendEmailCommand, SendRawEmailCommand } from "@aws-sdk/client-ses";
 import { IMailProvider } from "../interfaces/mail-provider.interface";
 import { NotificationMessage } from "../../../core/models/NotificationMessage.interface";
 import { NotificationDispatchResult } from "../../../core/models/NotificationDispatchResult.interface";
@@ -98,32 +98,95 @@ export class SesMailProvider implements IMailProvider {
       (isHtml ? body : undefined);
     const textContent = isHtml ? body.replace(/<[^>]*>?/gm, "") : body;
 
-    const command = new SendEmailCommand({
-      Source: sender,
-      Destination: {
-        ToAddresses: [to],
-      },
-      Message: {
-        Subject: {
-          Data: subject,
-          Charset: "UTF-8",
+    const toAddresses = [to];
+    const ccAddresses = message.cc
+      ? (Array.isArray(message.cc) ? message.cc : [message.cc])
+      : undefined;
+    const bccAddresses = message.bcc
+      ? (Array.isArray(message.bcc) ? message.bcc : [message.bcc])
+      : undefined;
+    const replyToAddresses = message.replyTo ? [message.replyTo] : undefined;
+
+    // Check if attachments are present. If so, build raw MIME message for SES.
+    let command: any;
+    if (message.attachments && message.attachments.length > 0) {
+      const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const mimeParts: string[] = [
+        `From: ${sender}`,
+        `To: ${toAddresses.join(", ")}`,
+        ...(ccAddresses && ccAddresses.length > 0 ? [`Cc: ${ccAddresses.join(", ")}`] : []),
+        ...(bccAddresses && bccAddresses.length > 0 ? [`Bcc: ${bccAddresses.join(", ")}`] : []),
+        ...(replyToAddresses ? [`Reply-To: ${replyToAddresses.join(", ")}`] : []),
+        `Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`,
+        "MIME-Version: 1.0",
+        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        "",
+        `--${boundary}`,
+        `Content-Type: ${htmlContent ? "text/html" : "text/plain"}; charset=UTF-8`,
+        "Content-Transfer-Encoding: 7bit",
+        "",
+        htmlContent || textContent,
+      ];
+
+      for (const att of message.attachments) {
+        let attData = "";
+        if (Buffer.isBuffer(att.content)) {
+          attData = att.content.toString("base64");
+        } else if (typeof att.content === "string") {
+          attData = att.encoding === "base64" ? att.content : Buffer.from(att.content).toString("base64");
+        }
+        mimeParts.push(
+          `--${boundary}`,
+          `Content-Type: ${att.contentType || "application/octet-stream"}; name="${att.filename}"`,
+          "Content-Transfer-Encoding: base64",
+          `Content-Disposition: ${att.disposition || "attachment"}; filename="${att.filename}"`,
+          ...(att.cid ? [`Content-ID: <${att.cid}>`] : []),
+          "",
+          attData,
+        );
+      }
+
+      mimeParts.push(`--${boundary}--`, "");
+      const rawPayload = Buffer.from(mimeParts.join("\r\n"));
+
+      command = new SendRawEmailCommand({
+        Source: sender,
+        Destinations: [...toAddresses, ...(ccAddresses || []), ...(bccAddresses || [])],
+        RawMessage: {
+          Data: rawPayload,
         },
-        Body: {
-          Text: {
-            Data: textContent,
+      });
+    } else {
+      command = new SendEmailCommand({
+        Source: sender,
+        Destination: {
+          ToAddresses: toAddresses,
+          ...(ccAddresses && ccAddresses.length > 0 ? { CcAddresses: ccAddresses } : {}),
+          ...(bccAddresses && bccAddresses.length > 0 ? { BccAddresses: bccAddresses } : {}),
+        },
+        ReplyToAddresses: replyToAddresses,
+        Message: {
+          Subject: {
+            Data: subject,
             Charset: "UTF-8",
           },
-          ...(htmlContent
-            ? {
-                Html: {
-                  Data: htmlContent,
-                  Charset: "UTF-8",
-                },
-              }
-            : {}),
+          Body: {
+            Text: {
+              Data: textContent,
+              Charset: "UTF-8",
+            },
+            ...(htmlContent
+              ? {
+                  Html: {
+                    Data: htmlContent,
+                    Charset: "UTF-8",
+                  },
+                }
+              : {}),
+          },
         },
-      },
-    });
+      });
+    }
 
     this.logger.log(
       `Sending email from ${sender} to ${to} via AWS SES | Subject: "${subject}"`,

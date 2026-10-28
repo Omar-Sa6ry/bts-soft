@@ -39,6 +39,9 @@ export interface NotificationRequest {
 export interface NotificationJobData {
   channel: ChannelType;
   message: NotificationMessage;
+  traceparent?: string;
+  tracestate?: string;
+  correlationId?: string;
 }
 
 /** `accepted` means queued, not delivered to the recipient. */
@@ -205,6 +208,130 @@ export class NotificationService {
     return results;
   }
 
+  /**
+   * High-Throughput Batch Enqueueing using BullMQ `addBulk()`.
+   * Enqueues hundreds/thousands of notification jobs atomically in single Redis round-trips.
+   * Runs pre-flight checks concurrently before queue insertion.
+   */
+  public async sendBatchFast(
+    requests: NotificationRequest[],
+  ): Promise<NotificationBulkResult[]> {
+    if (!requests || requests.length === 0) return [];
+
+    const results = new Array<NotificationBulkResult>(requests.length);
+    const channelBatches = new Map<
+      ChannelType,
+      Array<{
+        index: number;
+        jobId: string;
+        request: NotificationRequest;
+      }>
+    >();
+
+    // Step 1: Run preflight checks concurrently
+    await Promise.all(
+      requests.map(async (req, index) => {
+        const jobId = randomUUID();
+        try {
+          const skipReason = await this.runPreflightChecks(req.channel, req.message);
+          if (skipReason) {
+            await this.recordSkipped(jobId, req.channel, req.message, skipReason);
+            results[index] = {
+              index,
+              accepted: false,
+              result: { accepted: false, status: "skipped", reason: skipReason, jobId },
+            };
+            return;
+          }
+
+          let batch = channelBatches.get(req.channel);
+          if (!batch) {
+            batch = [];
+            channelBatches.set(req.channel, batch);
+          }
+          batch.push({ index, jobId, request: req });
+        } catch (error: unknown) {
+          const err = error instanceof Error ? error : new Error(String(error));
+          results[index] = {
+            index,
+            accepted: false,
+            error: { name: err.name, message: err.message },
+          };
+        }
+      }),
+    );
+
+    // Step 2: Enqueue bulk into queues per channel
+    await Promise.all(
+      Array.from(channelBatches.entries()).map(async ([channel, items]) => {
+        if (items.length === 0) return;
+
+        const queue = this.getQueue(channel);
+        const policy = this.resolvePolicy(channel);
+
+        const bulkJobPayloads = items.map((item) => {
+          const { message } = item.request;
+          const priority = message.priority ?? NotificationPriority.NORMAL;
+          const delay = this.calculateDelay(message);
+
+          return {
+            name: channel,
+            data: {
+              channel,
+              message,
+              traceparent: message.traceparent,
+              tracestate: message.tracestate,
+              correlationId: message.correlationId,
+            },
+            opts: {
+              jobId: item.jobId,
+              attempts: policy.attempts,
+              backoff: {
+                type: policy.backoffType === "fixed" ? ("fixed" as const) : ("exponential" as const),
+                delay: policy.delay,
+              },
+              removeOnComplete: policy.removeOnComplete,
+              removeOnFail: policy.removeOnFail,
+              priority,
+              ...(delay ? { delay } : {}),
+            },
+          };
+        });
+
+        try {
+          // BullMQ addBulk round-trip
+          await queue.addBulk(bulkJobPayloads);
+
+          // Populate success results
+          for (const item of items) {
+            results[item.index] = {
+              index: item.index,
+              accepted: true,
+              result: { accepted: true, status: "queued", jobId: item.jobId },
+            };
+            this.notifyObservers((obs) =>
+              obs.onQueued?.(item.jobId, channel, item.request.message.recipientId),
+            );
+          }
+        } catch (bulkError: unknown) {
+          const err = bulkError instanceof Error ? bulkError : new Error(String(bulkError));
+          this.logger.error(`Bulk add failed for channel ${channel}: ${err.message}`, err.stack);
+
+          for (const item of items) {
+            results[item.index] = {
+              index: item.index,
+              accepted: false,
+              error: { name: err.name, message: err.message },
+            };
+            this.notifyObservers((obs) => obs.onEnqueueFailed?.(item.jobId, channel, err));
+          }
+        }
+      }),
+    );
+
+    return results;
+  }
+
   private async runPreflightChecks(channel: ChannelType, message: NotificationMessage): Promise<NotificationSkipReason | null> {
     if (message.expiresAt && new Date(message.expiresAt) <= new Date()) return NotificationSkipReason.EXPIRED;
     if (this.preferenceRepository && await this.preferenceRepository.isOptedOut(message.recipientId, channel, message.category)) {
@@ -326,15 +453,25 @@ export class NotificationService {
         if (!existingLog) await this.logRepository.updateByJobId(jobId, { status: NotificationStatus.QUEUED });
       }
 
-      await queue.add(channel, { channel, message }, {
-        jobId,
-        attempts: policy.attempts,
-        backoff: { type: policy.backoffType === "fixed" ? "fixed" : "exponential", delay: policy.delay },
-        removeOnComplete: policy.removeOnComplete,
-        removeOnFail: policy.removeOnFail,
-        priority,
-        ...(delay ? { delay } : {}),
-      });
+      await queue.add(
+        channel,
+        {
+          channel,
+          message,
+          traceparent: message.traceparent,
+          tracestate: message.tracestate,
+          correlationId: message.correlationId,
+        },
+        {
+          jobId,
+          attempts: policy.attempts,
+          backoff: { type: policy.backoffType === "fixed" ? "fixed" : "exponential", delay: policy.delay },
+          removeOnComplete: policy.removeOnComplete,
+          removeOnFail: policy.removeOnFail,
+          priority,
+          ...(delay ? { delay } : {}),
+        },
+      );
 
       this.logger.log(`Accepted [${channel}] Job=${jobId} RecipientRef=${recipientLogRef(message.recipientId)} Priority=${priority}${delay ? ` DelayMs=${delay}` : ""}`);
       this.notifyObservers((obs) => obs.onQueued?.(jobId, channel, message.recipientId));

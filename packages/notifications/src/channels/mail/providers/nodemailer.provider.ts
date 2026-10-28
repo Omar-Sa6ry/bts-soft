@@ -91,11 +91,24 @@ export class NodemailerMailProvider implements IMailProvider, OnModuleInit {
     const textContent = isHtml ? body.replace(/<[^>]*>?/gm, "") : body;
 
     try {
+      const attachments = message.attachments?.map((att) => ({
+        filename: att.filename,
+        content: att.content,
+        path: att.path,
+        contentType: att.contentType,
+        encoding: att.encoding,
+        cid: att.cid,
+      }));
+
       const info = await transporterToUse.sendMail({
         from: sender,
         to,
         subject,
         text: textContent,
+        ...(message.cc ? { cc: message.cc } : {}),
+        ...(message.bcc ? { bcc: message.bcc } : {}),
+        ...(message.replyTo ? { replyTo: message.replyTo } : {}),
+        ...(attachments && attachments.length > 0 ? { attachments } : {}),
         ...(htmlContent ? { html: htmlContent } : {}),
         ...restOptions,
       });

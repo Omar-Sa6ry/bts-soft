@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { SmsChannel } from "./sms.channel";
 import { NotificationConfigService } from "../../core/config/notification.config";
@@ -5,6 +6,7 @@ import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { TwilioSmsProvider } from "./providers/twilio-sms.provider";
 import { SmsMisrProvider } from "./providers/smsmisr.provider";
 import { VonageSmsProvider } from "./providers/vonage-sms.provider";
+import { CircuitBreakerService } from "../../core/resilience/CircuitBreaker.service";
 
 describe("SmsChannel (Orchestrator)", () => {
   let channel: SmsChannel;
@@ -31,6 +33,7 @@ describe("SmsChannel (Orchestrator)", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SmsChannel,
+        CircuitBreakerService,
         { provide: TwilioSmsProvider, useValue: mockTwilioProvider },
         { provide: SmsMisrProvider, useValue: mockSmsMisrProvider },
         { provide: VonageSmsProvider, useValue: mockVonageProvider },

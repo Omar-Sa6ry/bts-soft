@@ -47,6 +47,7 @@ describe("SlackChannel", () => {
       expect(httpService.post).toHaveBeenCalledWith(
         "https://hooks.slack.com/services/default-webhook",
         expect.objectContaining({ text: "Hello Webhook" }),
+        expect.objectContaining({ timeout: 8000 }),
       );
     });
 
@@ -59,6 +60,7 @@ describe("SlackChannel", () => {
       expect(httpService.post).toHaveBeenCalledWith(
         "https://hooks.slack.com/services/recipient-webhook",
         expect.objectContaining({ text: "Hello Recipient" }),
+        expect.objectContaining({ timeout: 8000 }),
       );
     });
 
@@ -74,6 +76,7 @@ describe("SlackChannel", () => {
       expect(httpService.post).toHaveBeenCalledWith(
         "https://hooks.slack.com/services/option-webhook",
         expect.objectContaining({ text: "Hello Override" }),
+        expect.objectContaining({ timeout: 8000 }),
       );
     });
 
@@ -87,6 +90,7 @@ describe("SlackChannel", () => {
       expect(httpService.post).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ text: "*Test Title*\nHello Body" }),
+        expect.objectContaining({ timeout: 8000 }),
       );
     });
   });

@@ -168,4 +168,27 @@ describe("SesMailProvider", () => {
       ),
     ).rejects.toThrow(NotificationProviderError);
   });
+
+  it("should send raw email command when attachments are provided", async () => {
+    await provider.send(
+      {
+        recipientId: "recipient@example.com",
+        body: "Hello with Attachment",
+        subject: "Report",
+        cc: "cc@example.com",
+        bcc: "bcc@example.com",
+        replyTo: "reply@example.com",
+        attachments: [
+          {
+            filename: "test.txt",
+            content: "Hello Attachment Content",
+            contentType: "text/plain",
+          },
+        ],
+      },
+      "sender@example.com",
+    );
+
+    expect(mockSesClient.send).toHaveBeenCalled();
+  });
 });
