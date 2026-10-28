@@ -1,4 +1,4 @@
-import { Module, Global } from "@nestjs/common";
+import { Module, Global, DynamicModule } from "@nestjs/common";
 import { HttpModule } from "@nestjs/axios";
 import { BullModule } from "@nestjs/bullmq";
 import { RedisModule } from "@bts-soft/cache";
@@ -30,6 +30,9 @@ import { ChannelRegistry } from "./core/registry/channel.registry";
 import { TemplateService } from "./core/templates/template.service";
 import { PhoneValidationService } from "./core/validation/phone-validation.service";
 import { LoggingNotificationObserver } from "./core/observer/LoggingNotificationObserver";
+import { NotificationMetricsObserver } from "./core/observer/NotificationMetricsObserver";
+import { NotificationOutboxRelay } from "./core/outbox/NotificationOutboxRelay";
+import { NotificationLogRetentionService } from "./core/retention/NotificationLogRetentionService";
 import { RedisRateLimiter } from "./core/rate-limiter/RedisRateLimiter.service";
 import { RedisDeduplicationStore } from "./core/deduplication/RedisDeduplicationStore";
 import { RedisUserPreferenceRepository } from "./core/preferences/RedisUserPreferenceRepository";
@@ -57,6 +60,7 @@ import {
   NOTIFICATION_RATE_LIMITER,
   NOTIFICATION_DEDUP_STORE,
   USER_PREFERENCE_REPOSITORY,
+  NOTIFICATION_OBSERVERS,
 } from "./core/constants/injection-tokens.const";
 
 @Global()
@@ -74,6 +78,8 @@ import {
   providers: [
     NotificationConfigService,
     NotificationService,
+    NotificationOutboxRelay,
+    NotificationLogRetentionService,
     NotificationProcessor,
     FirebaseFcmProcessor,
     FacebookMessengerProcessor,
@@ -92,6 +98,12 @@ import {
     ChannelRegistry,
     TemplateService,
     LoggingNotificationObserver,
+    NotificationMetricsObserver,
+    {
+      provide: NOTIFICATION_OBSERVERS,
+      useFactory: (logging: LoggingNotificationObserver, metrics: NotificationMetricsObserver) => [logging, metrics],
+      inject: [LoggingNotificationObserver, NotificationMetricsObserver],
+    },
     PhoneValidationService,
 
     RedisRateLimiter,
@@ -137,6 +149,14 @@ import {
     NOTIFICATION_RATE_LIMITER,
     NOTIFICATION_DEDUP_STORE,
     USER_PREFERENCE_REPOSITORY,
+    NotificationMetricsObserver,
+    NotificationOutboxRelay,
+    NotificationLogRetentionService,
   ],
 })
-export class NotificationModule {}
+export class NotificationModule {
+  /** Register app-owned adapters inside this module's DI scope (e.g. durable logs/outbox repository). */
+  static register(options: Pick<DynamicModule, "imports" | "providers" | "exports"> = {}): DynamicModule {
+    return { module: NotificationModule, global: true, ...options };
+  }
+}

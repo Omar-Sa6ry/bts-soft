@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { createTransport, Transporter } from "nodemailer";
 import { IMailProvider } from "../interfaces/mail-provider.interface";
 import { NotificationMessage } from "../../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../../core/config/notification.config";
 import {
   NotificationClientError,
@@ -50,7 +51,8 @@ export class NodemailerMailProvider implements IMailProvider, OnModuleInit {
   public async send(
     message: NotificationMessage,
     sender: string,
-  ): Promise<void> {
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { recipientId: to, body, subject, channelOptions } = message;
 
     // Support dynamic SMTP configuration
@@ -89,7 +91,7 @@ export class NodemailerMailProvider implements IMailProvider, OnModuleInit {
     const textContent = isHtml ? body.replace(/<[^>]*>?/gm, "") : body;
 
     try {
-      await transporterToUse.sendMail({
+      const info = await transporterToUse.sendMail({
         from: sender,
         to,
         subject,
@@ -98,9 +100,20 @@ export class NodemailerMailProvider implements IMailProvider, OnModuleInit {
         ...restOptions,
       });
       this.logger.log(`Email sent successfully to ${to} via Nodemailer`);
+
+      return {
+        provider: "nodemailer",
+        providerMessageId: (info as { messageId?: string })?.messageId,
+        rawResponse: info,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error(`Failed to send email to ${to} via Nodemailer:`, err);
+      this.logger.error(
+        `Failed to send email to ${to} via Nodemailer: ${err.message}`,
+        err.stack,
+      );
 
       const mailerError = error as { responseCode?: number };
       if (

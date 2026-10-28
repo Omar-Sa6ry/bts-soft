@@ -50,4 +50,10 @@ export class InMemoryNotificationLogRepository implements INotificationLogReposi
       return true;
     });
   }
+
+  async deleteBefore(cutoff: Date): Promise<number> {
+    const previousLength = this.logs.length;
+    this.logs = this.logs.filter((log) => log.createdAt >= cutoff);
+    return previousLength - this.logs.length;
+  }
 }

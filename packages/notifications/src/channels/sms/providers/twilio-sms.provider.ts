@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Twilio } from "twilio";
 import { ISmsProvider } from "../interfaces/sms-provider.interface";
 import { NotificationMessage } from "../../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../../core/config/notification.config";
 import {
   NotificationClientError,
@@ -34,7 +35,10 @@ export class TwilioSmsProvider implements ISmsProvider {
     }
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { recipientId: to, body, channelOptions } = message;
 
     let clientToUse = this.client;
@@ -75,18 +79,26 @@ export class TwilioSmsProvider implements ISmsProvider {
     this.logger.log(`Sending SMS from ${from} to ${formattedTo} via Twilio`);
 
     try {
-      await clientToUse.messages.create({
+      const response = await clientToUse.messages.create({
         ...restOptions,
         from: from as string,
         to: formattedTo,
         body,
       });
       this.logger.log(`SMS sent successfully to ${formattedTo} via Twilio`);
+
+      return {
+        provider: "twilio",
+        providerMessageId: response?.sid,
+        rawResponse: response,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(
-        `Failed to send SMS to ${formattedTo} via Twilio:`,
-        err,
+        `Failed to send SMS to ${formattedTo} via Twilio: ${err.message}`,
+        err.stack,
       );
       const twilioError = error as { status?: number };
       if (

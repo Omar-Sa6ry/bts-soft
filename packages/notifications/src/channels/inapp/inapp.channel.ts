@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { PusherInAppProvider } from "./providers/pusher-inapp.provider";
@@ -21,7 +22,9 @@ export class InAppChannel implements INotificationChannel, OnModuleInit {
     this.registry.register(this);
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
     const providerKey =
       (message.channelOptions?.provider as string | undefined) ||
       this.configService.inAppProvider;
@@ -30,11 +33,12 @@ export class InAppChannel implements INotificationChannel, OnModuleInit {
       `Routing In-App real-time notification using provider: ${providerKey}`,
     );
 
-    await this.pusherProvider.send(message);
-    // if (providerKey === "pusher") {
-    //   await this.pusherProvider.send(message);
-    // } else {
-    //   await this.pusherProvider.send(message);
-    // }
+    const result = await this.pusherProvider.send(message);
+    return (
+      result ?? {
+        provider: providerKey || ChannelType.IN_APP,
+        dispatchedAt: new Date(),
+      }
+    );
   }
 }

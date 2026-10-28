@@ -2,13 +2,13 @@ import { NOTIFICATION_DEDUP_STORE } from "../constants/injection-tokens.const";
 
 export interface IDeduplicationStore {
   /**
-   * Returns `true` if a notification with this key has already been processed.
+   * Returns `true` if this request key has already been reserved or recorded within its TTL.
    * @param idempotencyKey - Unique event identifier (e.g. `order:42:user:7`).
    */
   isDuplicate(idempotencyKey: string): Promise<boolean>;
 
   /**
-   * Records the key so future calls to `isDuplicate` return `true`.
+   * Records the key so future calls to `isDuplicate` return `true`; this is not provider-level exactly-once delivery.
    * @param idempotencyKey - Unique event identifier.
    * @param ttlMs          - How long to keep the key (default: 24 hours).
    */

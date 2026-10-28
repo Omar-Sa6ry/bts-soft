@@ -3,6 +3,7 @@ import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
 import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../core/models/NotificationDispatchResult.interface";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import {
@@ -26,7 +27,10 @@ export class SlackChannel implements INotificationChannel, OnModuleInit {
     this.registry.register(this);
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { recipientId, body, title, channelOptions } = message;
 
     let webhookUrl = channelOptions?.webhookUrl as string | undefined;
@@ -55,13 +59,19 @@ export class SlackChannel implements INotificationChannel, OnModuleInit {
     const blocks = channelOptions?.blocks || undefined;
 
     try {
+      let rawResponse: unknown;
+      let providerMessageId: string | undefined;
+
       if (webhookUrl) {
         this.logger.log("Sending Slack notification via Webhook.");
         const payload = {
           text: title ? `*${title}*\n${body}` : body,
           ...(blocks ? { blocks } : {}),
         };
-        await lastValueFrom(this.httpService.post(webhookUrl, payload));
+        const res = await lastValueFrom(
+          this.httpService.post(webhookUrl, payload),
+        );
+        rawResponse = res?.data;
       } else {
         // Web API Flow (chat.postMessage)
         if (!channel || channel === "default" || channel.startsWith("http")) {
@@ -120,8 +130,19 @@ export class SlackChannel implements INotificationChannel, OnModuleInit {
             `Slack Web API provider error: ${slackError}`,
           );
         }
+
+        rawResponse = response?.data;
+        providerMessageId = (response?.data as any)?.ts ?? undefined;
       }
+
       this.logger.log("Slack notification sent successfully.");
+      return {
+        provider: ChannelType.SLACK,
+        providerMessageId,
+        rawResponse,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       if (
         error instanceof NotificationClientError ||
@@ -135,8 +156,8 @@ export class SlackChannel implements INotificationChannel, OnModuleInit {
         response?: { status?: number; data?: unknown };
       };
       this.logger.error(
-        "Failed to send Slack notification:",
-        axiosError.response?.data || err.message,
+        `Failed to send Slack notification: ${err.message}`,
+        err.stack,
       );
 
       if (

@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import * as OneSignal from "@onesignal/node-onesignal";
 import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
 import {
@@ -33,7 +34,10 @@ export class OneSignalChannel implements INotificationChannel, OnModuleInit {
     this.client = new OneSignal.DefaultApi(configuration);
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const appId =
       (message.channelOptions?.appId as string) ||
       this.configService.onesignalAppId;
@@ -112,6 +116,14 @@ export class OneSignalChannel implements INotificationChannel, OnModuleInit {
       this.logger.log(
         `OneSignal notification sent successfully. Response ID: ${response.id}`,
       );
+
+      return {
+        provider: "onesignal",
+        providerMessageId: response?.id,
+        rawResponse: response,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const responseError = error as {
         code?: number;
@@ -139,6 +151,7 @@ export class OneSignalChannel implements INotificationChannel, OnModuleInit {
       const err = error instanceof Error ? error : new Error(errorMessage);
       this.logger.error(
         `Failed to send OneSignal notification: ${err.message}`,
+        err.stack,
       );
 
       if (

@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { NodemailerMailProvider } from "./providers/nodemailer.provider";
@@ -30,7 +31,9 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
     this.registry.register(this);
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
     const { channelOptions } = message;
     const sender =
       (channelOptions?.from as string | undefined) ||
@@ -41,24 +44,68 @@ export class EmailChannel implements INotificationChannel, OnModuleInit {
         "Email sender is not configured (missing EMAIL_SENDER or from in options).",
       );
 
-    // Resolve provider (dynamic override takes precedence over global configuration)
-    const providerKey =
+    // Resolve provider order: preferred first, then remaining configured providers as fallback
+    const primaryProvider =
       (channelOptions?.provider as string | undefined) ||
-      this.configService.emailProvider;
+      this.configService.emailProvider ||
+      "nodemailer";
 
-    this.logger.log(`Routing email using provider: ${providerKey}`);
+    const disableFallback = channelOptions?.disableFallback === true;
 
-    if (providerKey === "twilio" || providerKey === "sendgrid") {
-      await this.twilioProvider.send(message, sender);
-    } else if (
-      providerKey === "ses" ||
-      providerKey === "aws" ||
-      providerKey === "aws-ses"
-    ) {
-      await this.sesProvider.send(message, sender);
-    } else {
-      // Default to nodemailer
-      await this.nodemailerProvider.send(message, sender);
+    const fallbackChain: string[] = [primaryProvider];
+    if (!disableFallback) {
+      const candidates = ["ses", "twilio", "nodemailer"];
+      for (const candidate of candidates) {
+        if (!fallbackChain.includes(candidate)) {
+          fallbackChain.push(candidate);
+        }
+      }
     }
+
+    let lastError: Error | null = null;
+
+    for (let i = 0; i < fallbackChain.length; i++) {
+      const currentProvider = fallbackChain[i];
+      try {
+        this.logger.log(
+          `Attempting email dispatch via provider: ${currentProvider} (Attempt ${i + 1}/${fallbackChain.length})`,
+        );
+
+        let result: void | NotificationDispatchResult;
+        if (currentProvider === "twilio" || currentProvider === "sendgrid") {
+          result = await this.twilioProvider.send(message, sender);
+        } else if (
+          currentProvider === "ses" ||
+          currentProvider === "aws" ||
+          currentProvider === "aws-ses"
+        ) {
+          result = await this.sesProvider.send(message, sender);
+        } else {
+          result = await this.nodemailerProvider.send(message, sender);
+        }
+
+        return (
+          result ?? {
+            provider: currentProvider,
+            dispatchedAt: new Date(),
+          }
+        );
+      } catch (err: unknown) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        // If it's a client error (e.g. invalid recipient, bad parameter), do not fallback to another provider.
+        if (err instanceof NotificationClientError) {
+          throw err;
+        }
+
+        // If there are more fallback providers available, log and continue
+        if (i < fallbackChain.length - 1) {
+          this.logger.warn(
+            `Email dispatch failed via ${currentProvider}: ${lastError.message}. Falling back to ${fallbackChain[i + 1]}...`,
+          );
+        }
+      }
+    }
+
+    throw lastError ?? new Error("All configured email providers failed.");
   }
 }

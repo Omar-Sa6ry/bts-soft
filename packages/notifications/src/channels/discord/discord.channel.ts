@@ -1,5 +1,6 @@
 import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../core/models/NotificationDispatchResult.interface";
 import { HttpService } from "@nestjs/axios";
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { lastValueFrom } from "rxjs";
@@ -9,6 +10,7 @@ import {
   NotificationClientError,
   NotificationProviderError,
 } from "../../core/errors/NotificationError";
+import { ChannelType } from "../../core/enums/ChannelType.enum";
 
 @Injectable()
 export class DiscordChannel implements INotificationChannel, OnModuleInit {
@@ -28,7 +30,10 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
     }
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { body, channelOptions, recipientId } = message;
     let webhookUrl = channelOptions?.webhookUrl as string | undefined;
 
@@ -59,16 +64,26 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
     );
 
     try {
-      await lastValueFrom(this.httpService.post(webhookUrl, { content: body }));
+      const response = await lastValueFrom(
+        this.httpService.post(webhookUrl, { content: body }),
+      );
       this.logger.log(`Discord notification sent successfully.`);
+
+      return {
+        provider: ChannelType.DISCORD,
+        providerMessageId: (response as any)?.data?.id ?? undefined,
+        rawResponse: response?.data,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
       const axiosError = error as {
         response?: { status?: number; data?: unknown };
       };
       this.logger.error(
-        "Failed to send Discord notification:",
-        axiosError.response?.data || err.message,
+        `Failed to send Discord notification: ${err.message}`,
+        err.stack,
       );
 
       if (
@@ -88,3 +103,4 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
     }
   }
 }
+

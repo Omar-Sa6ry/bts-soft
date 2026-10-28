@@ -131,4 +131,23 @@ describe("EmailChannel", () => {
     expect(nodemailerProvider.send).not.toHaveBeenCalled();
     expect(twilioProvider.send).not.toHaveBeenCalled();
   });
+
+  it("should automatically fallback to next provider when primary provider fails", async () => {
+    configService.emailProvider = "ses";
+    sesProvider.send.mockRejectedValueOnce(new Error("AWS SES Outage"));
+    twilioProvider.send.mockResolvedValueOnce({ provider: "sendgrid", dispatchedAt: new Date() });
+
+    const message = {
+      recipientId: "user@test.com",
+      subject: "Test Subject",
+      body: "Hello",
+    };
+
+    const result = await channel.send(message);
+
+    expect(sesProvider.send).toHaveBeenCalled();
+    expect(twilioProvider.send).toHaveBeenCalled();
+    expect(result.provider).toBe("sendgrid");
+  });
 });
+

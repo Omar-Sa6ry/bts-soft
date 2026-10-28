@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { Twilio } from "twilio";
 import { INotificationChannel } from "../../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../../core/config/notification.config";
 import { ChannelRegistry } from "../../../core/registry/channel.registry";
 import {
@@ -71,7 +72,10 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
     return `whatsapp:${normalized}`;
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { recipientId: to, body, channelOptions } = message;
 
     // Support dynamic Twilio credentials
@@ -116,18 +120,26 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
     this.logger.log(`Sending WhatsApp from ${from} to ${formattedTo}`);
 
     try {
-      await clientToUse.messages.create({
+      const response = await clientToUse.messages.create({
         ...restOptions,
         from,
         to: formattedTo,
         body,
       });
       this.logger.log(`WhatsApp message sent successfully to ${formattedTo}`);
+
+      return {
+        provider: "whatsapp_twilio",
+        providerMessageId: response?.sid,
+        rawResponse: response,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(
-        `Failed to send WhatsApp message to ${formattedTo}:`,
-        err,
+        `Failed to send WhatsApp message to ${formattedTo}: ${err.message}`,
+        err.stack,
       );
       const twilioError = error as { status?: number };
       if (

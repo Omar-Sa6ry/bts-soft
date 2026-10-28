@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { IMailProvider } from "../interfaces/mail-provider.interface";
 import { NotificationMessage } from "../../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../../core/config/notification.config";
 import {
   NotificationClientError,
@@ -43,7 +44,8 @@ export class SesMailProvider implements IMailProvider {
   public async send(
     message: NotificationMessage,
     sender: string,
-  ): Promise<void> {
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { recipientId: to, body, subject, channelOptions } = message;
 
     if (!to)
@@ -128,11 +130,22 @@ export class SesMailProvider implements IMailProvider {
     );
 
     try {
-      await clientToUse.send(command);
+      const response = await clientToUse.send(command);
       this.logger.log(`Email sent successfully to ${to} via AWS SES`);
+
+      return {
+        provider: "ses",
+        providerMessageId: (response as { MessageId?: string })?.MessageId,
+        rawResponse: response,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error(`Failed to send email to ${to} via AWS SES:`, err);
+      this.logger.error(
+        `Failed to send email to ${to} via AWS SES: ${err.message}`,
+        err.stack,
+      );
 
       const awsError = error as {
         name?: string;

@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import Pusher from "pusher";
 import { IInAppProvider } from "../interfaces/inapp-provider.interface";
 import { NotificationMessage } from "../../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../../core/config/notification.config";
 import {
   NotificationClientError,
@@ -45,7 +46,10 @@ export class PusherInAppProvider implements IInAppProvider {
     }
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const {
       recipientId: channel,
       body,
@@ -102,13 +106,20 @@ export class PusherInAppProvider implements IInAppProvider {
     );
 
     try {
-      await clientToUse.trigger(channel, eventName, payload);
+      const response = await clientToUse.trigger(channel, eventName, payload);
       this.logger.log(
         `Pusher event successfully triggered on channel "${channel}"`,
       );
+
+      return {
+        provider: "pusher",
+        rawResponse: response,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error(`Failed to trigger event via Pusher:`, err);
+      this.logger.error(`Failed to trigger event via Pusher: ${err.message}`, err.stack);
 
       const errMessage = err.message.toLowerCase();
       if (errMessage.includes("invalid") || errMessage.includes("missing")) {

@@ -29,18 +29,18 @@ describe("LoggingNotificationObserver", () => {
 
   it("should log queued events using info level", () => {
     observer.onQueued("job123", "email", "test@test.com");
-    expect(logSpy).toHaveBeenCalledWith("[QUEUED]    Job job123 | Channel: email | Recipient: test@test.com");
+    expect(logSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[QUEUED\] Job job123 \| Channel: email \| RecipientRef: [a-f0-9]{12}$/));
   });
 
-  it("should log delivered events using info level", () => {
+  it("should log provider-send success using info level", () => {
     observer.onDelivered("job456", "sms", "+12345");
-    expect(logSpy).toHaveBeenCalledWith("[DELIVERED] Job job456 | Channel: sms | Recipient: +12345");
+    expect(logSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[SENT\] Job job456 \| Channel: sms \| RecipientRef: [a-f0-9]{12} \| Provider call succeeded/));
   });
 
   it("should log failed events using error level", () => {
     const error = new Error("SMTP failure");
     observer.onFailed("job789", "email", error);
-    expect(errorSpy).toHaveBeenCalledWith("[FAILED]    Job job789 | Channel: email | Error: SMTP failure", error.stack);
+    expect(errorSpy).toHaveBeenCalledWith("[FINAL_FAILURE] Job job789 | Channel: email | Error: SMTP failure", error.stack);
   });
 
   describe("onSkipped", () => {
@@ -50,7 +50,7 @@ describe("LoggingNotificationObserver", () => {
         recipientId: "test@test.com",
         reason: NotificationSkipReason.OPTED_OUT,
       });
-      expect(warnSpy).toHaveBeenCalledWith("[SKIPPED]   Channel: email | Recipient: test@test.com | Reason: opted_out");
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[SKIPPED\] Channel: email \| RecipientRef: [a-f0-9]{12} \| Reason: opted_out$/));
     });
 
     it("should log skipped events with idempotencyKey using warn level", () => {
@@ -60,7 +60,7 @@ describe("LoggingNotificationObserver", () => {
         reason: NotificationSkipReason.DUPLICATE,
         idempotencyKey: "dedupKey",
       });
-      expect(warnSpy).toHaveBeenCalledWith("[SKIPPED]   Channel: sms | Recipient: +12345 | Reason: duplicate | Key: dedupKey");
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[SKIPPED\] Channel: sms \| RecipientRef: [a-f0-9]{12} \| Reason: duplicate \| KeyRef: [a-f0-9]{12}$/));
     });
   });
 });

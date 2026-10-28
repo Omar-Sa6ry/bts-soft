@@ -8,8 +8,16 @@ The Mail notification channel provides dynamic, template-driven email delivery. 
 
 The `EmailChannel` delegates the delivery of notifications to classes implementing the `IMailProvider` interface. The active provider is determined by the `EMAIL_PROVIDER` environment variable:
 
-- **Nodemailer (`nodemailer`)**: Connects to SMTP servers (e.g. Gmail, Mailtrap, AWS SES) or predefined Nodemailer services.
+- **Amazon SES (`ses`)**: Dispatches emails using AWS Simple Email Service (SES v3 SDK).
 - **Twilio SendGrid (`twilio-mail`)**: Dispatches emails using the SendGrid HTTP REST API.
+- **Nodemailer (`nodemailer`)**: Connects to standard SMTP servers (e.g. Gmail, Mailtrap, custom relays).
+
+### Automatic Multi-Provider Fallback
+
+The `EmailChannel` implements automatic fallback failover:
+1. When `EMAIL_PROVIDER=ses` is active and AWS SES fails due to a network or 5xx provider error, the channel automatically falls back to `twilio-mail` (SendGrid), and then to `nodemailer` (SMTP).
+2. Fallback failover occurs seamlessly unless `channelOptions.disableFallback: true` is passed.
+3. 4xx client errors (e.g. invalid recipient address) will not trigger fallback to prevent redundant traffic.
 
 ---
 

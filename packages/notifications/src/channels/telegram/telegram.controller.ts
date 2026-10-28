@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Get,
+  Logger,
 } from "@nestjs/common";
 import { TelegramWebhookDto } from "./dto/Telegram-webhook.dto";
 import { ChannelType } from "../../core/enums/ChannelType.enum";
@@ -13,6 +14,8 @@ import { NotificationService } from "../../notification.service";
 
 @Controller("telegram/webhook")
 export class TelegramController {
+  private readonly logger = new Logger(TelegramController.name);
+
   constructor(
     private readonly telegramService: TelegramService,
     private readonly notificationService: NotificationService,
@@ -20,7 +23,7 @@ export class TelegramController {
 
   @Get()
   check() {
-    console.log("Webhook endpoint is reachable via GET.");
+    this.logger.log("Webhook endpoint is reachable via GET.");
     return { status: "OK" };
   }
 

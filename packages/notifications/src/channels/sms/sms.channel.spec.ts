@@ -110,4 +110,18 @@ describe("SmsChannel (Orchestrator)", () => {
     expect(mockSmsMisrProvider.send).not.toHaveBeenCalled();
     expect(mockVonageProvider.send).not.toHaveBeenCalled();
   });
+
+  it("should automatically fallback to next SMS provider when primary provider fails", async () => {
+    configService.smsProvider = "twilio";
+    mockTwilioProvider.send.mockRejectedValueOnce(new Error("Twilio Outage"));
+    mockVonageProvider.send.mockResolvedValueOnce({ provider: "vonage", dispatchedAt: new Date() });
+
+    const message = { recipientId: "123", body: "test" };
+    const result = await channel.send(message);
+
+    expect(mockTwilioProvider.send).toHaveBeenCalled();
+    expect(mockVonageProvider.send).toHaveBeenCalled();
+    expect(result.provider).toBe("vonage");
+  });
 });
+

@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as Handlebars from 'handlebars';
-import { Logger } from '@nestjs/common';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 export interface TemplateRenderOptions {
   template: string;
+  context: Record<string, unknown>;
+}
+
+export interface TemplateFileRenderOptions {
+  filePath: string;
   context: Record<string, unknown>;
 }
 
@@ -11,10 +17,11 @@ export interface TemplateRenderOptions {
  * TemplateService
  * ---------------
  * Provides Handlebars-based template rendering for notifications.
- * Supports partials, helpers, and pre-compiled templates for performance.
+ * Supports inline templates, template files from disk, partials, helpers, and pre-compiled templates.
  *
  * Usage:
- *   const html = await templateService.render({ template: '<h1>Hello {{name}}</h1>', context: { name: 'Omar' } });
+ *   const html = templateService.render({ template: '<h1>Hello {{name}}</h1>', context: { name: 'Omar' } });
+ *   const fileHtml = templateService.renderFile({ filePath: '/templates/welcome.hbs', context: { name: 'Omar' } });
  */
 @Injectable()
 export class TemplateService {
@@ -33,9 +40,32 @@ export class TemplateService {
     try {
       const compiled = this.getCompiled(template);
       return compiled(context);
-    } catch (error) {
-      this.logger.error(`Template render error: ${error.message}`, error);
-      throw new Error(`Failed to render template: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Template render error: ${err.message}`, err.stack);
+      throw new Error(`Failed to render template: ${err.message}`);
+    }
+  }
+
+  /**
+   * Reads a template file from disk, compiles it, caches it, and renders it.
+   */
+  public renderFile({ filePath, context }: TemplateFileRenderOptions): string {
+    const resolvedPath = path.resolve(filePath);
+    try {
+      if (!this.compiledCache.has(resolvedPath)) {
+        if (!fs.existsSync(resolvedPath)) {
+          throw new Error(`Template file not found at: ${resolvedPath}`);
+        }
+        const fileContent = fs.readFileSync(resolvedPath, "utf-8");
+        this.compiledCache.set(resolvedPath, Handlebars.compile(fileContent));
+      }
+      const compiled = this.compiledCache.get(resolvedPath)!;
+      return compiled(context);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Template file render error: ${err.message}`, err.stack);
+      throw new Error(`Failed to render template file: ${err.message}`);
     }
   }
 
@@ -77,12 +107,24 @@ export class TemplateService {
       return typeof text === 'string' ? text.toUpperCase() : text;
     });
 
+    // {{lowercase text}} — converts text to lowercase
+    Handlebars.registerHelper('lowercase', (text: string) => {
+      return typeof text === 'string' ? text.toLowerCase() : text;
+    });
+
+    // {{formatCurrency amount currency}} — formats currency, e.g. 100 EGP or $100
+    Handlebars.registerHelper('formatCurrency', (amount: number | string, currency = 'USD') => {
+      const num = Number(amount);
+      if (Number.isNaN(num)) return String(amount);
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(num);
+    });
+
     // {{ifEqual a b}} ... {{/ifEqual}} — conditional block helper
     Handlebars.registerHelper('ifEqual', function (a, b, options) {
       return a === b ? options.fn(this) : options.inverse(this);
     });
 
-    this.logger.log('Registered default Handlebars helpers: formatDate, uppercase, ifEqual');
+    this.logger.log('Registered default Handlebars helpers: formatDate, uppercase, lowercase, formatCurrency, ifEqual');
   }
 
   private getCompiled(template: string): HandlebarsTemplateDelegate {
@@ -92,3 +134,4 @@ export class TemplateService {
     return this.compiledCache.get(template)!;
   }
 }
+

@@ -1,4 +1,5 @@
 import { NotificationMessage } from '../models/NotificationMessage.interface';
+import { NotificationDispatchResult } from '../models/NotificationDispatchResult.interface';
 
 /**
  * INotificationChannel
@@ -6,9 +7,6 @@ import { NotificationMessage } from '../models/NotificationMessage.interface';
  * Contract that every notification channel must implement.
  * Each channel (Email, SMS, Firebase, etc.) is a concrete Strategy
  * following the Strategy design pattern.
- *
- * Moved from `src/telegram/channels/` to `src/core/interfaces/` so that
- * the interface belongs to the core domain and not to a specific channel.
  */
 export interface INotificationChannel {
   /**
@@ -19,9 +17,11 @@ export interface INotificationChannel {
 
   /**
    * Sends the notification message through this channel's provider.
+   * Returns dispatch metadata (like providerMessageId) when available.
    *
    * @throws {NotificationClientError}   for bad input (no retry).
    * @throws {NotificationProviderError} for provider failures (retried by BullMQ).
    */
-  send(message: NotificationMessage): Promise<void>;
+  send(message: NotificationMessage): Promise<void | NotificationDispatchResult>;
 }
+

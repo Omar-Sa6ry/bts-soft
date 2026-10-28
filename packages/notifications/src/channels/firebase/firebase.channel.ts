@@ -2,9 +2,11 @@ import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import * as admin from "firebase-admin";
 import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { NotificationClientError, NotificationProviderError } from "../../core/errors/NotificationError";
+import { ChannelType } from "../../core/enums/ChannelType.enum";
 
 @Injectable()
 export class FirebaseChannel implements INotificationChannel, OnModuleInit {
@@ -60,7 +62,10 @@ export class FirebaseChannel implements INotificationChannel, OnModuleInit {
     }
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     if (!this.initialized) {
       throw new NotificationProviderError("Firebase Admin SDK is not initialized.");
     }
@@ -72,15 +77,23 @@ export class FirebaseChannel implements INotificationChannel, OnModuleInit {
     this.logger.log(`Sending FCM notification to token: ${token.substring(0, 10)}...`);
 
     try {
-      await admin.messaging().send({
+      const response = await admin.messaging().send({
         token,
         notification: { title: title || "New Notification", body },
         ...channelOptions,
       });
       this.logger.log("FCM notification sent successfully.");
+
+      return {
+        provider:  ChannelType.FIREBASE_FCM,
+        providerMessageId: typeof response === "string" ? response : undefined,
+        rawResponse: response,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error('Failed to send FCM notification:', err);
+      this.logger.error(`Failed to send FCM notification: ${err.message}`, err.stack);
       
       // Categorize Firebase errors
       const fcmError = error as { code?: string };

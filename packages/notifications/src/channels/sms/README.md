@@ -1,6 +1,13 @@
 # SMS Notification Channel
 
-The SMS notification channel supports sending text messages. It acts as an orchestrator that switches between different providers (**Twilio**, **SMS Misr**, or **Vonage**) using the Strategy Pattern.
+The SMS notification channel supports sending text messages. It acts as an orchestrator that switches between different providers (**Twilio**, **Vonage**, or **SMS Misr**) using the Strategy Pattern.
+
+### Automatic Multi-Provider Fallback
+
+The channel provides automatic provider failover:
+1. When the primary provider (e.g. `twilio`) encounters a network outage or 5xx provider error, it automatically falls back to `vonage`, and then to `smsmisr`.
+2. Fallback failover occurs seamlessly unless `channelOptions.disableFallback: true` is provided.
+3. 4xx client errors (e.g. invalid recipient phone format) bypass fallback to avoid unnecessary calls.
 
 ---
 

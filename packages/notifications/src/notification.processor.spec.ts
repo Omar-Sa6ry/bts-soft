@@ -45,7 +45,7 @@ describe('NotificationProcessor', () => {
 
     expect(templateService.render).toHaveBeenCalled();
     expect(mockChannel.send).toHaveBeenCalled();
-    expect(logRepo.updateByJobId).toHaveBeenCalledWith('job_1', { status: 'sent', attemptsMade: 1 });
+    expect(logRepo.updateByJobId).toHaveBeenCalledWith('job_1', { status: 'sent', attemptsMade: 1, errorMessage: null, provider: null, providerMessageId: null, durationMs: null });
   });
 
   it('should throw UnrecoverableError for NotificationClientError (no retry)', async () => {
@@ -97,6 +97,37 @@ describe('NotificationProcessor', () => {
     await processor.process(mockJob as unknown as Parameters<typeof processor.process>[0]);
 
     expect(logRepo.updateByJobId).toHaveBeenCalledWith('job_4', { status: 'retrying', attemptsMade: 1 });
+  });
+
+  it('should persist RETRYING rather than FAILED when a transient attempt has retries left', async () => {
+    const mockChannel = { send: jest.fn().mockRejectedValue(new NotificationProviderError('temporary outage')) };
+    factory.getChannel.mockReturnValue(mockChannel);
+    const mockJob = {
+      id: 'job_retry', attemptsMade: 0, opts: { attempts: 3 },
+      data: { channel: 'email', message: { recipientId: 'u1', body: 'hi' } },
+    };
+
+    await expect(processor.process(mockJob as unknown as Parameters<typeof processor.process>[0]))
+      .rejects.toThrow('temporary outage');
+    expect(logRepo.updateByJobId).toHaveBeenCalledWith('job_retry', expect.objectContaining({
+      status: 'retrying', attemptsMade: 1,
+    }));
+    expect(logRepo.updateByJobId).not.toHaveBeenCalledWith('job_retry', expect.objectContaining({ status: 'failed' }));
+  });
+
+  it('should not retry provider send if the SENT log update fails after provider success', async () => {
+    const mockChannel = { send: jest.fn().mockResolvedValue(undefined) };
+    factory.getChannel.mockReturnValue(mockChannel);
+    logRepo.updateByJobId.mockImplementation(async (_id: string, update: { status?: string }) => {
+      if (update.status === 'sent') throw new Error('database unavailable');
+    });
+    const mockJob = {
+      id: 'job_sent_log_error', attemptsMade: 0, opts: { attempts: 4 },
+      data: { channel: 'email', message: { recipientId: 'u1', body: 'hi' } },
+    };
+
+    await expect(processor.process(mockJob as unknown as Parameters<typeof processor.process>[0])).resolves.toBeUndefined();
+    expect(mockChannel.send).toHaveBeenCalledTimes(1);
   });
 
   it('should translate body, title, and subject when lang is provided', async () => {

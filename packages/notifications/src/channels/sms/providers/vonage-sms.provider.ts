@@ -3,6 +3,7 @@ import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
 import { ISmsProvider } from "../interfaces/sms-provider.interface";
 import { NotificationMessage } from "../../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../../core/config/notification.config";
 import {
   NotificationClientError,
@@ -20,7 +21,10 @@ export class VonageSmsProvider implements ISmsProvider {
     private readonly phoneValidationService: PhoneValidationService,
   ) {}
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { recipientId: to, body, channelOptions } = message;
 
     const apiKey =
@@ -119,6 +123,14 @@ export class VonageSmsProvider implements ISmsProvider {
       }
 
       this.logger.log(`SMS sent successfully to ${formattedTo} via Vonage`);
+
+      return {
+        provider: "vonage",
+        providerMessageId: messageStatus["message-id"],
+        rawResponse: responseData,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       if (
         error instanceof NotificationClientError ||
@@ -132,8 +144,8 @@ export class VonageSmsProvider implements ISmsProvider {
         response?: { status?: number; data?: unknown };
       };
       this.logger.error(
-        `Failed to send SMS to ${formattedTo} via Vonage:`,
-        axiosError.response?.data || err.message,
+        `Failed to send SMS to ${formattedTo} via Vonage: ${JSON.stringify(axiosError.response?.data) || err.message}`,
+        err.stack,
       );
 
       if (

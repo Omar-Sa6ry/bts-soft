@@ -7,9 +7,16 @@ export interface NotificationLog {
   id?: string;
   jobId: string;
   channel: string;
+  /** Sensitive delivery address or recipient identifier; adapters should protect and retain only as needed. */
   recipientId: string;
   status: NotificationStatus;
-  errorMessage?: string;
+  errorMessage?: string | null;
+  /** Provider identifier if returned by the dispatch adapter (e.g. Twilio SID, SES MessageId). */
+  providerMessageId?: string | null;
+  /** Provider name used (e.g. 'nodemailer', 'twilio', 'ses'). */
+  provider?: string | null;
+  /** Dispatch latency in milliseconds. */
+  durationMs?: number | null;
   attemptsMade: number;
   createdAt: Date;
   updatedAt?: Date;
@@ -23,6 +30,8 @@ export abstract class INotificationLogRepository {
   abstract findByRecipientId(recipientId: string): Promise<NotificationLog[]>;
   /** Returns all logs with optional partial-match filter. */
   abstract findAll(filter?: Partial<NotificationLog>): Promise<NotificationLog[]>;
+  /** Optional retention hook. Implement with an indexed/batched delete in durable repositories. */
+  abstract deleteBefore?(cutoff: Date): Promise<number>;
 }
 
 export { NOTIFICATION_LOG_REPOSITORY };

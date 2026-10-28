@@ -11,7 +11,8 @@ import { DEFAULT_DEDUP_TTL_MS } from "../constants/defaults.const";
  * `markSent()` sets the key with a TTL so it auto-expires.
  * `isDuplicate()` checks whether the key still exists.
  *
- * This guarantees exactly-once delivery across multiple app instances.
+ * This provides bounded duplicate-request suppression across app instances.
+ * It does not guarantee exactly-once delivery by an external provider.
  */
 @Injectable()
 export class RedisDeduplicationStore implements IDeduplicationStore {

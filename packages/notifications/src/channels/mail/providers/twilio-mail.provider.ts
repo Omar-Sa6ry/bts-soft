@@ -3,6 +3,7 @@ import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
 import { IMailProvider } from "../interfaces/mail-provider.interface";
 import { NotificationMessage } from "../../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../../core/config/notification.config";
 import {
   NotificationClientError,
@@ -21,10 +22,13 @@ export class TwilioMailProvider implements IMailProvider {
   public async send(
     message: NotificationMessage,
     sender: string,
-  ): Promise<void> {
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { recipientId: to, body, subject, channelOptions } = message;
 
-    const apiKey = this.configService.sendgridApiKey;
+    const apiKey =
+      (channelOptions?.apiKey as string | undefined) ||
+      this.configService.sendgridApiKey;
     if (!apiKey) {
       throw new NotificationProviderError(
         "Twilio SendGrid API key (SENDGRID_API_KEY) is not configured.",
@@ -79,7 +83,7 @@ export class TwilioMailProvider implements IMailProvider {
     );
 
     try {
-      await lastValueFrom(
+      const response = await lastValueFrom(
         this.httpService.post(
           "https://api.sendgrid.com/v3/mail/send",
           payload,
@@ -92,14 +96,25 @@ export class TwilioMailProvider implements IMailProvider {
         ),
       );
       this.logger.log(`Email sent successfully to ${to} via Twilio SendGrid`);
+
+      const messageIdHeader =
+        response?.headers?.["x-message-id"] || response?.headers?.["X-Message-Id"];
+
+      return {
+        provider: "sendgrid",
+        providerMessageId: messageIdHeader as string | undefined,
+        rawResponse: response?.data,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
       const axiosError = error as {
         response?: { status?: number; data?: unknown };
       };
       this.logger.error(
-        "Failed to send email via Twilio SendGrid:",
-        axiosError.response?.data || err.message,
+        `Failed to send email via Twilio SendGrid: ${JSON.stringify(axiosError.response?.data) || err.message}`,
+        err.stack,
       );
 
       if (

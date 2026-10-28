@@ -2,12 +2,14 @@ import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import * as TelegramBot from "node-telegram-bot-api";
 import { INotificationChannel } from "../../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../../core/config/notification.config";
 import { ChannelRegistry } from "../../../core/registry/channel.registry";
 import {
   NotificationClientError,
   NotificationProviderError,
 } from "../../../core/errors/NotificationError";
+import { ChannelType } from "../../../core/enums/ChannelType.enum";
 
 // `node-telegram-bot-api` is a CommonJS package whose `module.exports` is the
 // constructor itself. Under ESM interop (vitest, bundlers) that constructor is
@@ -38,7 +40,10 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
     }
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { recipientId: chatId, body, channelOptions } = message;
     const dynamicToken = channelOptions?.botToken as string | undefined;
     const { botToken, ...restOptions } = channelOptions || {};
@@ -62,14 +67,27 @@ export class TelegramChannel implements INotificationChannel, OnModuleInit {
     this.logger.log(`Sending Telegram message to chatId: ${chatId}`);
 
     try {
-      await botToUse.sendMessage(chatId, body, {
+      const response = await botToUse.sendMessage(chatId, body, {
         parse_mode: "Markdown",
         ...restOptions,
       });
       this.logger.log(`Telegram message sent successfully.`);
+
+      return {
+        provider: ChannelType.TELEGRAM,
+        providerMessageId: response?.message_id
+          ? String(response.message_id)
+          : undefined,
+        rawResponse: response,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error(`Failed to send Telegram message to ${chatId}:`, err);
+      this.logger.error(
+        `Failed to send Telegram message to ${chatId}: ${err.message}`,
+        err.stack,
+      );
 
       // Handle Telegram-specific error codes
       const tgError = error as { response?: { statusCode?: number } };

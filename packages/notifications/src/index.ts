@@ -3,6 +3,7 @@ export * from "./core/enums/ChannelType.enum";
 export * from "./core/enums/NotificationPriority.enum";
 export * from "./core/enums/NotificationStatus.enum";
 export * from "./core/enums/NotificationSkipReason.enum";
+export * from "./core/enums/NotificationCategory.enum";
 
 // Constants
 export * from "./core/constants/injection-tokens.const";
@@ -11,6 +12,7 @@ export * from "./core/constants/defaults.const";
 // Models
 export * from "./core/models/NotificationMessage.interface";
 export * from "./core/models/NotificationLog.interface";
+export * from "./core/models/NotificationDispatchResult.interface";
 export * from "./core/models/RetryPolicy.interface";
 
 // Errors
@@ -39,6 +41,13 @@ export * from "./core/deduplication/RedisDeduplicationStore";
 // Observer
 export * from "./core/observer/INotificationObserver.interface";
 export * from "./core/observer/LoggingNotificationObserver";
+export * from "./core/observer/NotificationMetricsObserver";
+export * from "./core/observer/recipient-log-ref";
+
+// Durable dispatch and log retention
+export * from "./core/outbox/NotificationOutboxRepository.interface";
+export * from "./core/outbox/NotificationOutboxRelay";
+export * from "./core/retention/NotificationLogRetentionService";
 
 // Registry, factory & templates
 export * from "./core/registry/channel.registry";
@@ -59,6 +68,14 @@ export * from "./channels/webhook/webhook.channel";
 export * from "./channels/onesignal/onesignal.channel";
 export * from "./channels/webpush/webpush.channel";
 export * from "./channels/inapp/inapp.channel";
+
+// Providers
+export * from "./channels/mail/providers/nodemailer.provider";
+export * from "./channels/mail/providers/ses-mail.provider";
+export * from "./channels/mail/providers/twilio-mail.provider";
+export * from "./channels/sms/providers/twilio-sms.provider";
+export * from "./channels/sms/providers/vonage-sms.provider";
+export * from "./channels/sms/providers/smsmisr.provider";
 export * from "./channels/inapp/providers/pusher-inapp.provider";
 
 // Module, service, processor

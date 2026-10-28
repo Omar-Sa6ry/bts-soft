@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import * as webpush from "web-push";
 import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { ChannelType } from "../../core/enums/ChannelType.enum";
@@ -24,7 +25,10 @@ export class WebPushChannel implements INotificationChannel, OnModuleInit {
     this.registry.register(this);
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const { recipientId, title, body, channelOptions } = message;
 
     let subscription: webpush.PushSubscription | undefined;
@@ -126,8 +130,21 @@ export class WebPushChannel implements INotificationChannel, OnModuleInit {
     );
 
     try {
-      await webpush.sendNotification(subscription, payload, options);
+      const response = await webpush.sendNotification(
+        subscription,
+        payload,
+        options,
+      );
       this.logger.log("Web Push notification sent successfully.");
+
+      return {
+        provider: ChannelType.WEB_PUSH,
+        providerMessageId:
+          (response as any)?.headers?.["location"] ?? undefined,
+        rawResponse: response,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const pushError = error as {
         statusCode?: number;

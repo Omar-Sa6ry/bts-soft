@@ -1,11 +1,13 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../core/models/NotificationDispatchResult.interface";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { TwilioSmsProvider } from "./providers/twilio-sms.provider";
 import { SmsMisrProvider } from "./providers/smsmisr.provider";
 import { VonageSmsProvider } from "./providers/vonage-sms.provider";
+import { NotificationClientError } from "../../core/errors/NotificationError";
 
 @Injectable()
 export class SmsChannel implements INotificationChannel, OnModuleInit {
@@ -24,20 +26,66 @@ export class SmsChannel implements INotificationChannel, OnModuleInit {
     this.registry.register(this);
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
-    const providerKey =
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const primaryProvider =
       (message.channelOptions?.provider as string | undefined) ||
-      this.configService.smsProvider;
+      this.configService.smsProvider ||
+      "twilio";
 
-    this.logger.log(`Routing SMS using provider: ${providerKey}`);
+    const disableFallback = message.channelOptions?.disableFallback === true;
 
-    if (providerKey === "smsmisr") {
-      await this.smsmisrProvider.send(message);
-    } else if (providerKey === "vonage") {
-      await this.vonageProvider.send(message);
-    } else {
-      // Default to twilio
-      await this.twilioProvider.send(message);
+    const fallbackChain: string[] = [primaryProvider];
+    if (!disableFallback) {
+      const candidates = ["twilio", "vonage", "smsmisr"];
+      for (const candidate of candidates) {
+        if (!fallbackChain.includes(candidate)) {
+          fallbackChain.push(candidate);
+        }
+      }
     }
+
+    let lastError: Error | null = null;
+
+    for (let i = 0; i < fallbackChain.length; i++) {
+      const currentProvider = fallbackChain[i];
+      try {
+        this.logger.log(
+          `Attempting SMS dispatch via provider: ${currentProvider} (Attempt ${i + 1}/${fallbackChain.length})`,
+        );
+
+        let result: void | NotificationDispatchResult;
+        if (currentProvider === "smsmisr") {
+          result = await this.smsmisrProvider.send(message);
+        } else if (currentProvider === "vonage") {
+          result = await this.vonageProvider.send(message);
+        } else {
+          result = await this.twilioProvider.send(message);
+        }
+
+        return (
+          result ?? {
+            provider: currentProvider,
+            dispatchedAt: new Date(),
+          }
+        );
+      } catch (err: unknown) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        // Client errors (e.g. invalid phone number format) must not fallback to other SMS providers
+        if (err instanceof NotificationClientError) {
+          throw err;
+        }
+
+        if (i < fallbackChain.length - 1) {
+          this.logger.warn(
+            `SMS dispatch failed via ${currentProvider}: ${lastError.message}. Falling back to ${fallbackChain[i + 1]}...`,
+          );
+        }
+      }
+    }
+
+    throw lastError ?? new Error("All configured SMS providers failed.");
   }
 }
+

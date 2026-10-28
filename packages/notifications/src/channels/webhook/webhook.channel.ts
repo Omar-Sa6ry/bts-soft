@@ -4,6 +4,7 @@ import { lastValueFrom } from "rxjs";
 import * as crypto from "crypto";
 import { INotificationChannel } from "../../core/interfaces/INotificationChannel.interface";
 import { NotificationMessage } from "../../core/models/NotificationMessage.interface";
+import { NotificationDispatchResult } from "../../core/models/NotificationDispatchResult.interface";
 import { ChannelRegistry } from "../../core/registry/channel.registry";
 import { NotificationConfigService } from "../../core/config/notification.config";
 import {
@@ -27,7 +28,10 @@ export class WebhookChannel implements INotificationChannel, OnModuleInit {
     this.registry.register(this);
   }
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(
+    message: NotificationMessage,
+  ): Promise<NotificationDispatchResult> {
+    const startTime = Date.now();
     const {
       recipientId: url,
       body,
@@ -76,18 +80,27 @@ export class WebhookChannel implements INotificationChannel, OnModuleInit {
     this.logger.log(`Sending Webhook notification to URL: ${url}`);
 
     try {
-      await lastValueFrom(
+      const response = await lastValueFrom(
         this.httpService.post(url, payloadString, { headers }),
       );
       this.logger.log(`Webhook notification sent successfully to ${url}`);
+
+      return {
+        provider: ChannelType.WEBHOOK,
+        providerMessageId:
+          (response as any)?.headers?.["x-request-id"] ?? undefined,
+        rawResponse: response?.data,
+        dispatchedAt: new Date(),
+        durationMs: Date.now() - startTime,
+      };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
       const axiosError = error as {
         response?: { status?: number; data?: unknown };
       };
       this.logger.error(
-        `Failed to send Webhook to ${url}:`,
-        axiosError.response?.data || err.message,
+        `Failed to send Webhook to ${url}: ${err.message}`,
+        err.stack,
       );
 
       if (

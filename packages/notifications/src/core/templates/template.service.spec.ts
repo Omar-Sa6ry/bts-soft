@@ -56,6 +56,12 @@ describe('TemplateService', () => {
     expect(service.render({ template, context: { a: 1, b: 2 } })).toBe('No Match');
   });
 
+  it('should support lowercase and formatCurrency helpers', () => {
+    expect(service.render({ template: '{{lowercase "HELLO"}}', context: {} })).toBe('hello');
+    expect(service.render({ template: '{{formatCurrency 100 "USD"}}', context: {} })).toContain('100');
+  });
+
+
   it('should register and use partials', () => {
     service.registerPartial('myPartial', 'Partial: {{val}}');
     const template = '{{> myPartial}}';
