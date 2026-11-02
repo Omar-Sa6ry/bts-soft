@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { vi, describe, beforeEach, it, expect } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { WhatsAppChannel } from "./whatsapp.channel";
 import { NotificationConfigService } from "../../../core/config/notification.config";
@@ -8,6 +8,7 @@ import {
   NotificationClientError,
   NotificationProviderError,
 } from "../../../core/errors/NotificationError";
+import { PhoneValidationService } from "../../../core/validation/phone-validation.service";
 
 vi.mock("twilio", () => {
   const TwilioMock = vi.fn();
@@ -40,6 +41,12 @@ describe("WhatsAppChannel", () => {
         WhatsAppChannel,
         { provide: NotificationConfigService, useValue: configService },
         { provide: ChannelRegistry, useValue: { register: jest.fn() } },
+        {
+          provide: PhoneValidationService,
+          useValue: {
+            normalizePhoneNumber: jest.fn((phone) => (phone.startsWith("+") ? phone : `+${phone}`)),
+          },
+        },
       ],
     }).compile();
 

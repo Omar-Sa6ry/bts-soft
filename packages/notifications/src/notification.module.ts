@@ -57,7 +57,9 @@ import { WebPushChannel } from "./channels/webpush/webpush.channel";
 import { InAppChannel } from "./channels/inapp/inapp.channel";
 import { PusherInAppProvider } from "./channels/inapp/providers/pusher-inapp.provider";
 import { CircuitBreakerService } from "./core/resilience/CircuitBreaker.service";
+import { RedisCircuitBreakerStore } from "./core/resilience/RedisCircuitBreakerStore.service";
 import { DeadLetterQueueService } from "./core/dlq/DeadLetterQueue.service";
+import { NotificationDeliveryReceiptService } from "./core/dlr/NotificationDeliveryReceipt.service";
 import {
   NOTIFICATION_RATE_LIMITER,
   NOTIFICATION_DEDUP_STORE,
@@ -81,7 +83,9 @@ import {
     NotificationConfigService,
     NotificationService,
     CircuitBreakerService,
+    RedisCircuitBreakerStore,
     DeadLetterQueueService,
+    NotificationDeliveryReceiptService,
     NotificationOutboxRelay,
     NotificationLogRetentionService,
     NotificationProcessor,
@@ -157,7 +161,9 @@ import {
     NotificationOutboxRelay,
     NotificationLogRetentionService,
     CircuitBreakerService,
+    RedisCircuitBreakerStore,
     DeadLetterQueueService,
+    NotificationDeliveryReceiptService,
   ],
 })
 export class NotificationModule {

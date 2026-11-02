@@ -12,6 +12,7 @@ import {
 } from "../../core/errors/NotificationError";
 import { ChannelType } from "../../core/enums/ChannelType.enum";
 import { SsrfValidator } from "../../core/security/ssrf-validator";
+import { SafeAgentFactory } from "../../core/security/safe-agent";
 
 @Injectable()
 export class DiscordChannel implements INotificationChannel, OnModuleInit {
@@ -74,8 +75,17 @@ export class DiscordChannel implements INotificationChannel, OnModuleInit {
 
     try {
       const timeout = Number(channelOptions?.timeout) || 8000;
+      const { httpAgent, httpsAgent } = SafeAgentFactory.createAgents({
+        allowLocalhost: channelOptions?.allowLocalhost === true,
+        timeout,
+      });
+
       const response = await lastValueFrom(
-        this.httpService.post(webhookUrl, { content: body }, { headers, timeout }),
+        this.httpService.post(
+          webhookUrl,
+          { content: body },
+          { headers, timeout, httpAgent, httpsAgent },
+        ),
       );
       this.logger.log(`Discord notification sent successfully.`);
 

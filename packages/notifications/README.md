@@ -104,7 +104,7 @@ Set the following environment variables in your application `.env`:
 | `TWILIO_ACCOUNT_SID` | `string` | Optional | Twilio Account SID | - |
 | `TWILIO_AUTH_TOKEN` | `string` | Optional | Twilio Auth Token | - |
 | `TWILIO_SMS_NUMBER` | `string` | Optional | Twilio sender phone number | - |
-| `TWILIO_WHATSAPP_NUMBER`| `string` | Optional | Twilio WhatsApp sender number | - |
+| `TWILIO_WHATSAPP_NUMBER` | `string` | Optional | Twilio WhatsApp sender number | - |
 | `VONAGE_API_KEY` | `string` | Optional | Vonage (Nexmo) API key | - |
 | `VONAGE_API_SECRET` | `string` | Optional | Vonage API secret | - |
 | `VONAGE_SENDER` | `string` | Optional | Vonage outbound sender ID | - |
@@ -115,7 +115,7 @@ Set the following environment variables in your application `.env`:
 | `ONESIGNAL_APP_ID` | `string` | Optional | OneSignal App ID | - |
 | `ONESIGNAL_REST_API_KEY` | `string` | Optional | OneSignal REST API Key | - |
 | `WEB_PUSH_PUBLIC_KEY` | `string` | Optional | Web Push VAPID Public Key | - |
-| `WEB_PUSH_PRIVATE_KEY`| `string` | Optional | Web Push VAPID Private Key | - |
+| `WEB_PUSH_PRIVATE_KEY` | `string` | Optional | Web Push VAPID Private Key | - |
 | `WEB_PUSH_SUBJECT` | `string` | Optional | VAPID subject (`mailto:` or domain) | - |
 | `TELEGRAM_BOT_TOKEN` | `string` | Optional | Telegram Bot API token | - |
 | `DISCORD_WEBHOOK_URL` | `string` | Optional | Default Discord channel webhook | - |
@@ -229,6 +229,22 @@ export class PreferencesService {
   }
 }
 ```
+
+---
+
+## Enterprise Resilience & Security
+
+### 1. Distributed Circuit Breaker (Multi-Pod Sync)
+
+Protects external messaging providers from cascading failures. Backed by `RedisCircuitBreakerStore` to immediately synchronize tripped provider states across all pods and Kubernetes containers without incurring network latency on healthy runs.
+
+### 2. SSRF Protection & DNS Rebinding Immunity
+
+All dynamic webhooks, Slack, Discord, and Teams dispatches route through `SafeAgentFactory`, which validates IP destinations at the socket DNS resolution stage (`lookup` hook), completely preventing Time-of-Check to Time-of-Use (TOCTOU) DNS Rebinding attacks.
+
+### 3. Delivery Receipts (DLR) & Status Tracking
+
+Handles delivery callbacks and webhooks from SMS and email gateways via `NotificationDeliveryReceiptService` to track verified status (`DELIVERED`, `BOUNCED`, `OPENED`, `FAILED`) in your durable notification store.
 
 ---
 

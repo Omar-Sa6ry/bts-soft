@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { SsrfValidator } from "./ssrf-validator";
+import { SafeAgentFactory } from "./safe-agent";
 import { NotificationClientError } from "../errors/NotificationError";
 
 describe("SsrfValidator", () => {
@@ -43,5 +44,13 @@ describe("SsrfValidator", () => {
     await expect(
       SsrfValidator.validateUrl("https://api.github.com/webhook"),
     ).resolves.not.toThrow();
+  });
+
+  describe("SafeAgentFactory", () => {
+    it("should create agents with custom safe lookup", () => {
+      const { httpAgent, httpsAgent } = SafeAgentFactory.createAgents();
+      expect(httpAgent).toBeDefined();
+      expect(httpsAgent).toBeDefined();
+    });
   });
 });

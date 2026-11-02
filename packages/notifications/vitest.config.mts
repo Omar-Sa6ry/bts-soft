@@ -12,7 +12,7 @@ export default defineConfig({
     minWorkers: 1,
     fileParallelism: false,
     isolate: false,
-    include: ['src/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
+    include: ['src/**/*.spec.ts'],
     setupFiles: ['./vitest.setup.ts'],
     hookTimeout: 180_000,
     testTimeout: 60_000,

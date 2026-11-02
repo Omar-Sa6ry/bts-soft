@@ -12,6 +12,7 @@ import {
 } from "../../core/errors/NotificationError";
 import { ChannelType } from "../../core/enums/ChannelType.enum";
 import { SsrfValidator } from "../../core/security/ssrf-validator";
+import { SafeAgentFactory } from "../../core/security/safe-agent";
 
 @Injectable()
 export class SlackChannel implements INotificationChannel, OnModuleInit {
@@ -71,9 +72,10 @@ export class SlackChannel implements INotificationChannel, OnModuleInit {
       const timeout = Number(channelOptions?.timeout) || 8000;
 
       if (webhookUrl) {
+        const allowLocalhost = channelOptions?.allowLocalhost === true;
         if (recipientId && (recipientId.startsWith("http://") || recipientId.startsWith("https://"))) {
           await SsrfValidator.validateUrl(webhookUrl, {
-            allowLocalhost: channelOptions?.allowLocalhost === true,
+            allowLocalhost,
           });
         }
         this.logger.log("Sending Slack notification via Webhook.");
@@ -81,8 +83,17 @@ export class SlackChannel implements INotificationChannel, OnModuleInit {
           text: title ? `*${title}*\n${body}` : body,
           ...(blocks ? { blocks } : {}),
         };
+        const { httpAgent, httpsAgent } = SafeAgentFactory.createAgents({
+          allowLocalhost,
+          timeout,
+        });
         const res = await lastValueFrom(
-          this.httpService.post(webhookUrl, payload, { headers: traceHeaders, timeout }),
+          this.httpService.post(webhookUrl, payload, {
+            headers: traceHeaders,
+            timeout,
+            httpAgent,
+            httpsAgent,
+          }),
         );
         rawResponse = res?.data;
       } else {

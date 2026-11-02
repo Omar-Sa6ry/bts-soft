@@ -12,4 +12,10 @@ export enum NotificationStatus {
   EXPIRED = "expired",
   /** Skipped due to rate limiting, opt-out, or duplicate idempotency key. */
   SKIPPED = "skipped",
+  /** Confirmed delivered to the end-user by the upstream provider via delivery receipt (DLR). */
+  DELIVERED = "delivered",
+  /** Undeliverable or rejected by recipient gateway (hard/soft bounce). */
+  BOUNCED = "bounced",
+  /** Opened / viewed by recipient. */
+  OPENED = "opened",
 }

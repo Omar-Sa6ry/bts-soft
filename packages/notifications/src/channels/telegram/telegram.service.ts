@@ -1,10 +1,11 @@
-import { Injectable, Inject, Optional } from "@nestjs/common";
+import { Injectable, Inject, Optional, Logger } from "@nestjs/common";
 import { I18nService } from "nestjs-i18n";
 import * as crypto from "crypto";
 import { ITelegramUserRepository, TELEGRAM_USER_REPOSITORY } from "./interfaces/telegram-user-repository.interface";
 
 @Injectable()
 export class TelegramService<UserEntity = any, UserResponseDto = any> {
+  private readonly logger = new Logger(TelegramService.name);
   private UserResponseClass: new (...args: any[]) => UserResponseDto;
 
   constructor(
@@ -39,7 +40,7 @@ export class TelegramService<UserEntity = any, UserResponseDto = any> {
       telegramLinkToken: token 
     } as any);
 
-    console.log(`DB: Saved link token '${token}' for user ID ${userId}`);
+    this.logger.log(`DB: Saved link token '${token}' for user ID ${userId}`);
 
     const message = await this.i18n.t("user.TELEGRAM_SAVE");
 
@@ -64,7 +65,7 @@ export class TelegramService<UserEntity = any, UserResponseDto = any> {
       telegramLinkToken: null,
     } as any);
 
-    console.log(
+    this.logger.log(
       `DB: Successfully linked user ${userId} with Chat ID: ${chatId}`
     );
   }

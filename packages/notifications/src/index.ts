@@ -57,10 +57,14 @@ export * from "./core/templates/lru-cache";
 
 // Resilience & DLQ
 export * from "./core/resilience/CircuitBreaker.service";
+export * from "./core/resilience/ICircuitBreakerStore.interface";
+export * from "./core/resilience/RedisCircuitBreakerStore.service";
 export * from "./core/dlq/DeadLetterQueue.service";
+export * from "./core/dlr/NotificationDeliveryReceipt.service";
 
 // Security
 export * from "./core/security/ssrf-validator";
+export * from "./core/security/safe-agent";
 
 // Channels
 export * from "./channels/telegram/channels/Telegram.channel";

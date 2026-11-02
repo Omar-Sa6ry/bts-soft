@@ -80,4 +80,26 @@ describe("CircuitBreakerService", () => {
 
     vi.useRealTimers();
   });
+
+  it("should synchronize OPEN status from distributed store across pods", async () => {
+    const mockStore = {
+      getState: vi.fn().mockResolvedValue({
+        state: CircuitState.OPEN,
+        failures: 5,
+        lastFailureTime: Date.now(),
+        nextAttemptTime: Date.now() + 60000,
+      }),
+      setState: vi.fn().mockResolvedValue(undefined),
+      reset: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const distributedBreaker = new CircuitBreakerService(mockStore as any);
+    const action = vi.fn().mockResolvedValue("should not run");
+
+    await expect(distributedBreaker.execute("sendgrid", action)).rejects.toThrow(
+      NotificationProviderError,
+    );
+    expect(action).not.toHaveBeenCalled();
+    expect(mockStore.getState).toHaveBeenCalledWith("sendgrid");
+  });
 });

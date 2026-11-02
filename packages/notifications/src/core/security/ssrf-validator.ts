@@ -91,7 +91,7 @@ export class SsrfValidator {
     }
   }
 
-  private static assertPublicIp(
+  public static assertPublicIp(
     ip: string,
     options: SsrfValidationOptions,
   ): void {

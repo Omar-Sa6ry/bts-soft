@@ -9,6 +9,7 @@ import {
   NotificationClientError,
   NotificationProviderError,
 } from "../../../core/errors/NotificationError";
+import { PhoneValidationService } from "../../../core/validation/phone-validation.service";
 
 @Injectable()
 export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
@@ -19,6 +20,7 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
   constructor(
     private configService: NotificationConfigService,
     private registry: ChannelRegistry,
+    private phoneValidationService: PhoneValidationService,
   ) {}
 
   onModuleInit() {
@@ -41,35 +43,22 @@ export class WhatsAppChannel implements INotificationChannel, OnModuleInit {
 
   /**
    * Normalize any phone number to:
-   * whatsapp:+201XXXXXXXXX
+   * whatsapp:+XXXXXXXXXXX using global E.164 normalization.
    */
   private normalizeToWhatsApp(phone: string): string {
-    let normalized = phone.trim();
+    let clean = phone.trim();
 
     // remove whatsapp: if exists
-    if (normalized.startsWith("whatsapp:")) {
-      normalized = normalized.replace("whatsapp:", "");
+    if (clean.startsWith("whatsapp:")) {
+      clean = clean.replace("whatsapp:", "");
     }
 
-    // remove spaces & dashes
-    normalized = normalized.replace(/\s|-/g, "");
+    const normalized = this.phoneValidationService
+      ? this.phoneValidationService.normalizePhoneNumber(clean)
+      : clean;
 
-    // Handle 00 prefix as +
-    if (normalized.startsWith("00")) {
-      normalized = "+" + normalized.slice(2);
-    }
-
-    // Egyptian numbers (01xxxxxxxxx -> +201xxxxxxxxx)
-    if (normalized.startsWith("01") && normalized.length === 11) {
-      normalized = "+20" + normalized.slice(1);
-    }
-
-    // Ensure it starts with + if it doesn't already
-    if (!normalized.startsWith("+")) {
-      normalized = "+" + normalized;
-    }
-
-    return `whatsapp:${normalized}`;
+    const formatted = normalized.startsWith("+") ? normalized : `+${normalized}`;
+    return `whatsapp:${formatted}`;
   }
 
   public async send(

@@ -1,8 +1,6 @@
-import {
-  Injectable,
-  Logger,
-} from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { NotificationProviderError } from "../errors/NotificationError";
+import { RedisCircuitBreakerStore } from "./RedisCircuitBreakerStore.service";
 
 export enum CircuitState {
   CLOSED = "CLOSED",
@@ -46,6 +44,10 @@ export class CircuitBreakerService {
     halfOpenSuccessThreshold: 2,
   };
 
+  constructor(
+    @Optional() private readonly distributedStore?: RedisCircuitBreakerStore,
+  ) {}
+
   /**
    * Executes a protected call through the circuit breaker.
    * If the circuit is OPEN, throws NotificationProviderError immediately.
@@ -56,7 +58,7 @@ export class CircuitBreakerService {
     customOptions?: CircuitBreakerOptions,
   ): Promise<T> {
     const opts = { ...this.defaultOptions, ...customOptions };
-    const circuit = this.getOrCreateCircuit(serviceKey);
+    const circuit = await this.syncAndGetCircuit(serviceKey);
 
     const now = Date.now();
 
@@ -112,6 +114,11 @@ export class CircuitBreakerService {
       // Periodic reset or decrement on success
       target.failures = 0;
     }
+
+    if (this.distributedStore)
+      this.distributedStore
+        .setState(serviceKey, target, options.recoveryTimeoutMs * 2)
+        .catch(() => {});
   }
 
   public recordFailure(
@@ -145,6 +152,12 @@ export class CircuitBreakerService {
           `Circuit breaker for '${serviceKey}' TRIPPED to OPEN after ${target.failures} failures. Last error: ${errMessage}`,
         );
       }
+    }
+
+    if (this.distributedStore) {
+      this.distributedStore
+        .setState(serviceKey, target, options.recoveryTimeoutMs * 2)
+        .catch(() => {});
     }
   }
 
@@ -181,6 +194,44 @@ export class CircuitBreakerService {
     } else {
       this.circuits.clear();
     }
+    if (this.distributedStore) {
+      this.distributedStore.reset(serviceKey).catch(() => {});
+    }
+  }
+
+  private async syncAndGetCircuit(
+    serviceKey: string,
+  ): Promise<CircuitInternalRecord> {
+    const local = this.getOrCreateCircuit(serviceKey);
+    if (!this.distributedStore) {
+      return local;
+    }
+
+    try {
+      const remote = await this.distributedStore.getState(serviceKey);
+      if (remote) {
+        // If remote circuit is OPEN, sync it to local
+        if (
+          remote.state === CircuitState.OPEN &&
+          local.state !== CircuitState.OPEN
+        ) {
+          local.state = remote.state;
+          local.failures = remote.failures;
+          local.lastFailureTime = remote.lastFailureTime;
+          local.nextAttemptTime = remote.nextAttemptTime;
+        } else if (
+          remote.state === CircuitState.CLOSED &&
+          local.state === CircuitState.OPEN
+        ) {
+          local.state = CircuitState.CLOSED;
+          local.failures = 0;
+        }
+      }
+    } catch {
+      // In case of store error, gracefully fallback to local
+    }
+
+    return local;
   }
 
   private getOrCreateCircuit(serviceKey: string): CircuitInternalRecord {
