@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ChannelType } from "../enums/ChannelType.enum";
 import { NotificationMessage } from "../models/NotificationMessage.interface";
 import { INotificationOutboxRepository, NotificationOutboxRecord } from "./NotificationOutboxRepository.interface";
@@ -14,20 +15,34 @@ function item(attemptsMade = 1, maxAttempts = 3): NotificationOutboxRecord {
 }
 
 describe("NotificationOutboxRelay", () => {
-  let repository: Record<string, jest.Mock>;
-  let notifications: Record<string, jest.Mock>;
+  let repository: Record<string, any>;
+  let notifications: Record<string, any>;
 
   beforeEach(() => {
     repository = {
-      claimBatch: jest.fn().mockResolvedValue([]),
-      markEnqueued: jest.fn().mockResolvedValue(undefined),
-      markSkipped: jest.fn().mockResolvedValue(undefined),
-      scheduleRetry: jest.fn().mockResolvedValue(undefined),
-      markDead: jest.fn().mockResolvedValue(undefined),
-      requeueDead: jest.fn().mockResolvedValue(undefined),
-      purgeCompletedBefore: jest.fn().mockResolvedValue(0),
+      claimBatch: vi.fn().mockResolvedValue([]),
+      markEnqueued: vi.fn().mockResolvedValue(undefined),
+      markSkipped: vi.fn().mockResolvedValue(undefined),
+      scheduleRetry: vi.fn().mockResolvedValue(undefined),
+      markDead: vi.fn().mockResolvedValue(undefined),
+      requeueDead: vi.fn().mockResolvedValue(undefined),
+      purgeCompletedBefore: vi.fn().mockResolvedValue(5),
     };
-    notifications = { sendWithResult: jest.fn() };
+    notifications = { sendWithResult: vi.fn() };
+  });
+
+  it("throws error if repository is not registered", async () => {
+    const relayNoRepo = new NotificationOutboxRelay(notifications as any, undefined);
+    await expect(relayNoRepo.drainOnce()).rejects.toThrow(/Register an INotificationOutboxRepository/);
+    await expect(relayNoRepo.purgeCompletedBefore(new Date())).rejects.toThrow(/Register an INotificationOutboxRepository/);
+    await expect(relayNoRepo.requeueDeadLetter("id-1")).rejects.toThrow(/Register an INotificationOutboxRepository/);
+  });
+
+  it("validates options passed to drainOnce", async () => {
+    const relay = new NotificationOutboxRelay(notifications as any, repository as any);
+    await expect(relay.drainOnce({ batchSize: -1 })).rejects.toThrow(TypeError);
+    await expect(relay.purgeCompletedBefore("invalid-date" as any)).rejects.toThrow(TypeError);
+    await expect(relay.requeueDeadLetter("")).rejects.toThrow(TypeError);
   });
 
   it("claims a batch and enqueues with deterministic BullMQ ID and outbox idempotency key", async () => {
@@ -44,6 +59,20 @@ describe("NotificationOutboxRelay", () => {
     expect(repository.markEnqueued).toHaveBeenCalledWith("outbox-item-1", "outbox-job", expect.any(Date));
   });
 
+  it("treats duplicate skip as enqueued success in outbox", async () => {
+    repository.claimBatch.mockResolvedValue([item()]);
+    notifications.sendWithResult.mockResolvedValue({
+      accepted: false,
+      status: "skipped",
+      reason: NotificationSkipReason.DUPLICATE,
+      jobId: "dup-job-id",
+    });
+    const relay = new NotificationOutboxRelay(notifications as unknown as NotificationService, repository as unknown as INotificationOutboxRepository);
+    const result = await relay.drainOnce();
+    expect(result.enqueued).toBe(1);
+    expect(repository.markEnqueued).toHaveBeenCalledWith("outbox-item-1", "dup-job-id", expect.any(Date));
+  });
+
   it("marks policy skips as terminal skipped items", async () => {
     repository.claimBatch.mockResolvedValue([item()]);
     notifications.sendWithResult.mockResolvedValue({ accepted: false, status: "skipped", reason: NotificationSkipReason.OPTED_OUT, jobId: "j" });
@@ -51,6 +80,17 @@ describe("NotificationOutboxRelay", () => {
     const result = await relay.drainOnce();
     expect(result.skipped).toBe(1);
     expect(repository.markSkipped).toHaveBeenCalledWith("outbox-item-1", NotificationSkipReason.OPTED_OUT, expect.any(Date));
+  });
+
+  it("handles state update failure by scheduling retry", async () => {
+    repository.claimBatch.mockResolvedValue([item()]);
+    notifications.sendWithResult.mockResolvedValue({ accepted: true, status: "queued", jobId: "job-1" });
+    repository.markEnqueued.mockRejectedValue(new Error("DB locked"));
+
+    const relay = new NotificationOutboxRelay(notifications as unknown as NotificationService, repository as unknown as INotificationOutboxRepository);
+    const result = await relay.drainOnce();
+    expect(result.scheduledForRetry).toBe(1);
+    expect(repository.scheduleRetry).toHaveBeenCalled();
   });
 
   it("schedules exponential retry before the attempt limit", async () => {
@@ -73,8 +113,11 @@ describe("NotificationOutboxRelay", () => {
     expect(repository.markDead).toHaveBeenCalledWith("outbox-item-1", { attemptsMade: 3, error: "permanent publish failure" });
   });
 
-  it("allows an explicit operator to return a dead-letter to pending", async () => {
+  it("purges completed items and requeues dead letters", async () => {
     const relay = new NotificationOutboxRelay(notifications as unknown as NotificationService, repository as unknown as INotificationOutboxRepository);
+    const purged = await relay.purgeCompletedBefore(new Date());
+    expect(purged).toBe(5);
+
     await relay.requeueDeadLetter("outbox-dead-1");
     expect(repository.requeueDead).toHaveBeenCalledWith("outbox-dead-1", expect.any(Date));
   });

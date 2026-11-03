@@ -51,8 +51,21 @@ describe('TelegramService', () => {
     });
   });
 
-  it('should throw error if repo is not provided', async () => {
+  it('should allow setting user repository manually', async () => {
+    const customRepo = {
+      update: jest.fn().mockResolvedValue(undefined),
+      findByLinkToken: jest.fn().mockResolvedValue({ id: 'custom-user' }),
+    };
+    const bareService = new TelegramService(i18n, null as any);
+    bareService.setUserRepository(customRepo as any);
+    const user = await bareService.findUserByTelegramLinkToken('custom');
+    expect(user).toEqual({ id: 'custom-user' });
+  });
+
+  it('should throw error if repo is not provided for operations', async () => {
     const noRepoService = new TelegramService(i18n, null as any);
+    await expect(noRepoService.saveTelegramLinkToken('u', 't')).rejects.toThrow('User repository not set');
     await expect(noRepoService.findUserByTelegramLinkToken('t')).rejects.toThrow('User repository not set');
+    await expect(noRepoService.updateTelegramChatId('u', 'c')).rejects.toThrow('User repository not set');
   });
 });

@@ -1,60 +1,45 @@
-import { Test, TestingModule } from "@nestjs/testing";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { InAppChannel } from "./inapp.channel";
-import { NotificationConfigService } from "../../core/config/notification.config";
-import { ChannelRegistry } from "../../core/registry/channel.registry";
-import { PusherInAppProvider } from "./providers/pusher-inapp.provider";
+import { ChannelType } from "../../core/enums/ChannelType.enum";
 
 describe("InAppChannel", () => {
   let channel: InAppChannel;
-  let configService: any;
+  let mockConfigService: any;
+  let mockRegistry: any;
   let mockPusherProvider: any;
 
-  beforeEach(async () => {
-    mockPusherProvider = {
-      send: jest.fn().mockResolvedValue(undefined),
-    };
+  beforeEach(() => {
+    mockConfigService = { inAppProvider: "pusher" };
+    mockRegistry = { register: vi.fn() };
+    mockPusherProvider = { send: vi.fn().mockResolvedValue({ provider: "pusher", dispatchedAt: new Date() }) };
 
-    configService = {
-      inAppProvider: "pusher",
-    };
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        InAppChannel,
-        { provide: PusherInAppProvider, useValue: mockPusherProvider },
-        { provide: NotificationConfigService, useValue: configService },
-        { provide: ChannelRegistry, useValue: { register: jest.fn() } },
-      ],
-    }).compile();
-
-    channel = module.get<InAppChannel>(InAppChannel);
+    channel = new InAppChannel(mockConfigService, mockRegistry, mockPusherProvider);
   });
 
-  it("should be defined", () => {
-    expect(channel).toBeDefined();
+  it("should register on module init", () => {
+    channel.onModuleInit();
+    expect(mockRegistry.register).toHaveBeenCalledWith(channel);
   });
 
-  it("should route to PusherInAppProvider by default", async () => {
-    const message = {
-      recipientId: "channel-123",
-      body: "Hello realtime",
-    };
+  it("should send message via pusher provider", async () => {
+    const res = await channel.send({
+      recipientId: "user-1",
+      body: "In-App alert",
+    });
 
-    await channel.send(message);
-
-    expect(mockPusherProvider.send).toHaveBeenCalledWith(message);
+    expect(mockPusherProvider.send).toHaveBeenCalled();
+    expect(res.provider).toBe("pusher");
   });
 
-  it("should route to PusherInAppProvider when overridden in channelOptions", async () => {
-    configService.inAppProvider = "something-else";
-    const message = {
-      recipientId: "channel-123",
-      body: "Hello realtime",
-      channelOptions: { provider: "pusher" },
-    };
+  it("should handle null return from provider and return fallback result", async () => {
+    mockPusherProvider.send.mockResolvedValueOnce(null);
+    const res = await channel.send({
+      recipientId: "user-1",
+      body: "In-App alert",
+      channelOptions: { provider: "custom-provider" },
+    });
 
-    await channel.send(message);
-
-    expect(mockPusherProvider.send).toHaveBeenCalledWith(message);
+    expect(res.provider).toBe("custom-provider");
+    expect(res.dispatchedAt).toBeInstanceOf(Date);
   });
 });

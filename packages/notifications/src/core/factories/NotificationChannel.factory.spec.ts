@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { NotificationChannelFactory } from "./NotificationChannel.factory";
 import { ChannelRegistry } from "../registry/channel.registry";
-import { INotificationChannel } from "../../channels/telegram/channels/INotificationChannel.interface";
+import { ChannelType } from "../enums/ChannelType.enum";
 
 describe("NotificationChannelFactory", () => {
   let factory: NotificationChannelFactory;
@@ -30,15 +30,18 @@ describe("NotificationChannelFactory", () => {
     expect(factory).toBeDefined();
   });
 
-  it("should return a channel if registered", () => {
-    const mockChannel: INotificationChannel = {
+  it("should return a channel if registered using string or ChannelType", () => {
+    const mockChannel: any = {
       name: "email",
       send: jest.fn(),
     };
     jest.spyOn(registry, "getChannel").mockReturnValue(mockChannel);
 
-    const result = factory.getChannel("email");
-    expect(result).toBe(mockChannel);
+    const resultStr = factory.getChannel("email");
+    expect(resultStr).toBe(mockChannel);
+
+    const resultEnum = factory.getChannel(ChannelType.EMAIL);
+    expect(resultEnum).toBe(mockChannel);
   });
 
   it("should throw error if channel is not registered", () => {

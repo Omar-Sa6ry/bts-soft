@@ -38,19 +38,20 @@ describe("PhoneValidationService", () => {
     });
 
     it("should normalize international numbers correctly", () => {
-      // US number
       expect(service.normalizePhoneNumber("202 555 0125", "US")).toBe("+12025550125");
-      // UK number
       expect(service.normalizePhoneNumber("07911 123456", "GB")).toBe("+447911123456");
-      // Saudi Arabia
       expect(service.normalizePhoneNumber("0501234567", "SA")).toBe("+966501234567");
     });
 
-    it("should fall back to standard normalization if number is invalid/unparseable", () => {
-      // Unparseable nonsense
-      expect(service.normalizePhoneNumber("not-a-number")).toBe("+notanumber");
-      // Short fallback
-      expect(service.normalizePhoneNumber("123")).toBe("+123");
+    it("should fall back to standard normalization if number is unparseable", () => {
+      // Starts with 00
+      expect(service.normalizePhoneNumber("00123456", "ZZ" as any)).toBe("+123456");
+      // Starts with 01 but invalid length
+      expect(service.normalizePhoneNumber("012345", "ZZ" as any)).toBe("+012345");
+      // Starts with 01 and length 11 -> slice(1) prefixed with +20 -> +201999999999
+      expect(service.normalizePhoneNumber("01999999999", "ZZ" as any)).toBe("+201999999999");
+      // Already has +
+      expect(service.normalizePhoneNumber("+99999", "ZZ" as any)).toBe("+99999");
     });
   });
 });
