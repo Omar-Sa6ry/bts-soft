@@ -16,7 +16,7 @@ The Slack Channel supports dual operating modes:
 
 ```env
 # Mode 1: Bot Token (Recommended for multi-channel targeting)
-SLACK_BOT_TOKEN=xoxb-1234567890-1234567890-xxxxxxxxxxxxxxxxxxxxxxxx
+SLACK_BOT_TOKEN=YOUR_SLACK_BOT_TOKEN
 SLACK_DEFAULT_CHANNEL=#alerts
 
 # Mode 2: Incoming Webhook (Fallback)
