@@ -1,74 +1,78 @@
 # Microsoft Teams Notification Channel
 
-The Microsoft Teams notification channel allows your backend services to send alerts, system reports, and logs to specific Microsoft Teams channels via **Incoming Webhooks**.
+The Microsoft Teams Channel posts real-time alerts and structured operational reports to Microsoft Teams channels via Office 365 / Power Automate Incoming Webhook connectors.
 
 ---
 
-## Obtaining Your Webhook URL
+## Architectural Features
 
-To send notifications to a Microsoft Teams channel, you need to configure an Incoming Webhook connector:
-
-1. **Open Channel Connectors**:
-   - Open Microsoft Teams and navigate to the channel where you want to send messages.
-   - Click the three dots (`...`) next to the channel name and select **Connectors** (in some client versions, go to **Manage Channel > Connectors** or **Workflows**).
-2. **Configure Incoming Webhook**:
-   - Search for **Incoming Webhook** and click **Add** or **Configure**.
-   - Provide a name for the webhook (e.g. `System Alert Bot`) and upload an optional icon.
-   - Click **Create**.
-3. **Copy Webhook URL**:
-   - Copy the generated Webhook URL (which looks like `https://outlook.office.com/webhook/...` or `https://<tenant>.webhook.office.com/...`).
-   - Store it safely. Anyone with access to this URL can send messages to your channel.
+- **SSRF Hardening**: Validates destination webhook endpoints against internal subnets and metadata services using `SsrfValidator`.
+- **Adaptive Cards & MessageCards**: Formats messages using Microsoft Adaptive Cards or legacy Office 365 MessageCard JSON formats with themes, facts, and action links.
+- **Trace Propagation**: Outgoing HTTP requests carry OpenTelemetry W3C trace headers (`traceparent`, `tracestate`).
 
 ---
 
-## Configuration Variables
-
-Assign your default webhook URL to `TEAMS_WEBHOOK_URL` in your `.env` file:
+## Configuration Reference
 
 ```env
-TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/your-webhook-id/IncomingWebhook/...
+# Default Microsoft Teams Incoming Webhook Connector URL
+TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/IncomingWebhook/xxxxxxxx/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
+
+---
+
+## Channel Options (`channelOptions`)
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `webhookUrl` | `string` | Target Teams incoming webhook URL overriding default `TEAMS_WEBHOOK_URL`. |
+| `title` | `string` | Prominent header title displayed at the top of the Teams card. |
+| `themeColor` | `string` | Accent color hex string (e.g. `0076D7` for blue, `EA4335` for alert red). |
+| `sections` | `Array<object>` | Array of MessageCard sections containing markdown facts and details. |
+| `potentialAction` | `Array<object>` | Interactive actions (e.g. `OpenURI` buttons opening target dashboards). |
 
 ---
 
 ## Code Example
 
 ```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory } from '@bts-soft/notifications';
 
-// Send notification to the default webhook URL
-await notificationService.send(ChannelType.TEAMS, {
-  recipientId: 'default',
-  title: 'System Alert',
-  body: 'The backend database backup finished successfully.',
-});
+@Injectable()
+export class IncidentAlertService {
+  constructor(private readonly notificationService: NotificationService) {}
+
+  async reportDatabaseFailover(clusterId: string, primaryNode: string) {
+    await this.notificationService.send(ChannelType.TEAMS, {
+      recipientId: 'sre-channel',
+      category: NotificationCategory.SYSTEM,
+      subject: 'Database Cluster Automatic Failover',
+      body: `Primary node failover completed on cluster ${clusterId}.`,
+      channelOptions: {
+        themeColor: 'FF0000',
+        title: 'Cluster Failover Alert',
+        sections: [
+          {
+            activityTitle: 'Database Sentinel Notification',
+            activitySubtitle: 'Automated infrastructure failover',
+            facts: [
+              { name: 'Cluster ID', value: clusterId },
+              { name: 'New Primary Node', value: primaryNode },
+              { name: 'Time', value: new Date().toUTCString() },
+            ],
+            markdown: true,
+          },
+        ],
+        potentialAction: [
+          {
+            '@type': 'OpenURI',
+            name: 'View Monitoring Dashboard',
+            targets: [{ os: 'default', uri: 'https://grafana.yourdomain.com/d/db-cluster' }],
+          },
+        ],
+      },
+    });
+  }
+}
 ```
-
-### Dynamic Webhook URL Overrides
-You can route messages to different Teams webhooks dynamically in two ways:
-
-1. **By passing the Webhook URL as `recipientId`**:
-   ```typescript
-   await notificationService.send(ChannelType.TEAMS, {
-     recipientId: 'https://outlook.office.com/webhook/another-webhook-id',
-     body: 'Dynamic message text',
-   });
-   ```
-
-2. **By using `channelOptions`**:
-   ```typescript
-   await notificationService.send(ChannelType.TEAMS, {
-     recipientId: 'default',
-     body: 'Dynamic message text',
-     channelOptions: {
-       webhookUrl: 'https://outlook.office.com/webhook/another-webhook-id',
-     },
-   });
-   ```
-
----
-
-## Technical Details
-
-- **Card Formatting**: Microsoft Teams messages are delivered as payload structures over HTTP POST requests using `HttpService`. The payload maps `body` to the text content, and accepts `title` as a bold heading.
-- **Error Handling**: Network failures or invalid URLs (returning HTTP 400 Bad Request) are intercepted and thrown as `NotificationClientError` or `NotificationProviderError` depending on the status code.

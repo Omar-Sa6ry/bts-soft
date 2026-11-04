@@ -1,125 +1,112 @@
-# Mail Notification Channel
+# Email Notification Channel
 
-The Mail notification channel provides dynamic, template-driven email delivery. It employs a provider-based abstraction where the underlying transport mechanism can be toggled without changing the notification service interfaces.
-
----
-
-## Architecture Overview
-
-The `EmailChannel` delegates the delivery of notifications to classes implementing the `IMailProvider` interface. The active provider is determined by the `EMAIL_PROVIDER` environment variable:
-
-- **Amazon SES (`ses`)**: Dispatches emails using AWS Simple Email Service (SES v3 SDK).
-- **Twilio SendGrid (`twilio-mail`)**: Dispatches emails using the SendGrid HTTP REST API.
-- **Nodemailer (`nodemailer`)**: Connects to standard SMTP servers (e.g. Gmail, Mailtrap, custom relays).
-
-### Automatic Multi-Provider Fallback
-
-The `EmailChannel` implements automatic fallback failover:
-1. When `EMAIL_PROVIDER=ses` is active and AWS SES fails due to a network or 5xx provider error, the channel automatically falls back to `twilio-mail` (SendGrid), and then to `nodemailer` (SMTP).
-2. Fallback failover occurs seamlessly unless `channelOptions.disableFallback: true` is passed.
-3. 4xx client errors (e.g. invalid recipient address) will not trigger fallback to prevent redundant traffic.
+The Email Channel provides robust email delivery for NestJS applications supporting enterprise multi-provider fallbacks across Amazon Simple Email Service (AWS SES), Twilio SendGrid, and Nodemailer (SMTP).
 
 ---
 
-## Getting Your Credentials
+## Architecture & Failover Mechanics
 
-Choose your provider and set up your environment credentials accordingly:
+When dispatching an email, the channel evaluates available providers in a resilient sequence:
+1. **AWS SES (Primary)**: Dispatches using `@aws-sdk/client-ses` over HTTPS with signed AWS SigV4 credentials.
+2. **Twilio SendGrid (Secondary Fallback)**: If AWS SES fails due to rate-limiting (429) or upstream downtime (5xx), execution falls back to Twilio SendGrid.
+3. **Nodemailer SMTP (Tertiary Fallback)**: If SendGrid also encounters provider errors, delivery fails over to standard SMTP through Nodemailer.
 
-### A. SMTP (Nodemailer Provider)
-1. **Host & Port**: Determine your SMTP server settings (e.g., `smtp.gmail.com` on port `587` or `465`).
-2. **App-Specific Password**:
-   - If using a personal email service (like Gmail) with Multi-Factor Authentication enabled, generate an App Password.
-   - For Gmail, go to **Google Account Settings > Security > App Passwords**, generate a code, and copy the 16-character token.
-
-### B. SendGrid (Twilio Mail Provider)
-1. **API Key**:
-   - Log in to your [SendGrid Console](https://app.sendgrid.com).
-   - Navigate to **Settings > API Keys** and click **Create API Key**.
-   - Copy the generated API key (starts with `SG.`).
+Client errors (such as malformed email addresses or 4xx responses) are wrapped as `NotificationClientError` and do not trigger fallback providers, preventing unnecessary downstream load.
 
 ---
 
-## Configuration Variables
+## Configuration Reference
 
-Configure your credentials in your `.env` file:
+Configure the following environment variables depending on your chosen active providers:
 
 ```env
-# Outgoing email sender info
-EMAIL_SENDER=no-reply@yourdomain.com
+# Primary Provider Selection
+EMAIL_PROVIDER=ses              # ses | sendgrid | nodemailer
+EMAIL_SENDER=notifications@yourdomain.com
 
-# Active provider: 'nodemailer' or 'twilio-mail'
-EMAIL_PROVIDER=nodemailer
+# AWS Simple Email Service (SES)
+AWS_SES_ACCESS_KEY_ID=AKIAxxxxxxxxxxxx
+AWS_SES_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AWS_SES_REGION=us-east-1
 
-# --- SMTP / Nodemailer configuration ---
-EMAIL_USER=your-smtp-username
-EMAIL_PASS=your-smtp-password
-EMAIL_HOST=smtp.mailtrap.io
+# Twilio SendGrid
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Nodemailer / Standard SMTP
+EMAIL_HOST=smtp.mailgun.org
 EMAIL_PORT=587
-EMAIL_SERVICE=gmail
-
-# --- SendGrid / Twilio Mail configuration ---
-SENDGRID_API_KEY=SG.your_sendgrid_api_key_here
+EMAIL_USER=postmaster@yourdomain.com
+EMAIL_PASS=smtp_secret_password
+EMAIL_SERVICE=                  # Optional: gmail | hotmail | etc.
 ```
+
+---
+
+## Channel Options (`channelOptions`)
+
+When invoking `NotificationService.send()` with `ChannelType.EMAIL`, the following properties can be supplied in `channelOptions`:
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `html` | `string` | Full HTML body string (if template rendering is not used). |
+| `from` | `string` | Custom sender email address overriding default `EMAIL_SENDER`. |
+| `cc` | `string \| string[]` | Carbon copy recipient addresses. |
+| `bcc` | `string \| string[]` | Blind carbon copy recipient addresses. |
+| `replyTo` | `string` | Email address for recipient replies. |
+| `attachments` | `Array<object>` | Array of attachment objects containing `filename`, `content`, or `path`. |
+| `headers` | `Record<string, string>` | Custom MIME headers (e.g. `X-Priority`, `X-Entity-ID`). |
 
 ---
 
 ## Code Example
 
 ```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory, NotificationPriority } from '@bts-soft/notifications';
 
-await notificationService.send(ChannelType.EMAIL, {
-  recipientId: 'recipient@example.com',
-  subject: 'Welcome to BTS Software!',
-  body: 'Hi {{name}}, your account is now ready.',
-  context: { name: 'Alex' },
-});
+@Injectable()
+export class AccountService {
+  constructor(private readonly notificationService: NotificationService) {}
+
+  async sendInvoice(userEmail: string, invoicePdfBuffer: Buffer) {
+    await this.notificationService.send(ChannelType.EMAIL, {
+      recipientId: userEmail,
+      category: NotificationCategory.TRANSACTIONAL,
+      priority: NotificationPriority.HIGH,
+      subject: 'Your Monthly Invoice (#INV-2026-11)',
+      body: 'Thank you for your business. Please find your invoice attached.',
+      channelOptions: {
+        replyTo: 'billing@yourdomain.com',
+        attachments: [
+          {
+            filename: 'invoice-2026-11.pdf',
+            content: invoicePdfBuffer,
+          },
+        ],
+      },
+    });
+  }
+}
 ```
 
-### Dynamic Configuration & Options
-You can override SMTP credentials, pass custom HTML content, or specify custom SendGrid headers dynamically using `channelOptions`:
+---
 
-#### 1. Passing Custom HTML Templates
-If your `body` contains HTML tags (e.g. `<p>Hello</p>`), the channel automatically treats it as HTML. Alternatively, pass a pre-rendered template:
-```typescript
-await notificationService.send(ChannelType.EMAIL, {
-  recipientId: 'recipient@example.com',
-  subject: 'Invoice Details',
-  body: 'Plain text fallback',
-  channelOptions: {
-    htmlTemplate: '<h1>Invoice</h1><p>Thank you for your business.</p>',
-  },
-});
-```
+## Delivery Receipts & Webhook Handling
 
-#### 2. Dynamic SMTP Overrides (Nodemailer)
-```typescript
-await notificationService.send(ChannelType.EMAIL, {
-  recipientId: 'recipient@example.com',
-  subject: 'Tenant Alert',
-  body: 'Tenant message',
-  channelOptions: {
-    smtpConfig: {
-      host: 'tenant-smtp.io',
-      port: 465,
-      secure: true,
-      auth: { user: 'user', pass: 'pass' },
-    },
-  },
-});
-```
+External bounce and delivery notifications from AWS SES (via SNS/HTTPS) or SendGrid Event Webhooks can be ingested directly into the notification system using `NotificationDeliveryReceiptService`:
 
-#### 3. Custom SendGrid Options
 ```typescript
-await notificationService.send(ChannelType.EMAIL, {
-  recipientId: 'recipient@example.com',
-  subject: 'Custom SendGrid Email',
-  body: 'Text body',
-  channelOptions: {
-    sendgridOptions: {
-      categories: ['transactional', 'sign-ups'],
-      ip_pool_name: 'marketing_ips',
-    },
-  },
-});
+@Post('webhooks/email/sendgrid')
+async handleSendgridEvents(@Body() events: Array<any>) {
+  for (const event of events) {
+    await this.dlrService.processReceipt({
+      provider: 'sendgrid',
+      providerMessageId: event.sg_message_id,
+      status: event.event === 'delivered' ? 'delivered' : event.event === 'bounce' ? 'bounced' : 'failed',
+      reason: event.reason,
+      timestamp: new Date(event.timestamp * 1000),
+    });
+  }
+  return { status: 'ok' };
+}
 ```

@@ -1,131 +1,75 @@
 # SMS Notification Channel
 
-The SMS notification channel supports sending text messages. It acts as an orchestrator that switches between different providers (**Twilio**, **Vonage**, or **SMS Misr**) using the Strategy Pattern.
-
-### Automatic Multi-Provider Fallback
-
-The channel provides automatic provider failover:
-1. When the primary provider (e.g. `twilio`) encounters a network outage or 5xx provider error, it automatically falls back to `vonage`, and then to `smsmisr`.
-2. Fallback failover occurs seamlessly unless `channelOptions.disableFallback: true` is provided.
-3. 4xx client errors (e.g. invalid recipient phone format) bypass fallback to avoid unnecessary calls.
+The SMS Channel provides enterprise text messaging with automatic regional normalization, alphanumeric sender identifiers, and automatic failover across global and local telecommunications gateways: Twilio SMS, Vonage (formerly Nexmo), and SMS Misr.
 
 ---
 
-## Getting Your Credentials
+## Architecture & Gateway Failover
 
-### A. Twilio (Global Integration)
-1. Log in to the [Twilio Console](https://www.twilio.com).
-2. Copy your **Account SID** and **Auth Token** from your console dashboard.
-3. Purchase or find your active **SMS-enabled Phone Number** (starts with `+`).
-
-### B. SMS Misr (Egypt-specific Integration)
-1. Sign up/Log in to your account at [SMS Misr](https://smsmisr.com/).
-2. Obtain your **API Username** and **API Password** from the Developer API section.
-3. Register and obtain approval for your outgoing **Sender ID** (e.g. `TEST_SMS`).
-
-### C. Vonage (Global Integration)
-1. Sign up or log in to the [Vonage API Dashboard](https://dashboard.nexmo.com/).
-2. Copy your **API Key** and **API Secret** from the top of the dashboard.
-3. Register your outgoing **Sender ID** (e.g. `YourBrand`) or use a purchased virtual number as your sender.
+When an SMS request is ingested:
+1. **Phone Number Normalization**: The recipient phone number is parsed and converted to canonical E.164 international format (`+<CountryCode><SubscriberNumber>`) using `libphonenumber-js`. If the number matches local Egyptian carrier prefixes (`010`, `011`, `012`, `015`), it is automatically normalized to `+201xxxxxxxxx`.
+2. **Provider Failover Sequence**:
+   - **Twilio SMS (Default / Global)**: Routes messages globally across carrier routes.
+   - **Vonage SMS (Secondary)**: Used automatically when Twilio returns HTTP 5xx or connection timeouts.
+   - **SMS Misr (Tertiary / Local Regional)**: Optimized for Egyptian and Middle Eastern carrier routing.
 
 ---
 
-## Configuration Variables
-
-Configure the following environment variables in your project's `.env` file:
+## Configuration Reference
 
 ```env
-# SMS Orchestration Config (Options: "twilio", "smsmisr", or "vonage")
-# Defaults to "twilio" if not specified.
-SMS_PROVIDER=twilio
+# Primary Gateway Configuration
+SMS_PROVIDER=twilio             # twilio | vonage | smsmisr
 
-# Twilio Settings
-TWILIO_ACCOUNT_SID=ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_SMS_NUMBER=+1234567890
+# Twilio SMS
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_SMS_NUMBER=+12025550199
 
-# SMS Misr Settings
-SMSMISR_USERNAME=your_smsmisr_username
-SMSMISR_PASSWORD=your_smsmisr_password
-SMSMISR_SENDER=APPROVED_SENDER_ID
+# Vonage (Nexmo)
+VONAGE_API_KEY=xxxxxxxx
+VONAGE_API_SECRET=xxxxxxxxxxxxxxxx
+VONAGE_SENDER=BTSNotify
 
-# Vonage Nexmo Settings
-VONAGE_API_KEY=your_vonage_api_key
-VONAGE_API_SECRET=your_vonage_api_secret
-VONAGE_SENDER=APPROVED_SENDER_ID
+# SMS Misr (Egypt / Regional Gateway)
+SMSMISR_USERNAME=client_account_user
+SMSMISR_PASSWORD=client_account_password
+SMSMISR_SENDER=BrandName
+SMSMISR_ENVIRONMENT=1           # 1 = Live / Production, 2 = Sandbox
 ```
+
+---
+
+## Channel Options (`channelOptions`)
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `sender` | `string` | Custom Alphanumeric Sender ID or Twilio Virtual Phone Number. |
+| `language` | `string` | Language code for regional gateways (e.g. `1` for English, `2` for Arabic on SMS Misr). |
+| `provider` | `string` | Explicitly override default routing and force a specific provider (`twilio`, `vonage`, `smsmisr`). |
 
 ---
 
 ## Code Example
 
-### 1. Default Behavior
-By default, the channel routes messages to the provider set in `SMS_PROVIDER` (or Twilio as fallback):
-
 ```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory, NotificationPriority } from '@bts-soft/notifications';
 
-await notificationService.send(ChannelType.SMS, {
-  recipientId: '+201001234567', // Recipient phone number
-  body: 'Your verification OTP is {{otp}}.',
-  context: { otp: '8872' },
-});
+@Injectable()
+export class AuthService {
+  constructor(private readonly notificationService: NotificationService) {}
+
+  async sendVerificationOtp(phoneNumber: string, otpCode: string) {
+    await this.notificationService.send(ChannelType.SMS, {
+      recipientId: phoneNumber, // Can be local e.g. 01012345678 or E.164 +201012345678
+      category: NotificationCategory.SECURITY,
+      priority: NotificationPriority.HIGH,
+      body: `Your verification code is ${otpCode}. Valid for 5 minutes. Do not share this code.`,
+      channelOptions: {
+        sender: 'BTSAuth',
+      },
+    });
+  }
+}
 ```
-
-### 2. Dynamically Selecting Provider in Code
-You can override the provider at runtime using `channelOptions.provider`:
-
-```typescript
-// Send via SMS Misr
-await notificationService.send(ChannelType.SMS, {
-  recipientId: '201001234567',
-  body: 'Hello via SMS Misr!',
-  channelOptions: {
-    provider: 'smsmisr',
-  }
-});
-
-// Send via Twilio
-await notificationService.send(ChannelType.SMS, {
-  recipientId: '+201001234567',
-  body: 'Hello via Twilio!',
-  channelOptions: {
-    provider: 'twilio',
-  }
-});
-
-// Send via Vonage
-await notificationService.send(ChannelType.SMS, {
-  recipientId: '+201001234567',
-  body: 'Hello via Vonage!',
-  channelOptions: {
-    provider: 'vonage',
-  }
-});
-```
-
-### 3. SMS Misr Customizations & Language
-SMS Misr supports a `language` parameter: `1` (English), `2` (Arabic), or `3` (Unicode). Unicode is the default, allowing any characters. You can override it dynamically:
-
-```typescript
-await notificationService.send(ChannelType.SMS, {
-  recipientId: '201001234567',
-  body: 'رسالة تجريبية',
-  channelOptions: {
-    provider: 'smsmisr',
-    language: 2, // Explicitly Arabic
-  }
-});
-```
-
----
-
-## Technical Details
-
-- **Number Normalization**: 
-  - **Twilio** expects phone numbers to start with `+` in international E.164 format. The provider automatically normalizes recipient numbers to include a `+` prefix and country codes.
-  - **SMS Misr** and **Vonage** expect phone numbers in pure digit format without a leading `+` (e.g. `2010xxxxxxxx`). The provider automatically strips leading `+` signs before sending.
-- **Gone/Invalid Registration Handling**:
-  - SMS Misr response codes indicating invalid mobile numbers (`1905`, `8001`) or invalid message payloads (`1909`, `8002`) are thrown as `NotificationClientError`.
-  - Vonage response codes indicating bad params, invalid number, or facility not allowed (e.g. status codes `2`, `3`, `6`, `7`, `11`, `12`, `13`, `15`) are thrown as `NotificationClientError` to prevent unnecessary queue retries. Configuration or network issues are mapped to `NotificationProviderError` to allow retry.
-

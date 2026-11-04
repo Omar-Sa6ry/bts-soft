@@ -1,87 +1,79 @@
-# Firebase Push Notification Channel (FCM Integration)
+# Firebase Cloud Messaging (FCM) Channel
 
-The Firebase notification channel dispatches push alerts to Android, iOS, and Web clients via Firebase Cloud Messaging (FCM) using the Firebase Admin SDK.
-
----
-
-## Obtaining Your Service Account Key
-
-To authenticate requests to the Firebase Cloud Messaging API, you need a service account key:
-
-1. **Open Firebase Console**:
-   - Go to the [Firebase Console](https://console.firebase.google.com) and select your project.
-2. **Access Service Accounts Settings**:
-   - Click the gear icon next to **Project Overview** in the left sidebar and select **Project Settings**.
-   - Select the **Service Accounts** tab.
-3. **Generate Private Key**:
-   - Select the **Node.js** option, and click the **Generate New Private Key** button.
-   - Click **Generate Key** to download the credentials JSON file.
-4. **Deploy the Key**:
-   - Save the downloaded JSON file (e.g. `firebase-key.json`) securely on your server host directory.
-   - **Important**: Do not commit this file to public version control repositories. Add its filename to your `.gitignore`.
+The Firebase Channel delivers mobile and desktop push notifications to Android, iOS, and Web clients via Google's `firebase-admin` SDK.
 
 ---
 
-## Configuration Variables
+## Architectural Features
 
-Configure the path to the downloaded JSON file in your `.env` file:
+- **Unicast Device Messaging**: Dispatches targeted notifications to specific device registration tokens.
+- **Topic & Condition Subscriptions**: Supports broadcasting alerts to subscribed topics (e.g. `news_updates`, `system_alerts`).
+- **Platform Specific Customization**: Allows configuring distinct notification payloads, badges, channel IDs, sounds, and click actions for Android and Apple Push Notification service (APNs).
+
+---
+
+## Configuration Reference
 
 ```env
-FIREBASE_SERVICE_ACCOUNT_PATH=/absolute/or/relative/path/to/firebase-key.json
+# Absolute or relative path to the Firebase Service Account JSON credentials
+FIREBASE_SERVICE_ACCOUNT_PATH=/var/secrets/firebase-service-account.json
 ```
+
+If `FIREBASE_SERVICE_ACCOUNT_PATH` is omitted, the channel automatically attempts to use Google Application Default Credentials (ADC) from the host environment.
+
+---
+
+## Channel Options (`channelOptions`)
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `data` | `Record<string, string>` | Custom key-value dictionary delivered to the client application in background state. |
+| `imageUrl` | `string` | Public image URL to display directly in the push notification card. |
+| `android` | `object` | Android-specific configuration (e.g. `channelId`, `priority`, `notificationCount`). |
+| `apns` | `object` | Apple-specific APNs payload (e.g. `headers`, `aps: { badge, sound }`). |
+| `webpush` | `object` | Webpush-specific options (e.g. `fcmOptions: { link }`). |
 
 ---
 
 ## Code Example
 
 ```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory, NotificationPriority } from '@bts-soft/notifications';
 
-await notificationService.send(ChannelType.FIREBASE_FCM, {
-  recipientId: 'user_device_fcm_token_here',
-  title: 'Discount Alert!',
-  body: 'Get 20% off on all items today only!',
-  channelOptions: {
-    data: { promotionId: 'DISC20' },
-  },
-});
-```
+@Injectable()
+export class PushAlertService {
+  constructor(private readonly notificationService: NotificationService) {}
 
-### Advanced Notification Options
-You can pass custom parameters or notification categories through `channelOptions`:
-
-```typescript
-await notificationService.send(ChannelType.FIREBASE_FCM, {
-  recipientId: 'user_device_fcm_token_here',
-  title: 'New Chat Message',
-  body: 'You have a message from Sarah',
-  channelOptions: {
-    data: { senderId: 'Sarah', roomId: 'room_99' },
-    fcmOptions: {
-      android: {
-        priority: 'high',
-        notification: {
-          clickAction: 'OPEN_CHAT_ACTIVITY',
-          sound: 'default',
+  async sendOrderStatusAlert(deviceToken: string, orderId: string) {
+    await this.notificationService.send(ChannelType.FIREBASE_FCM, {
+      recipientId: deviceToken,
+      category: NotificationCategory.TRANSACTIONAL,
+      priority: NotificationPriority.HIGH,
+      subject: 'Order Out for Delivery',
+      body: `Order #${orderId} has been picked up by the courier.`,
+      channelOptions: {
+        imageUrl: 'https://cdn.yourdomain.com/notifications/delivery-truck.png',
+        data: {
+          orderId,
+          action: 'OPEN_TRACKING_SCREEN',
         },
-      },
-      apns: {
-        payload: {
-          aps: {
-            badge: 5,
-            sound: 'ping.aiff',
+        android: {
+          notification: {
+            channelId: 'order_status_updates',
+            sound: 'default',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              badge: 1,
+              sound: 'default',
+            },
           },
         },
       },
-    },
-  },
-});
+    });
+  }
+}
 ```
-
----
-
-## Technical Details
-
-- **Single Initialization**: The channel automatically guards the Firebase Admin SDK to ensure the Firebase App instance is initialized only once, even if multiple service classes instantiate this channel.
-- **FCM Token Validation**: The `recipientId` must be a valid client device FCM registration token.
-- **Error Mapping**: Standard Firebase Admin errors are mapped and handled; client token expiration errors are categorized so that background retry workers do not retry delivery for inactive registration tokens.

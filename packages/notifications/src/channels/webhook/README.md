@@ -1,98 +1,71 @@
-# Webhook Notification Channel
+# Generic HTTP Webhook Notification Channel
 
-The Webhook channel dispatches structured event payloads to external HTTP/HTTPS endpoints. It features secure cryptographical signing (HMAC-SHA256) to allow receivers to authenticate payloads.
+The Generic Webhook Channel provides secure, reliable outbound HTTP and HTTPS webhook notifications to third-party customer endpoints, microservices, and external automation systems.
 
 ---
 
-## Configuration Variables
+## Security & Anti-SSRF Defense
 
-Set a default signing secret under `WEBHOOK_DEFAULT_SIGNING_SECRET` in your `.env` file. This key signs outgoing payloads unless overridden in options:
+Outbound webhooks present severe security risks if external users supply internal network targets. This channel implements defense-in-depth mitigations:
+
+1. **DNS Rebinding & TOCTOU Protection**: Implements `SafeAgentFactory` to intercept and validate resolved IP addresses at the DNS lookup phase immediately prior to TCP socket establishment.
+2. **IP Range Blacklisting**: Automatically blocks requests directed towards:
+   - Loopback interfaces (`127.0.0.0/8`, `::1`).
+   - RFC 1918 Private networks (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
+   - Cloud instance metadata addresses (`169.254.169.254` on AWS, GCP, Azure, DigitalOcean).
+   - Carrier-Grade NAT (`100.64.0.0/10`) and broadcast ranges.
+3. **Cryptographic HMAC SHA-256 Signatures**: Outgoing request bodies are signed using SHA-256 HMAC and attached to the `X-Webhook-Signature` header (`sha256=<hex_digest>`), allowing receiving servers to verify authenticity and tamper resistance.
+4. **Distributed Tracing**: Automatically propagates OpenTelemetry W3C trace headers (`traceparent`, `tracestate`, `X-Correlation-Id`).
+
+---
+
+## Configuration Reference
 
 ```env
-WEBHOOK_DEFAULT_SIGNING_SECRET=your_global_signing_secret_here
+# Default Signing Secret for HMAC calculation
+WEBHOOK_DEFAULT_SIGNING_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
+---
+
+## Channel Options (`channelOptions`)
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `webhookUrl` | `string` | Target endpoint URL (defaults to `recipientId` if recipientId is a valid URL). |
+| `secret` | `string` | Per-tenant HMAC signing secret overriding `WEBHOOK_DEFAULT_SIGNING_SECRET`. |
+| `headers` | `Record<string, string>` | Custom HTTP headers sent to the destination server. |
+| `timeout` | `number` | Request timeout in milliseconds (default: `10000`). |
+| `allowLocalhost` | `boolean` | Allows internal/loopback dispatch for local dev environments (strictly false in production). |
 
 ---
 
 ## Code Example
 
 ```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory } from '@bts-soft/notifications';
 
-await notificationService.send(ChannelType.WEBHOOK, {
-  recipientId: 'https://api.thirdparty.com/v1/webhook-handler', // Target URL
-  title: 'Order Shipped',
-  body: 'Order #2031 has been dispatched.',
-  context: { trackingNumber: 'TRK-98831' },
-});
-```
+@Injectable()
+export class PartnerWebhookService {
+  constructor(private readonly notificationService: NotificationService) {}
 
-### Dynamic Webhook Signing & Custom Events
-You can customize the webhook event name and sign payloads with tenant-specific secrets dynamically:
-
-```typescript
-await notificationService.send(ChannelType.WEBHOOK, {
-  recipientId: 'https://api.thirdparty.com/v1/webhook-handler',
-  body: 'User profile updated',
-  channelOptions: {
-    event: 'user.profile_updated',
-    signingSecret: 'client_specific_secret_key_123',
-  },
-});
-```
-
----
-
-## Outgoing Payload Schema
-
-Every webhook event is delivered as an HTTP POST request with a JSON payload structured as follows:
-
-```json
-{
-  "event": "notification.sent",
-  "timestamp": "2026-07-15T14:07:19.000Z",
-  "data": {
-    "recipientId": "https://api.thirdparty.com/v1/webhook-handler",
-    "body": "Order #2031 has been dispatched.",
-    "title": "Order Shipped",
-    "subject": null,
-    "context": { "trackingNumber": "TRK-98831" }
+  async dispatchPaymentEvent(partnerWebhookUrl: string, partnerSecret: string, transaction: any) {
+    await this.notificationService.send(ChannelType.WEBHOOK, {
+      recipientId: partnerWebhookUrl,
+      category: NotificationCategory.TRANSACTIONAL,
+      body: JSON.stringify({
+        event: 'payment.completed',
+        data: transaction,
+        timestamp: Date.now(),
+      }),
+      channelOptions: {
+        secret: partnerSecret,
+        headers: {
+          'X-Event-Type': 'payment.completed',
+        },
+      },
+    });
   }
 }
-```
-
----
-
-## Verifying Webhook Signatures
-
-When a signing secret is configured, the channel calculates the HMAC-SHA256 signature of the raw stringified body and attaches it in the **`X-Webhook-Signature`** header.
-
-Here is an example of how your webhook consumers can verify the signature in Node.js (Express):
-
-```javascript
-const crypto = require('crypto');
-
-app.post('/webhook-handler', (req, res) => {
-  const signature = req.headers['x-webhook-signature'];
-  const secret = 'your_signing_secret'; // Shared secret key
-
-  if (!signature) {
-    return res.status(401).send('Signature missing.');
-  }
-
-  // Calculate signature over the raw request body
-  // Ensure your body-parser preserves raw request body (e.g. req.rawBody)
-  const computedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(JSON.stringify(req.body))
-    .digest('hex');
-
-  if (computedSignature !== signature) {
-    return res.status(403).send('Invalid signature verification failed.');
-  }
-
-  // Signature verified successfully
-  console.log('Processed event:', req.body.event);
-  res.status(200).send('OK');
-});
 ```

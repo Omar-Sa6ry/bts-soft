@@ -1,77 +1,64 @@
 # Facebook Messenger Notification Channel
 
-The Facebook Messenger channel delivers automated notifications to users via the Meta Graph API. It supports sending rich card templates, attachments, and quick replies.
+The Facebook Messenger Channel provides direct messaging to Facebook users through the Meta Graph Send API (`v18.0` / `v19.0+`), supporting text conversations, interactive quick replies, and generic card templates.
 
 ---
 
-## Getting Your Credentials
+## Capabilities & Architectural Flow
 
-To send messages, you need to set up a Meta Developer App:
-
-1. **Create Meta App**:
-   - Log in to the [Meta Developers Portal](https://developers.facebook.com).
-   - Click **My Apps** and choose **Create App**. Select **Business** or **Other** as the app type.
-
-2. **Add Messenger Product**:
-   - In the App Dashboard, scroll to **Add products to your app** and add **Messenger**.
-
-3. **Link Facebook Page & Generate Token**:
-   - Under **Messenger > API Settings**, link the Facebook Page you wish to send messages from.
-   - Click **Generate Token** for the linked Page. Copy this token. This is your `FB_PAGE_ACCESS_TOKEN`.
-
-4. **Obtain Page-Scoped ID (PSID)**:
-   - Facebook messages require the recipient's **Page-Scoped ID (PSID)** as the `recipientId`. You cannot message users using their personal Facebook Profile ID, phone number, or email.
-   - The PSID is sent to your webhook when the user sends a message to your Page.
+- **Page-Scoped User ID (PSID) Targeting**: In accordance with Meta Platform policies, messages are addressed to Page-Scoped User IDs acquired through Facebook Login or user-initiated conversations.
+- **Messaging Tags & Policy Compliance**: Allows attaching standard Meta messaging tags (e.g. `CONFIRMED_EVENT_UPDATE`, `POST_PURCHASE_UPDATE`, `ACCOUNT_UPDATE`) to ensure delivery outside the 24-hour standard messaging window when legally permitted.
 
 ---
 
-## Configuration Variables
-
-Set these credentials in your `.env` file:
+## Configuration Reference
 
 ```env
-FB_PAGE_ACCESS_TOKEN=EAAG...your_page_access_token_here
-FB_GRAPH_API_VERSION=v18.0
+# Meta Graph API Page Credentials
+FB_PAGE_ACCESS_TOKEN=EAAGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FB_GRAPH_API_VERSION=v19.0
 ```
+
+---
+
+## Channel Options (`channelOptions`)
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `tag` | `string` | Meta message tag for non-promotional alerts (e.g. `ACCOUNT_UPDATE`). |
+| `messagingType` | `string` | Messaging type flag (`RESPONSE`, `UPDATE`, `MESSAGE_TAG`). Default: `RESPONSE`. |
+| `quickReplies` | `Array<object>` | Interactive quick reply bubbles presented above the user keyboard. |
+| `attachment` | `object` | Rich media attachment or template object (e.g. `template: { template_type: 'generic', elements: [...] }`). |
 
 ---
 
 ## Code Example
 
-Once you have the user's PSID, send notifications via `NotificationService`:
-
 ```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory } from '@bts-soft/notifications';
 
-await notificationService.send(ChannelType.MESSENGER, {
-  recipientId: 'your_user_psid_here',
-  body: 'Hi, your weekly account report is ready.',
-});
-```
+@Injectable()
+export class OrderBotService {
+  constructor(private readonly notificationService: NotificationService) {}
 
-### Advanced Messenger Templates
-You can pass custom payloads (like images, attachments, or quick replies) using `channelOptions` which will be spread into the POST body:
-
-```typescript
-await notificationService.send(ChannelType.MESSENGER, {
-  recipientId: 'your_user_psid_here',
-  body: 'Please select an option:',
-  channelOptions: {
-    message: {
-      text: 'Please select an option:',
-      quick_replies: [
-        {
-          content_type: 'text',
-          title: 'Yes',
-          payload: 'DEVELOPER_DEFINED_PAYLOAD_YES',
-        },
-        {
-          content_type: 'text',
-          title: 'No',
-          payload: 'DEVELOPER_DEFINED_PAYLOAD_NO',
-        }
-      ]
-    }
+  async notifyOrderShipped(userPsid: string, orderNumber: string, trackingNumber: string) {
+    await this.notificationService.send(ChannelType.MESSENGER, {
+      recipientId: userPsid, // Page-Scoped ID (PSID)
+      category: NotificationCategory.TRANSACTIONAL,
+      body: `Your order #${orderNumber} has shipped! Tracking number: ${trackingNumber}`,
+      channelOptions: {
+        messagingType: 'MESSAGE_TAG',
+        tag: 'POST_PURCHASE_UPDATE',
+        quickReplies: [
+          {
+            content_type: 'text',
+            title: 'Track Shipment',
+            payload: `TRACK_${orderNumber}`,
+          },
+        ],
+      },
+    });
   }
-});
+}
 ```

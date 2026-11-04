@@ -1,115 +1,62 @@
 # OneSignal Notification Channel
 
-The OneSignal notification channel supports sending push notifications to Android, iOS, and Web browsers using the official `@onesignal/node-onesignal` REST API SDK.
+The OneSignal Channel integrates with the OneSignal REST API (`@onesignal/node-onesignal`), providing unified push notification delivery across iOS, Android, macOS, Windows, and web browsers.
 
 ---
 
-## Getting Your Credentials
+## Architectural Features
 
-To send push notifications through OneSignal, you will need to retrieve your Application ID and REST API Key:
-
-1. Log in to the [OneSignal Dashboard](https://dashboard.onesignal.com/).
-2. Select your Application (or create a new one).
-3. Navigate to **Settings** in the main navigation.
-4. Click on **Keys & IDs** in the settings sub-menu.
-5. Copy your **OneSignal App ID** (a UUID format) and **REST API Key** (a secret string).
+- **External User Targeting**: Messages can be addressed either to individual OneSignal subscription IDs (`player_id`) or directly to external user identity IDs mapped in your primary application database.
+- **Multilingual Content**: Native support for delivering localized content dictionaries across multiple languages simultaneously.
+- **Deep Linking**: Allows attaching direct destination URLs, custom data payloads, and notification delivery filters.
 
 ---
 
-## Configuration Variables
-
-Configure the following environment variables in your project's `.env` file:
+## Configuration Reference
 
 ```env
-# OneSignal Configuration
-ONESIGNAL_APP_ID=your-onesignal-app-id-uuid
-ONESIGNAL_REST_API_KEY=your-onesignal-rest-api-key
+# OneSignal App Configuration
+ONESIGNAL_APP_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+ONESIGNAL_REST_API_KEY=os_v2_app_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ---
 
-## Code Examples
+## Channel Options (`channelOptions`)
 
-Once configured, use the notification service to dispatch push notifications:
-
-### 1. Basic Targeting (Subscription ID / Player ID)
-
-By default, passing `recipientId` targets specific devices using their subscription/player ID:
-
-```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
-
-await notificationService.send(ChannelType.ONESIGNAL, {
-  recipientId: '98d57235-ef72-4638-89c5-a131b73e5bf0',
-  title: 'Order Status Update',
-  body: 'Your package has been shipped!',
-});
-```
-
-### 2. Targeting Specific Audiences (Segments or External IDs)
-
-To target groups or user aliases instead of direct device subscription IDs, override the targeting properties in `channelOptions`:
-
-#### Target by Segments
-```typescript
-await notificationService.send(ChannelType.ONESIGNAL, {
-  recipientId: 'ignored',
-  body: 'Flash sale starts in 10 minutes!',
-  channelOptions: {
-    included_segments: ['Subscribed Users', 'Active Customers'],
-  },
-});
-```
-
-#### Target by User Aliases (External IDs)
-```typescript
-await notificationService.send(ChannelType.ONESIGNAL, {
-  recipientId: 'ignored',
-  body: 'Welcome to your dashboard!',
-  channelOptions: {
-    include_aliases: {
-      external_id: ['user_user123_id'],
-    },
-  },
-});
-```
-
-### 3. Dynamic App Overrides
-
-To dispatch notifications using a different OneSignal app or API key dynamically:
-
-```typescript
-await notificationService.send(ChannelType.ONESIGNAL, {
-  recipientId: 'device-subscription-id',
-  body: 'White-labeled app alert',
-  channelOptions: {
-    appId: 'another-onesignal-app-id',
-    restApiKey: 'another-onesignal-rest-api-key',
-  },
-});
-```
-
-### 4. Custom Platform Properties
-
-You can specify native push options (e.g. badges, sounds, deep links, collapse keys) in `channelOptions`:
-
-```typescript
-await notificationService.send(ChannelType.ONESIGNAL, {
-  recipientId: 'device-subscription-id',
-  body: 'Message body',
-  channelOptions: {
-    url: 'https://yourwebsite.com/orders/123',
-    data: { orderId: 123 },
-    ios_badgeType: 'Increase',
-    ios_badgeCount: 1,
-    android_sound: 'notification_alert',
-  },
-});
-```
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `useExternalUserId` | `boolean` | When true, targets recipient by application `external_id` instead of OneSignal `player_id`. |
+| `url` | `string` | URL to open when the user clicks the notification. |
+| `data` | `Record<string, any>` | Custom key-value payload sent to the client app SDK. |
+| `buttons` | `Array<{ id: string; text: string; icon?: string }>` | Interactive action buttons rendered on the push card. |
+| `bigPicture` | `string` | Picture attachment URL for rich push display on Android and iOS. |
 
 ---
 
-## Technical Details
+## Code Example
 
-- **Language Mapping**: If a BCP-47 tag is provided in `message.lang`, the channel automatically maps the notification `contents` and `headings` to that language key. Otherwise, the payload defaults to `"en"`.
-- **Client & Provider Exception Handling**: Failed requests return HTTP status codes. 4xx response codes (e.g., invalid App ID, invalid request format) are classified as `NotificationClientError` to halt workers immediately. 5xx responses or transient network failures are classified as `NotificationProviderError` to allow retry attempts.
+```typescript
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory } from '@bts-soft/notifications';
+
+@Injectable()
+export class MarketingCampaignService {
+  constructor(private readonly notificationService: NotificationService) {}
+
+  async sendPromotionalPush(userId: string, campaignPromoCode: string) {
+    await this.notificationService.send(ChannelType.ONESIGNAL, {
+      recipientId: userId,
+      category: NotificationCategory.MARKETING,
+      subject: 'Flash Sale: 50% Off Today Only!',
+      body: `Use promo code ${campaignPromoCode} at checkout.`,
+      channelOptions: {
+        useExternalUserId: true,
+        url: 'https://yourdomain.com/store/flash-sale',
+        data: { promoCode: campaignPromoCode },
+        bigPicture: 'https://cdn.yourdomain.com/banners/promo-banner.jpg',
+      },
+    });
+  }
+}
+```

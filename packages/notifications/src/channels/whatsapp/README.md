@@ -1,74 +1,58 @@
-# WhatsApp Notification Channel (Twilio Integration)
+# WhatsApp Notification Channel
 
-The WhatsApp channel delivers real-time notifications to users via the Twilio Messaging API. It handles phone number normalization, sandboxing validation, and dynamically routes messages through pre-configured or dynamically provided Twilio accounts.
-
----
-
-## Getting Your Credentials
-
-To send WhatsApp messages, you need a Twilio account. Follow these steps to obtain your credentials:
-
-1. **Twilio Account SID & Auth Token**:
-   - Log in to your [Twilio Console](https://www.twilio.com).
-   - Find your **Account SID** and **Auth Token** on the homepage dashboard under the "Account Info" section.
-
-2. **WhatsApp Sender Phone Number**:
-   - **Sandbox Testing**: Go to **Messaging > Try it out > Send a WhatsApp message** in the Twilio Console.
-   - Connect to the sandbox by sending the activation message (e.g., `join <sandbox-keyword>`) to the Twilio sandbox phone number (typically `+1 415 523 8886`).
-   - Copy this sandbox number (formatted with `whatsapp:` prefix, e.g., `whatsapp:+14155238886`) and set it as your sender number.
-   - **Production**: To use a live number, request approval for your WhatsApp Business Profile via Twilio Business Manager.
+The WhatsApp Channel delivers high-priority conversational messages and notifications using the Twilio Messaging API for WhatsApp.
 
 ---
 
-## Configuration Variables
+## Architectural Workflow
 
-Set these variables in your `.env` file:
+1. **Recipient Formatting**: WhatsApp messaging endpoints require recipients to be formatted with the `whatsapp:` URI prefix (e.g. `whatsapp:+201012345678`). The channel parses phone numbers via `libphonenumber-js` to E.164 and ensures the `whatsapp:` prefix is present before dispatch.
+2. **Sender Identification**: The sender identifier defaults to the configured `TWILIO_WHATSAPP_NUMBER`. If not prefixed with `whatsapp:`, the channel formats it automatically.
+3. **Rich Media Delivery**: In addition to standard text bodies, the channel supports attachments such as PDF invoices, images, and audio notes via public HTTPS URLs.
+
+---
+
+## Configuration Reference
 
 ```env
-TWILIO_ACCOUNT_SID=ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-TWILIO_AUTH_TOKEN=your_auth_token_here
-TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+# Twilio Authentication
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Registered WhatsApp Business Number (or Twilio Sandbox Number)
+TWILIO_WHATSAPP_NUMBER=+14155238886
 ```
+
+---
+
+## Channel Options (`channelOptions`)
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `from` | `string` | Custom approved WhatsApp Sender ID (overriding `TWILIO_WHATSAPP_NUMBER`). |
+| `mediaUrl` | `string \| string[]` | Public URL(s) pointing to media files (JPEG, PNG, PDF) to attach to the WhatsApp message. |
 
 ---
 
 ## Code Example
 
 ```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory } from '@bts-soft/notifications';
 
-// Inject NotificationService and send
-await notificationService.send(ChannelType.WHATSAPP, {
-  recipientId: '+201001234567', // Recipient number in international format
-  body: 'Your booking confirmation code is {{code}}.',
-  context: { code: 'W-9982' },
-});
-```
+@Injectable()
+export class DeliveryService {
+  constructor(private readonly notificationService: NotificationService) {}
 
-### Dynamic Twilio Credentials
-You can override credentials dynamically for multi-tenant applications using `channelOptions`:
-
-```typescript
-await notificationService.send(ChannelType.WHATSAPP, {
-  recipientId: '+201001234567',
-  body: 'Hello Tenant User!',
-  channelOptions: {
-    accountSid: 'AC_CUSTOM_SID',
-    authToken: 'CUSTOM_AUTH_TOKEN',
-    from: 'whatsapp:+1234567890',
+  async notifyDriverDispatched(customerPhone: string, trackingUrl: string, orderReceiptUrl: string) {
+    await this.notificationService.send(ChannelType.WHATSAPP, {
+      recipientId: customerPhone,
+      category: NotificationCategory.TRANSACTIONAL,
+      body: `Your delivery is on its way! Track driver location live: ${trackingUrl}`,
+      channelOptions: {
+        mediaUrl: [orderReceiptUrl],
+      },
+    });
   }
-});
+}
 ```
-
----
-
-## Technical Details
-
-- **Recipient Sanitization**: The channel checks the `recipientId`. If the number does not start with `whatsapp:`, the channel automatically prepends `whatsapp:` to comply with Twilio API requirements.
-- **Media Support**: You can pass media attachments by providing `mediaUrl` in `channelOptions`:
-  ```typescript
-  channelOptions: {
-    mediaUrl: ['https://example.com/invoice.pdf']
-  }
-  ```
-- **Error Propagation**: Twilio API responses with HTTP status codes in the 4xx range are converted to `NotificationClientError`, while 5xx codes are converted to `NotificationProviderError` to allow BullMQ to attempt retries.

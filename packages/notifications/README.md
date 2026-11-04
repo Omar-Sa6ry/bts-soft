@@ -1,281 +1,319 @@
 # @bts-soft/notifications
 
-A robust, enterprise-grade, distributed multi-channel notification engine for NestJS applications. Designed in accordance with distributed systems design principles, it delivers fault tolerance, high throughput, multi-provider fallback, category-based user preferences, quiet hours scheduling, and end-to-end observability.
+An enterprise-grade, distributed multi-channel notification engine for NestJS applications. Built adhering to high-throughput, fault-tolerant distributed system architectures, this package orchestrates delivery across 13 distinct communication channels, multi-tier provider fallbacks, category-based user preference filtering, timezone-aware quiet hours scheduling, cryptographic idempotency deduplication, distributed circuit breakers, dead-letter queue management, and delivery receipts (DLR) processing.
 
 ---
 
-## Key Capabilities
+## Architectural Overview
 
-- **13 Supported Communication Channels**:
-  - **Email**: AWS SES, Twilio SendGrid, and Nodemailer (SMTP).
-  - **SMS**: Twilio SMS, Vonage (Nexmo), and SMS Misr.
-  - **Push**: Firebase Cloud Messaging (FCM), OneSignal, and Native Web Push (VAPID / RFC 8291).
-  - **Chat & Webhooks**: WhatsApp (Twilio), Telegram Bot, Discord Webhooks, Microsoft Teams Webhooks, Facebook Messenger (Send API), Slack (Web API / Webhooks), and Generic HMAC-signed HTTP Webhooks.
-  - **In-App Real-Time**: Pusher Channels.
-- **Resilient Multi-Provider Fallbacks**: Automatic, transparent provider failover on network and 5xx provider failures (e.g. AWS SES -> Twilio SendGrid -> Nodemailer; Twilio SMS -> Vonage -> SMS Misr). 4xx client errors bypass fallback to avoid unnecessary traffic.
-- **Granular Preference Scoping & Emergency Bypass**: Supports user opt-outs scoped to specific notification categories (`MARKETING`, `SYSTEM`, `COMMUNITY`). Critical notifications (`TRANSACTIONAL` and `SECURITY`) are protected by law and architecture and cannot be opted out of.
-- **Quiet Hours & Scheduled Delivery**: Postpone non-urgent notifications during user quiet windows taking recipient timezones into account, while critical alerts bypass quiet hours immediately.
-- **Idempotency & Deduplication**: Redis-backed atomic reservation with cryptographically hashed keys prevents duplicate enqueuing without exposing raw recipient identifiers.
-- **Dynamic Template Engine**: Handlebars templates supporting inline strings or template files (`renderFile`) with custom helpers (`formatCurrency`, `lowercase`, `json`) and `nestjs-i18n` localization.
-- **Reliable Queuing & Architecture**: Channel-isolated queues powered by BullMQ and Redis with priority tiers, backoff strategies, transactional outbox support (`NotificationOutboxRelay`), and structured audit logging.
+The notification subsystem is split into two asynchronous execution stages:
+1. **Synchronous Ingestion & Pre-flight Validation Pipeline**: Enforces request freshness, deduplication checks, user preference filtering, distributed rate limits, and scheduling delay calculations before publishing jobs to Redis-backed queues.
+2. **Asynchronous Worker Execution & Resilient Dispatch Pipeline**: Consumes channel-partitioned BullMQ queues, compiles localized templates, manages external HTTP/SDK connections using SSRF-safe connection agents, trips circuit breakers during downstream outages, and delegates to secondary fallback providers upon transient failure.
 
----
-
-## Architectural Workflow
-
-The notification engine is partitioned into a synchronous **Pre-flight Pipeline** and an asynchronous **Worker Execution Pipeline**.
-
-### 1. Pre-flight Pipeline
-
-```mermaid
-graph TD
-    A[NotificationRequest] --> B{Expiry Check}
-    B -- Expired --> C[Discard & Log EXPIRED]
-    B -- Valid --> D{Idempotency check}
-    D -- Duplicate --> E[Skip & Log DUPLICATE]
-    D -- New --> F{User Category Opt-Out}
-    F -- Opted Out --> G[Skip & Log OPTED_OUT]
-    F -- Allowed or Transactional --> H{Rate Limiter}
-    H -- Exceeded --> I[Skip & Log RATE_LIMITED]
-    H -- Allowed --> J{Quiet Hours & Scheduling}
-    J -- Delay Needed --> K[Calculate Delay in ms]
-    J -- Immediate --> L[Zero Delay]
-    K --> M[Save PENDING then QUEUED Log]
-    L --> M
-    M --> N[Enqueue Job to BullMQ with Channel Queue Isolation]
 ```
-
-### 2. Worker Execution Pipeline
-
-```mermaid
-graph TD
-    A[Channel-Isolated BullMQ Queue] --> B[Channel-Specific Worker e.g. EmailProcessor]
-    B --> C[Mark DB Log PROCESSING]
-    C --> D{Pre-process: Expiry Check}
-    D -- Expired --> E[Update Log to EXPIRED]
-    D -- Valid --> F[Render Templates & Localize with i18n]
-    F --> G[Resolve Primary Channel Provider]
-    G --> H{Provider Attempt}
-    H -- Success --> I[Update DB Log to SENT with Dispatch Metadata]
-    H -- Provider Error 5xx --> J{Fallback Provider Configured?}
-    J -- Yes --> K[Execute Next Fallback Provider]
-    K --> H
-    J -- Exhausted --> L[Trigger BullMQ Retry or Final Failure]
-    H -- Client Error 4xx --> M[Terminate Job as Permanent Failure FAILED]
+Client Application
+       |
+       v
++--------------------------------------------------------------------------+
+|                        PRE-FLIGHT PIPELINE                               |
+|                                                                          |
+|  1. TTL Expiration Check -> Drop if message.expiresAt has elapsed        |
+|  2. Idempotency Key -> Atomic Redis reservation (Deduplication Store)    |
+|  3. Category Filtering -> Opt-out check (TRANSACTIONAL/SECURITY bypass)   |
+|  4. Sliding Window Rate Limiting -> Recipient / channel burst prevention |
+|  5. Quiet Hours & Scheduling -> Calculate delay from recipient timezone  |
+|  6. Durable State Audit -> Persist PENDING / QUEUED state in Repository  |
++--------------------------------------------------------------------------+
+       |
+       v  (BullMQ Channel-Partitioned Queue)
++--------------------------------------------------------------------------+
+|                     WORKER DISPATCH PIPELINE                             |
+|                                                                          |
+|  1. Worker Activation -> Update DB state to PROCESSING                   |
+|  2. Queue Backlog Expiry Check -> Drop stale jobs if queued too long     |
+|  3. Template Compilation -> Handlebars string/file with i18n & helpers   |
+|  4. Circuit Breaker Check -> Fast-fail or redirect if provider is OPEN   |
+|  5. Safe Dispatch Agent -> DNS resolution validation against SSRF        |
+|  6. Execution -> Primary Provider (e.g. AWS SES / Twilio)                |
+|       |--> On 4xx / Client Error: Unrecoverable fail, mark FAILED        |
+|       |--> On 5xx / Network Error: Failover to Fallback Provider         |
+|  7. Observability -> Dispatch metrics, delivery logs, outbox clearance   |
++--------------------------------------------------------------------------+
 ```
 
 ---
 
-## Dispatch Metadata & Delivery Semantics
+## Supported Channels & Providers
 
-All channel providers implement a standard dispatch contract returning `NotificationDispatchResult`:
+| Channel | Core Providers / Integrations | Primary Capabilities |
+| :--- | :--- | :--- |
+| **Email** | AWS SES, Twilio SendGrid, Nodemailer (SMTP) | Multi-provider failover, HTML/text multipart, attachments, custom headers. |
+| **SMS** | Twilio SMS, Vonage (Nexmo), SMS Misr | E.164 normalization, regional fallback chains, alpha sender IDs. |
+| **Push** | Firebase Cloud Messaging (FCM) | Topic broadcasting, token unicast, Android/APNs payload configuration. |
+| **Web Push** | Native Web Push (VAPID / RFC 8291) | Direct browser push notifications with encrypted payloads. |
+| **OneSignal** | OneSignal REST API | Unified mobile and web push with external user ID targeting. |
+| **WhatsApp** | Twilio Messaging API | Sandbox and production WhatsApp messaging, media URL attachments. |
+| **Telegram** | Telegram Bot API | Direct user messaging, Markdown/HTML formatting, bi-directional webhook linking. |
+| **Discord** | Discord Webhooks API | Rich embed formatting, custom bot avatars, username overrides. |
+| **Slack** | Slack Webhooks & Web API (`chat.postMessage`) | Block Kit layouts, channel selection, token and webhook dispatch. |
+| **Microsoft Teams** | Office 365 / Power Automate Incoming Webhooks | Adaptive Cards and legacy MessageCard payloads. |
+| **Facebook Messenger**| Meta Graph Send API | Page scoped IDs (PSID), messaging tags, action buttons. |
+| **In-App** | Pusher Channels | Real-time WebSocket broadcasting to private and presence channels. |
+| **Webhook** | Generic HTTP / HTTPS Webhooks | HMAC SHA-256 payload signing, SSRF validation, configurable timeouts. |
+
+---
+
+## Installation
+
+Ensure peer dependencies (`@nestjs/common`, `@nestjs/core`, `@nestjs/bullmq`, `bullmq`, and optionally `@bts-soft/cache`) are available in your project workspace:
+
+```bash
+npm install @bts-soft/notifications
+```
+
+---
+
+## Quick Start & Module Registration
+
+Import `NotificationModule` into your root module. You can register custom infrastructure adapters such as durable notification repositories, deduplication stores, or outbox storage using `NotificationModule.register()`:
 
 ```typescript
-export interface NotificationDispatchResult {
-  provider: string;           // Actual provider that dispatched (e.g. "aws_ses", "twilio_sms")
-  providerMessageId?: string; // Provider gateway message ID (e.g. SES MessageId, Twilio SID)
-  rawResponse?: unknown;      // Raw response object from provider API
-  dispatchedAt: Date;         // Timestamp of dispatch
-  durationMs?: number;        // Outbound network duration in milliseconds
-}
-```
-
-This metadata is captured automatically by the processor and stored into your `NotificationLog` repository upon completion, enabling end-to-end tracing and provider latency analysis.
-
----
-
-## Configuration Reference
-
-Set the following environment variables in your application `.env`:
-
-| Variable Name | Type | Required | Description | Default |
-| :--- | :--- | :--- | :--- | :--- |
-| `EMAIL_PROVIDER` | `string` | Optional | Primary mail provider (`ses`, `twilio-mail`, `nodemailer`) | `nodemailer` |
-| `AWS_SES_ACCESS_KEY_ID` | `string` | Optional | AWS IAM Access Key for Amazon SES | - |
-| `AWS_SES_SECRET_ACCESS_KEY` | `string` | Optional | AWS IAM Secret Key for Amazon SES | - |
-| `AWS_SES_REGION` | `string` | Optional | Target AWS Region for SES (e.g. `us-east-1`) | - |
-| `SENDGRID_API_KEY` | `string` | Optional | SendGrid / Twilio Mail API Key | - |
-| `EMAIL_USER` | `string` | Optional | SMTP username / credentials username | - |
-| `EMAIL_PASS` | `string` | Optional | SMTP password / credentials password | - |
-| `EMAIL_HOST` | `string` | Optional | SMTP host address | - |
-| `EMAIL_PORT` | `number` | Optional | SMTP connection port (e.g., 465, 587) | - |
-| `EMAIL_SENDER` | `string` | Optional | Outgoing "From" email address | `EMAIL_USER` |
-| `SMS_PROVIDER` | `string` | Optional | Primary SMS provider (`twilio`, `vonage`, `smsmisr`) | `twilio` |
-| `TWILIO_ACCOUNT_SID` | `string` | Optional | Twilio Account SID | - |
-| `TWILIO_AUTH_TOKEN` | `string` | Optional | Twilio Auth Token | - |
-| `TWILIO_SMS_NUMBER` | `string` | Optional | Twilio sender phone number | - |
-| `TWILIO_WHATSAPP_NUMBER` | `string` | Optional | Twilio WhatsApp sender number | - |
-| `VONAGE_API_KEY` | `string` | Optional | Vonage (Nexmo) API key | - |
-| `VONAGE_API_SECRET` | `string` | Optional | Vonage API secret | - |
-| `VONAGE_SENDER` | `string` | Optional | Vonage outbound sender ID | - |
-| `SMSMISR_USERNAME` | `string` | Optional | SMS Misr account username | - |
-| `SMSMISR_PASSWORD` | `string` | Optional | SMS Misr account password | - |
-| `SMSMISR_SENDER` | `string` | Optional | SMS Misr approved Sender ID | - |
-| `FIREBASE_SERVICE_ACCOUNT_PATH` | `string` | Optional | Path to Firebase credentials JSON file | - |
-| `ONESIGNAL_APP_ID` | `string` | Optional | OneSignal App ID | - |
-| `ONESIGNAL_REST_API_KEY` | `string` | Optional | OneSignal REST API Key | - |
-| `WEB_PUSH_PUBLIC_KEY` | `string` | Optional | Web Push VAPID Public Key | - |
-| `WEB_PUSH_PRIVATE_KEY` | `string` | Optional | Web Push VAPID Private Key | - |
-| `WEB_PUSH_SUBJECT` | `string` | Optional | VAPID subject (`mailto:` or domain) | - |
-| `TELEGRAM_BOT_TOKEN` | `string` | Optional | Telegram Bot API token | - |
-| `DISCORD_WEBHOOK_URL` | `string` | Optional | Default Discord channel webhook | - |
-| `TEAMS_WEBHOOK_URL` | `string` | Optional | Default Microsoft Teams webhook | - |
-| `FB_PAGE_ACCESS_TOKEN` | `string` | Optional | Facebook Messenger Page Token | - |
-| `SLACK_BOT_TOKEN` | `string` | Optional | Slack Web API Bot token | - |
-| `SLACK_WEBHOOK_URL` | `string` | Optional | Default Slack Webhook URL | - |
-| `PUSHER_APP_ID` | `string` | Optional | Pusher Channels Application ID | - |
-| `PUSHER_KEY` | `string` | Optional | Pusher Channels client Key | - |
-| `PUSHER_SECRET` | `string` | Optional | Pusher Channels client Secret | - |
-| `PUSHER_CLUSTER` | `string` | Optional | Pusher Channels cluster name (e.g. `eu`) | - |
-
----
-
-## Installation & Setup
-
-### 1. Register the Module
-
-```typescript
-import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
-import { NotificationModule } from "@bts-soft/notifications";
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
+import { NotificationModule, InMemoryNotificationLogRepository, NOTIFICATION_LOG_REPOSITORY } from '@bts-soft/notifications';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST || '127.0.0.1',
+        port: Number(process.env.REDIS_PORT) || 6379,
+      },
+    }),
     NotificationModule.register({
-      // Provide custom repositories, rate limiters, or observers here
+      providers: [
+        {
+          provide: NOTIFICATION_LOG_REPOSITORY,
+          useClass: InMemoryNotificationLogRepository, // Replace with your TypeORM/Prisma repository
+        },
+      ],
+      exports: [NOTIFICATION_LOG_REPOSITORY],
     }),
   ],
 })
 export class AppModule {}
 ```
 
-### 2. Dispatching Notifications
+---
+
+## Configuration Reference
+
+The module reads configuration variables via `NotificationConfigService` using `@nestjs/config`.
+
+```env
+# General & Queues
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+
+# Email Channels
+EMAIL_PROVIDER=ses              # ses | sendgrid | nodemailer
+EMAIL_USER=apikey
+EMAIL_PASS=smtp_password
+EMAIL_HOST=smtp.sendgrid.net
+EMAIL_PORT=587
+EMAIL_SENDER=noreply@example.com
+SENDGRID_API_KEY=SG.xxxxxxxx
+AWS_SES_ACCESS_KEY_ID=AKIAxxxxxxxx
+AWS_SES_SECRET_ACCESS_KEY=xxxxxxxx
+AWS_SES_REGION=us-east-1
+
+# SMS Channels
+SMS_PROVIDER=twilio             # twilio | vonage | smsmisr
+TWILIO_ACCOUNT_SID=ACxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxx
+TWILIO_SMS_NUMBER=+1234567890
+VONAGE_API_KEY=xxxxxxxx
+VONAGE_API_SECRET=xxxxxxxx
+VONAGE_SENDER=BTSNotify
+SMSMISR_USERNAME=client_user
+SMSMISR_PASSWORD=client_pass
+SMSMISR_SENDER=Company
+SMSMISR_ENVIRONMENT=1           # 1 = Live, 2 = Test
+
+# Push Notifications
+FIREBASE_SERVICE_ACCOUNT_PATH=/secrets/firebase-service-account.json
+ONESIGNAL_APP_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+ONESIGNAL_REST_API_KEY=xxxxxxxx
+WEB_PUSH_PUBLIC_KEY=Bxxxxxxxx...
+WEB_PUSH_PRIVATE_KEY=xxxxxxxx...
+WEB_PUSH_SUBJECT=mailto:admin@example.com
+
+# Chat, Bots & Webhooks
+TWILIO_WHATSAPP_NUMBER=+14155238886
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/...
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+SLACK_BOT_TOKEN=xoxb-xxxxxxxx
+SLACK_DEFAULT_CHANNEL=#general
+FB_PAGE_ACCESS_TOKEN=EAAxxxxxxxx
+FB_GRAPH_API_VERSION=v19.0
+WEBHOOK_DEFAULT_SIGNING_SECRET=whsec_xxxxxxxx
+
+# In-App Real-time
+IN_APP_PROVIDER=pusher
+PUSHER_APP_ID=123456
+PUSHER_KEY=xxxxxxxx
+PUSHER_SECRET=xxxxxxxx
+PUSHER_CLUSTER=eu
+```
+
+---
+
+## Core Operational Features
+
+### 1. Multi-Tier Provider Failover
+
+When dispatching critical messages, providers are evaluated hierarchically. If the primary provider fails due to a network interruption or downstream HTTP 5xx error, the channel automatically invokes fallback providers without requeuing or losing job state. If the error is a 4xx validation or client error (such as an invalid recipient format), failover is skipped and the job fails immediately to avoid duplicate errors.
+
+* **Email Failover Order**: AWS SES -> Twilio SendGrid -> Nodemailer (SMTP).
+* **SMS Failover Order**: Twilio SMS -> Vonage SMS -> SMS Misr.
+
+### 2. Category Preferences & Legal Opt-Out Scoping
+
+Every notification is marked with a `NotificationCategory`:
+* `TRANSACTIONAL`: Critical invoices, verification codes, OTPs, order updates.
+* `SECURITY`: Password reset requests, login alerts, two-factor authentication.
+* `SYSTEM`: Maintenance windows, service terms updates.
+* `MARKETING`: Promotional campaigns, newsletters, discount offers.
+* `COMMUNITY`: Chat mentions, forum replies, social activity.
+
+Under compliance frameworks (such as GDPR and CAN-SPAM), recipients may opt out of `MARKETING`, `SYSTEM`, or `COMMUNITY` categories. In contrast, `TRANSACTIONAL` and `SECURITY` messages are enforced by architecture and cannot be suppressed by user opt-out flags.
 
 ```typescript
-import { Injectable } from "@nestjs/common";
-import {
-  NotificationService,
-  ChannelType,
-  NotificationCategory,
-  NotificationPriority,
-} from "@bts-soft/notifications";
+await notificationService.send(ChannelType.EMAIL, {
+  recipientId: 'user@example.com',
+  category: NotificationCategory.TRANSACTIONAL, // Bypasses opt-out checks
+  subject: 'Order Confirmation',
+  body: 'Your order #10892 has been confirmed.',
+});
+```
 
+### 3. Quiet Hours & Scheduling
+
+Notifications marked as non-urgent can be held during quiet hours defined in the recipient's preference record:
+* Takes into account the recipient's local `timezone` (e.g. `Africa/Cairo`, `America/New_York`).
+* Evaluates start and end windows (e.g., `22:00` to `08:00`).
+* Calculates the exact delay in milliseconds and defers queue processing using BullMQ job delays.
+* Critical categories (`TRANSACTIONAL`, `SECURITY`) or messages with `priority: NotificationPriority.HIGH` automatically bypass quiet hours.
+
+### 4. Idempotency & Exactly-Once Delivery
+
+Duplicate dispatch attempts caused by network retries or distributed races are prevented using atomic distributed deduplication.
+When an `idempotencyKey` is provided:
+* The store atomically checks and sets the key in Redis with a configurable TTL.
+* Recipient identifiers are hashed before storage to maintain privacy.
+* If a duplicate key is presented, the job is marked as `SKIPPED` with reason `DUPLICATE`, and the existing job ID is returned without duplicate dispatch.
+
+### 5. SSRF Defense & Secure HTTP Dispatch
+
+For channels interacting with external URLs (such as Webhooks and Discord):
+* `SafeAgentFactory` validates IP addresses during the DNS resolution stage immediately prior to opening TCP sockets.
+* Private network ranges (RFC 1918), loopback interfaces (`127.0.0.0/8`, `::1`), link-local metadata addresses (`169.254.169.254`), and carrier-grade NAT blocks are denied.
+* Protects against Time-Of-Check To Time-Of-Use (TOCTOU) DNS rebinding attacks.
+
+### 6. Transactional Outbox Relay
+
+For mission-critical operations where notification enqueuing must participate in database transactions:
+1. Persist the notification event inside your transactional database using your `INotificationOutboxRepository`.
+2. `NotificationOutboxRelay.drainOnce()` claims unhandled batches atomically with a lease duration.
+3. Successfully dispatched messages are marked as enqueued; failed dispatches are scheduled for exponential retry or routed to dead-letter storage.
+
+```typescript
+// Inside your scheduled cron job or worker service
 @Injectable()
-export class NotificationDeliveryService {
-  constructor(private readonly notificationService: NotificationService) {}
+export class NotificationCronService {
+  constructor(private readonly outboxRelay: NotificationOutboxRelay) {}
 
-  async sendSecurityAlert(userId: string, email: string, ipAddress: string) {
-    // Transactional & Security alerts bypass user opt-out and quiet hours
-    const result = await this.notificationService.sendWithResult(ChannelType.EMAIL, {
-      recipientId: email,
-      subject: "Security Alert: New Sign-in",
-      body: "Security Notice: Sign-in from IP {{ip}} detected.",
-      category: NotificationCategory.SECURITY,
-      priority: NotificationPriority.CRITICAL,
-      context: { ip: ipAddress },
+  @Cron('*/10 * * * * *')
+  async handleOutboxSweep() {
+    await this.outboxRelay.drainOnce({
+      batchSize: 100,
+      leaseMs: 30000,
+      retryBaseDelayMs: 5000,
+      retryMaxDelayMs: 300000,
     });
-
-    return result;
   }
+}
+```
 
-  async sendMarketingCampaign(userId: string, phone: string) {
-    // Respects user opt-out and quiet hours window (delay calculated automatically)
-    await this.notificationService.send(ChannelType.SMS, {
-      recipientId: phone,
-      body: "Flash Sale! Get 20% off today.",
-      category: NotificationCategory.MARKETING,
-      priority: NotificationPriority.NORMAL,
-      quietHours: {
-        start: "22:00",
-        end: "08:00",
-        timezone: "Africa/Cairo",
-      },
+### 7. Delivery Receipt (DLR) Processing
+
+The package includes `NotificationDeliveryReceiptService` to handle asynchronous webhooks from downstream communication providers (such as Twilio SMS delivery reports or SendGrid bounce webhooks).
+
+```typescript
+@Controller('webhooks/notifications')
+export class NotificationCallbackController {
+  constructor(private readonly dlrService: NotificationDeliveryReceiptService) {}
+
+  @Post('twilio')
+  async handleTwilioDlr(@Body() body: any) {
+    await this.dlrService.processReceipt({
+      provider: 'twilio',
+      providerMessageId: body.MessageSid,
+      status: body.MessageStatus === 'delivered' ? 'delivered' : 'failed',
+      reason: body.ErrorMessage,
+      timestamp: new Date(),
     });
+    return { received: true };
   }
 }
 ```
 
 ---
 
-## User Preferences & Category Opt-Out
+## Detailed Channel Documentation
 
-Users can opt out of non-critical notification categories or entire channels. Critical categories (`TRANSACTIONAL` and `SECURITY`) cannot be disabled.
+For provider-specific setup guides, configuration matrices, and channel options, refer to the documentation in each channel directory:
 
-```typescript
-import { Injectable, Inject } from "@nestjs/common";
-import {
-  USER_PREFERENCE_REPOSITORY,
-  IUserPreferenceRepository,
-  NotificationCategory,
-  ChannelType,
-} from "@bts-soft/notifications";
-
-@Injectable()
-export class PreferencesService {
-  constructor(
-    @Inject(USER_PREFERENCE_REPOSITORY)
-    private readonly preferences: IUserPreferenceRepository,
-  ) {}
-
-  async unsubscribeFromMarketing(userId: string) {
-    // Opt-out scoped only to MARKETING category for Email
-    await this.preferences.setOptOut(userId, ChannelType.EMAIL, true, NotificationCategory.MARKETING);
-  }
-
-  async blockAllSms(userId: string) {
-    // Full channel opt-out (all non-critical SMS)
-    await this.preferences.setOptOut(userId, ChannelType.SMS, true);
-  }
-}
-```
+* [Email Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/mail/README.md)
+* [SMS Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/sms/README.md)
+* [WhatsApp Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/whatsapp/README.md)
+* [Telegram Bot Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/telegram/README.md)
+* [Firebase Cloud Messaging Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/firebase/README.md)
+* [Native Web Push Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/webpush/README.md)
+* [OneSignal Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/onesignal/README.md)
+* [Discord Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/discord/README.md)
+* [Slack Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/slack/README.md)
+* [Microsoft Teams Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/teams/README.md)
+* [Facebook Messenger Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/messenger/README.md)
+* [In-App Pusher Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/inapp/README.md)
+* [Generic Webhook Channel Documentation](https://github.com/Omar-Sa6ry/bts-soft/blob/main/packages/notifications/src/channels/webhook/README.md)
 
 ---
 
-## Enterprise Resilience & Security
+## Testing
 
-### 1. Distributed Circuit Breaker (Multi-Pod Sync)
-
-Protects external messaging providers from cascading failures. Backed by `RedisCircuitBreakerStore` to immediately synchronize tripped provider states across all pods and Kubernetes containers without incurring network latency on healthy runs.
-
-### 2. SSRF Protection & DNS Rebinding Immunity
-
-All dynamic webhooks, Slack, Discord, and Teams dispatches route through `SafeAgentFactory`, which validates IP destinations at the socket DNS resolution stage (`lookup` hook), completely preventing Time-of-Check to Time-of-Use (TOCTOU) DNS Rebinding attacks.
-
-### 3. Delivery Receipts (DLR) & Status Tracking
-
-Handles delivery callbacks and webhooks from SMS and email gateways via `NotificationDeliveryReceiptService` to track verified status (`DELIVERED`, `BOUNCED`, `OPENED`, `FAILED`) in your durable notification store.
-
----
-
-## Automated Testing & Quality Assurance
-
-This package includes a comprehensive, dual-level test suite:
-
-### 1. Full Unit Tests
-
-Verifies all channels, fallback resilience, template compilation, rate limiting, and deduplication logic:
+The package includes unit test suites and comprehensive end-to-end integration tests:
 
 ```bash
+# Execute unit test suites
 npm run test
-```
 
-### 2. Test Coverage Report
-
-```bash
+# Execute test suite with V8 code coverage report
 npm run test:cov
-```
 
-### 3. End-to-End (E2E) Integration Tests
-
-Runs real BullMQ queue workers against an isolated Redis instance to test actual job life cycles, retry backoffs, and client error halts:
-
-```bash
+# Execute automated Docker-composed End-to-End integration suite
 npm run test:e2e
+
+# Execute E2E integration against a locally running Redis instance
+npm run test:e2e:local
 ```
 
 ---
 
 ## License
 
-MIT (c) Omar Sabry.
+This package is licensed under the MIT License.

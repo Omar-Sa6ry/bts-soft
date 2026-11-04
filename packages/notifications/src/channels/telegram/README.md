@@ -1,79 +1,66 @@
-# Telegram Integration Channel
+# Telegram Notification Channel
 
-The Telegram integration allows your system to link user accounts to Telegram and send automated notifications using the Telegram Bot API. It handles incoming webhooks to link Chat IDs to user records dynamically.
-
----
-
-## Setting Up Your Bot & Webhook
-
-Follow these steps to obtain a token and hook up the bot to your application:
-
-1. **Create the Bot via BotFather**:
-   - Open Telegram and search for the official account [@BotFather](https://t.me/BotFather).
-   - Send `/newbot` and follow the instructions to set a display name and a unique username (ending in `_bot`).
-   - Copy the generated HTTP API Token (e.g., `8032610224:AAHTuP...`).
-
-2. **Expose Local Host for Webhooks**:
-   - Telegram webhooks require an HTTPS URL. For local development, establish an SSH tunnel:
-     ```bash
-     ssh -R 80:localhost:3002 serveo.net
-     ```
-   - This command exposes your local server running on port `3002` to a public HTTPS domain provided by Serveo.
-
-3. **Register Webhook with Telegram**:
-   - Register your public URL endpoint `/telegram/webhook` with the Telegram API:
-     ```bash
-     curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://<YOUR_PUBLIC_SUBDOMAIN>.serveo.net/telegram/webhook&drop_pending_updates=true"
-     ```
-   - On success, the API returns `{"ok": true, "result": true, "description": "Webhook was set"}`.
+The Telegram Channel provides integration with the Telegram Bot API (`node-telegram-bot-api`), supporting direct user alerts, rich HTML/Markdown formatting, and interactive user account linking through Telegram webhook controllers.
 
 ---
 
-## Configuration Variables
+## Capabilities & Architecture
 
-Configure the following variables in your `.env` file:
+- **Direct Chat & Group Delivery**: Sends notifications to individual users (`chat_id`), groups, or channels.
+- **Account Linking & Token Verification**: Includes a built-in `TelegramController` and `TelegramService` allowing end-users to link their application profile to their Telegram account by messaging a short-lived authorization token directly to the bot.
+- **Rich Message Parsing**: Supports Telegram formatting options (`HTML`, `MarkdownV2`, `Markdown`).
+
+---
+
+## Configuration Reference
 
 ```env
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-ENABLE_TELEGRAM_BOT=true
+# Bot token generated via @BotFather
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
 ```
 
 ---
 
-## User Account Linking Flow
+## Channel Options (`channelOptions`)
 
-To send notifications, the bot needs to know the user's Telegram Chat ID. The system links them securely using a temporary token:
-
-1. **Generate Link Token**: The user generates a short-lived link token code (e.g. `C5F178C3`) from your frontend application.
-2. **Send Code to Bot**: The user starts a conversation with your bot on Telegram and sends the code:
-   - e.g., `/start C5F178C3` or simply typing `C5F178C3`.
-3. **Webhook Processing**: Telegram posts the message payload to `/telegram/webhook`. `TelegramController` intercepts the message, validates the token using `TelegramService`, and associates the user's database record with their unique Telegram `Chat ID`.
-4. **Verification**: The bot replies with a confirmation message on Telegram.
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `parseMode` | `'HTML' \| 'Markdown' \| 'MarkdownV2'` | Text formatting parse mode (default: `HTML`). |
+| `disableWebPagePreview` | `boolean` | Disables automatic link previews for URLs included in the body. |
+| `disableNotification` | `boolean` | Sends message silently without waking the user or triggering an alert tone. |
 
 ---
 
-## Code Example
-
-Once linked, send notifications to users by specifying their Telegram Chat ID as the `recipientId`:
+## Code Example: Sending Notifications
 
 ```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory } from '@bts-soft/notifications';
 
-await notificationService.send(ChannelType.TELEGRAM, {
-  recipientId: '123456789', // Linked Chat ID
-  body: 'Your account was successfully verified!',
-});
+@Injectable()
+export class ServerMonitorService {
+  constructor(private readonly notificationService: NotificationService) {}
+
+  async reportDeployment(chatId: string, version: string) {
+    await this.notificationService.send(ChannelType.TELEGRAM, {
+      recipientId: chatId,
+      category: NotificationCategory.SYSTEM,
+      body: `<b>Production Release Deployed</b>\nVersion: <code>${version}</code>\nStatus: <i>Healthy</i>`,
+      channelOptions: {
+        parseMode: 'HTML',
+        disableWebPagePreview: true,
+      },
+    });
+  }
+}
 ```
 
-### Dynamic Token Overrides
-You can override the Telegram bot token dynamically in the call options:
+---
 
-```typescript
-await notificationService.send(ChannelType.TELEGRAM, {
-  recipientId: '123456789',
-  body: 'System update alert!',
-  channelOptions: {
-    botToken: 'xoxb-different-token',
-  },
-});
-```
+## User Account Linking via Webhooks
+
+The module provides `TelegramController` mounted at route `POST /telegram/webhook`. When a user messages the bot, the controller:
+1. Extracts the linking token from the user message.
+2. Validates the token using `TelegramService.findUserByTelegramLinkToken()`.
+3. Stores the confirmed `chat_id` into your user repository.
+4. Sends a confirmation welcome message back to the user via Telegram.

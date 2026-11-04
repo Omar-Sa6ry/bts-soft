@@ -1,90 +1,71 @@
-# Discord Notification Channel
+# Discord Webhook Notification Channel
 
-The Discord notification channel enables backend systems to send alerts, reports, and logs directly to Discord server text channels using **Discord Webhooks**.
-
----
-
-## Obtaining Your Webhook URL
-
-To send messages to a Discord channel, configure an Incoming Webhook in your Discord client:
-
-1. **Access Channel Settings**:
-   - Open Discord and go to the target server.
-   - Click the gear icon next to the text channel name (**Edit Channel**).
-2. **Configure Integration**:
-   - Select the **Integrations** tab in the settings sidebar.
-   - Click the **Webhooks** option and click **New Webhook** (or **Create Webhook**).
-   - Customize the name and default avatar of the webhook bot.
-3. **Copy Webhook URL**:
-   - Click the **Copy Webhook URL** button.
-   - Store the URL securely. Anyone with access to this URL can send messages anonymously to your server channel.
+The Discord Channel delivers structured notifications and rich embeds to Discord channels using the Discord Webhooks API.
 
 ---
 
-## Configuration Variables
+## Architectural Protections & SSRF Defense
 
-Set your default webhook URL under the `DISCORD_WEBHOOK_URL` variable in your `.env` file:
+Discord incoming webhooks accept arbitrary external destination URLs. To safeguard your internal network and avoid Server-Side Request Forgery (SSRF):
+- Every destination URL is validated using `SsrfValidator`.
+- HTTP and HTTPS sockets are created via `SafeAgentFactory`, which evaluates resolved DNS IP addresses at the socket connection phase to prevent DNS rebinding attacks against internal IP ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.169.254`).
+- Distributed trace contexts (`traceparent`, `tracestate`, `X-Correlation-Id`) are automatically propagated across outbound webhook requests.
+
+---
+
+## Configuration Reference
 
 ```env
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-id/your-webhook-token
+# Default Fallback Discord Webhook URL
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/1234567890/ABCdefGhIJKlmNoPQRsTUVwxyZ
 ```
+
+---
+
+## Channel Options (`channelOptions`)
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `webhookUrl` | `string` | Custom target Discord Webhook URL overriding default configuration. |
+| `username` | `string` | Override the bot username displayed in Discord. |
+| `avatarUrl` | `string` | Override the bot avatar image URL displayed in Discord. |
+| `embeds` | `Array<object>` | Array of Discord Embed objects (rich cards with titles, fields, colors, timestamps). |
+| `tts` | `boolean` | Text-to-speech announcement in the Discord channel. |
 
 ---
 
 ## Code Example
 
 ```typescript
-import { NotificationService, ChannelType } from '@bts-soft/notifications';
+import { Injectable } from '@nestjs/common';
+import { NotificationService, ChannelType, NotificationCategory } from '@bts-soft/notifications';
 
-// Send message to the default webhook URL configured in environment
-await notificationService.send(ChannelType.DISCORD, {
-  recipientId: 'default',
-  body: 'Deployment succeeded for environment: staging',
-});
+@Injectable()
+export class DevOpsAlertService {
+  constructor(private readonly notificationService: NotificationService) {}
+
+  async alertCriticalFailure(serviceName: string, errorMessage: string) {
+    await this.notificationService.send(ChannelType.DISCORD, {
+      recipientId: 'ops-alerts-channel', // Or a custom Discord webhook URL
+      category: NotificationCategory.SYSTEM,
+      body: `Alert: High error rates detected in ${serviceName}`,
+      channelOptions: {
+        username: 'BTS Reliability Sentinel',
+        avatarUrl: 'https://cdn.yourdomain.com/icons/alert-bot.png',
+        embeds: [
+          {
+            title: 'Critical Incident Detected',
+            description: errorMessage,
+            color: 0xff0000, // Red hex integer
+            fields: [
+              { name: 'Service', value: serviceName, inline: true },
+              { name: 'Environment', value: 'Production', inline: true },
+            ],
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      },
+    });
+  }
+}
 ```
-
-### Dynamic Webhook Routing
-You can route messages to different webhooks on the fly in two ways:
-
-1. **By passing the Webhook URL as `recipientId`**:
-   ```typescript
-   await notificationService.send(ChannelType.DISCORD, {
-     recipientId: 'https://discord.com/api/webhooks/another-webhook-id/token',
-     body: 'Dynamic channel alert',
-   });
-   ```
-
-2. **By using `channelOptions`**:
-   ```typescript
-   await notificationService.send(ChannelType.DISCORD, {
-     recipientId: 'default',
-     body: 'Dynamic channel alert',
-     channelOptions: {
-       webhookUrl: 'https://discord.com/api/webhooks/another-webhook-id/token',
-     },
-   });
-   ```
-
----
-
-## Technical Details & Payloads
-
-- **Message Styling**: Discord supports markdown in the `body`. You can use formatting like bold (`**text**`), code blocks (`` `code` ``), and italics.
-- **Customization Overrides**: You can pass custom profile parameters or rich embeds in `channelOptions`:
-  ```typescript
-  await notificationService.send(ChannelType.DISCORD, {
-    recipientId: 'default',
-    body: 'Backup complete',
-    channelOptions: {
-      username: 'DB Backup Reporter',
-      avatar_url: 'https://example.com/backup-bot.png',
-      embeds: [
-        {
-          title: 'Database Status',
-          description: 'Backup files zipped and uploaded to AWS S3.',
-          color: 3066993, // Green decimal color code
-        }
-      ]
-    }
-  });
-  ```
